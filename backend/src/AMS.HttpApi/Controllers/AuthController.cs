@@ -1,0 +1,90 @@
+using AMS.Application.Contracts;
+using AMS.Application.Contracts.Dtos;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+
+namespace AMS.HttpApi.Controllers;
+
+[ApiController]
+[Route("api/auth")]
+public class AuthController : ControllerBase
+{
+    private readonly IAuthAppService _authAppService;
+    private readonly IConfiguration _configuration;
+
+    public AuthController(IAuthAppService authAppService, IConfiguration configuration)
+    {
+        _authAppService = authAppService;
+        _configuration = configuration;
+    }
+
+    [HttpPost("login")]
+    [AllowAnonymous]
+    public async Task<ActionResult<AuthResponseDto>> Login([FromBody] LoginRequest request)
+    {
+        var user = await _authAppService.LoginAsync(request.Email, request.Password);
+        if (user is null) return Unauthorized();
+
+        var jwtKey = _configuration["Jwt:Key"];
+        var jwtIssuer = _configuration["Jwt:Issuer"];
+        var jwtAudience = _configuration["Jwt:Audience"];
+        var expiresMinutes = int.TryParse(_configuration["Jwt:ExpiresMinutes"], out var minutes) ? minutes : 60;
+
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.Name, user.Id.ToString()),
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(ClaimTypes.Role, user.Role),
+            new Claim("fullName", user.FullName)
+        };
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey ?? string.Empty));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var token = new JwtSecurityToken(
+            issuer: jwtIssuer,
+            audience: jwtAudience,
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(expiresMinutes),
+            signingCredentials: credentials);
+
+        return Ok(new AuthResponseDto
+        {
+            Token = new JwtSecurityTokenHandler().WriteToken(token),
+            User = user
+        });
+    }
+
+    [HttpGet("me")]
+    [Authorize]
+    public ActionResult<UserDto> Me()
+    {
+        if (!User.Identity?.IsAuthenticated ?? true)
+            return Unauthorized();
+
+        var id = Guid.TryParse(User.Identity.Name, out var userId) ? userId : Guid.Empty;
+        var email = User.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
+        var role = User.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
+        var fullName = User.FindFirstValue("fullName") ?? string.Empty;
+
+        return Ok(new UserDto
+        {
+            Id = id,
+            Email = email,
+            Role = role,
+            FullName = fullName,
+            IsActive = true
+        });
+    }
+}
+
+public class LoginRequest
+{
+    public string Email { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+}

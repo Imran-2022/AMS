@@ -1,0 +1,41 @@
+namespace AMS.Application.Contracts.Dtos;
+
+public class AssignmentDto
+{
+    public Guid Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public Guid ClassCourseId { get; set; }
+    public Guid SubjectId { get; set; }
+    public Guid TeacherId { get; set; }
+    public DateTime Deadline { get; set; }
+    public int MaxMarks { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public bool AllowLateSubmission { get; set; }
+    public bool AllowResubmission { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class CreateAssignmentDto
+{
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public Guid ClassCourseId { get; set; }
+    public Guid SubjectId { get; set; }
+    public DateTime Deadline { get; set; }
+    public int MaxMarks { get; set; }
+    public bool AllowLateSubmission { get; set; }
+    public bool AllowResubmission { get; set; }
+}
+
+public class UpdateAssignmentDto
+{
+    public string? Title { get; set; }
+    public string? Description { get; set; }
+    public Guid? ClassCourseId { get; set; }
+    public Guid? SubjectId { get; set; }
+    public DateTime? Deadline { get; set; }
+    public int? MaxMarks { get; set; }
+    public bool? AllowLateSubmission { get; set; }
+    public bool? AllowResubmission { get; set; }
+}

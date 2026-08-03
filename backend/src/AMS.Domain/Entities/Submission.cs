@@ -1,0 +1,57 @@
+using AMS.Domain.Shared;
+
+namespace AMS.Domain.Entities;
+
+public class Submission
+{
+    public Guid Id { get; private set; }
+    public Guid AssignmentId { get; private set; }
+    public Guid StudentId { get; private set; }
+    public string ContentText { get; private set; }
+    public string? FileUrl { get; private set; }
+    public DateTime SubmittedAt { get; private set; }
+    public bool IsLate { get; private set; }
+    public SubmissionStatus Status { get; private set; }
+    public int? Marks { get; private set; }
+    public string? Feedback { get; private set; }
+    public Guid? GradedByTeacherId { get; private set; }
+    public DateTime? GradedAt { get; private set; }
+
+    private Submission() { }
+
+    public Submission(Guid id, Guid assignmentId, Guid studentId, string contentText, string? fileUrl, DateTime submittedAt, bool isLate, SubmissionStatus status)
+    {
+        Id = id;
+        AssignmentId = assignmentId;
+        StudentId = studentId;
+        ContentText = contentText ?? string.Empty;
+        FileUrl = fileUrl;
+        SubmittedAt = submittedAt == default ? DateTime.UtcNow : submittedAt;
+        IsLate = isLate;
+        Status = status;
+    }
+
+    public void Submit(DateTime now, DateTime deadline, bool allowLateSubmission, Assignment assignment)
+    {
+        if (now > deadline && !allowLateSubmission)
+        {
+            throw new DomainException("Submission is past the deadline and late submissions are not allowed.");
+        }
+
+        IsLate = now > deadline;
+        Status = IsLate ? SubmissionStatus.Late : SubmissionStatus.Submitted;
+        SubmittedAt = now;
+    }
+
+    public void MarkGraded(int marks, string? feedback, Guid teacherId, Assignment assignment)
+    {
+        if (marks < 0) throw new DomainException("Marks cannot be negative.");
+        if (marks > assignment.MaxMarks) throw new DomainException("Marks cannot exceed the assignment max marks.");
+
+        Marks = marks;
+        Feedback = feedback;
+        GradedByTeacherId = teacherId;
+        GradedAt = DateTime.UtcNow;
+        Status = SubmissionStatus.Graded;
+    }
+}
