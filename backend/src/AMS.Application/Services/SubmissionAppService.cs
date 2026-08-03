@@ -66,7 +66,7 @@ public class SubmissionAppService : ISubmissionAppService
 
         var assignment = await _assignmentRepository.GetByIdAsync(input.AssignmentId, cancellationToken) ?? throw new NotFoundException("Assignment not found.");
         if (assignment.Status != AssignmentStatus.Published) throw new ValidationException("Assignment is not published.");
-        if (!IsEnrolled(currentUserId, assignment.ClassCourseId)) throw new ForbiddenException("You are not enrolled in this class.");
+        if (!await IsEnrolled(currentUserId, assignment.ClassCourseId)) throw new ForbiddenException("You are not enrolled in this class.");
 
         var existing = await _submissionRepository.GetByAssignmentAndStudentAsync(assignment.Id, currentUserId, cancellationToken);
         if (existing is not null) throw new ValidationException("A submission already exists for this assignment.");
@@ -83,7 +83,16 @@ public class SubmissionAppService : ISubmissionAppService
         if (submission.StudentId != currentUserId) throw new ForbiddenException("You can only update your own submission.");
 
         var assignment = await _assignmentRepository.GetByIdAsync(submission.AssignmentId, cancellationToken) ?? throw new NotFoundException("Assignment not found.");
-        if (input.ContentText is not null) submission = new Submission(submission.Id, submission.AssignmentId, submission.StudentId, input.ContentText, submission.FileUrl, submission.SubmittedAt, submission.IsLate, submission.Status);
+        submission = new Submission(
+            submission.Id,
+            submission.AssignmentId,
+            submission.StudentId,
+            input.ContentText ?? submission.ContentText,
+            input.FileUrl ?? submission.FileUrl,
+            submission.SubmittedAt,
+            submission.IsLate,
+            submission.Status);
+
         await _submissionRepository.UpdateAsync(submission, cancellationToken);
         return ToDto(submission);
     }
@@ -124,9 +133,10 @@ public class SubmissionAppService : ISubmissionAppService
         throw new ValidationException("Invalid submission status.");
     }
 
-    private bool IsEnrolled(Guid studentId, Guid classCourseId)
+    private async Task<bool> IsEnrolled(Guid studentId, Guid classCourseId)
     {
-        return _studentEnrollmentRepository.GetByStudentAsync(studentId).GetAwaiter().GetResult().Any(x => x.ClassCourseId == classCourseId);
+        var enrollments = await _studentEnrollmentRepository.GetByStudentAsync(studentId);
+        return enrollments.Any(x => x.ClassCourseId == classCourseId);
     }
 
     private static SubmissionDto ToDto(Submission submission) => new()

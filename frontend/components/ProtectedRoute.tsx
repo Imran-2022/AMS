@@ -13,6 +13,7 @@ const roleDashboardMap: Record<string, string> = {
 export default function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: string[] }) {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
+  const [checkedAuth, setCheckedAuth] = useState(false);
 
   useEffect(() => {
     const user = getStoredUser();
@@ -27,8 +28,9 @@ export default function ProtectedRoute({ children, allowedRoles }: { children: R
     }
 
     setAuthorized(true);
+    setCheckedAuth(true);
   }, [allowedRoles, router]);
 
-  if (!authorized) return null;
-  return <>{children}</>;
+  if (!checkedAuth) return null;
+  return authorized ? <>{children}</> : null;
 }

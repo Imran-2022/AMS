@@ -1,6 +1,7 @@
 "use client";
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { clearStoredAuth, getStoredUser } from '@/lib/auth';
 
@@ -11,8 +12,12 @@ const roleDashboardMap: Record<string, string> = {
 };
 
 export default function TopNav() {
-  const user = getStoredUser();
+  const [user, setUser] = useState<{ id: string; email: string; role: string; fullName: string; isActive?: boolean } | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    setUser(getStoredUser());
+  }, []);
 
   function handleLogout() {
     clearStoredAuth();

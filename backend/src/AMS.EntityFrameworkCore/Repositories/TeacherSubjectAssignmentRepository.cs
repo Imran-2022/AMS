@@ -16,6 +16,9 @@ public class TeacherSubjectAssignmentRepository : ITeacherSubjectAssignmentRepos
     public async Task<TeacherSubjectAssignment?> GetAsync(Guid teacherId, Guid subjectId, CancellationToken cancellationToken = default)
         => await _dbContext.TeacherSubjectAssignments.FirstOrDefaultAsync(x => x.TeacherId == teacherId && x.SubjectId == subjectId, cancellationToken);
 
+    public async Task<IReadOnlyList<TeacherSubjectAssignment>> GetAllAsync(CancellationToken cancellationToken = default)
+        => await _dbContext.TeacherSubjectAssignments.ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<TeacherSubjectAssignment>> GetByTeacherAsync(Guid teacherId, CancellationToken cancellationToken = default)
         => await _dbContext.TeacherSubjectAssignments.Where(x => x.TeacherId == teacherId).ToListAsync(cancellationToken);
 

@@ -122,6 +122,44 @@ export type UpdateSubmissionStatusDto = {
   status: string;
 };
 
+export type ClassCourseDto = {
+  id: string;
+  name: string;
+  section: string;
+  academicYear: string;
+};
+
+export type CreateClassCourseDto = {
+  name: string;
+  section: string;
+  academicYear: string;
+};
+
+export type UpdateClassCourseDto = {
+  name?: string;
+  section?: string;
+  academicYear?: string;
+};
+
+export type SubjectDto = {
+  id: string;
+  name: string;
+  code: string;
+  classCourseId: string;
+};
+
+export type CreateSubjectDto = {
+  name: string;
+  code: string;
+  classCourseId: string;
+};
+
+export type UpdateSubjectDto = {
+  name?: string;
+  code?: string;
+  classCourseId?: string;
+};
+
 export async function login(email: string, password: string) {
   return request<{ token: string; user: UserDto }>(`/api/auth/login`, {
     method: 'POST',
@@ -161,6 +199,54 @@ export async function updateUser(id: string, input: UpdateUserDto) {
 
 export async function deleteUser(id: string) {
   return request<void>(`/api/users/${id}`, {
+    method: 'DELETE'
+  });
+}
+
+export async function getClassCourses() {
+  return request<ClassCourseDto[]>(`/api/classes`);
+}
+
+export async function getSubjects() {
+  return request<SubjectDto[]>(`/api/subjects`);
+}
+
+export async function createClassCourse(input: CreateClassCourseDto) {
+  return request<ClassCourseDto>(`/api/classes`, {
+    method: 'POST',
+    body: JSON.stringify(input)
+  });
+}
+
+export async function updateClassCourse(id: string, input: UpdateClassCourseDto) {
+  return request<ClassCourseDto>(`/api/classes/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(input)
+  });
+}
+
+export async function deleteClassCourse(id: string) {
+  return request<void>(`/api/classes/${id}`, {
+    method: 'DELETE'
+  });
+}
+
+export async function createSubject(input: CreateSubjectDto) {
+  return request<SubjectDto>(`/api/subjects`, {
+    method: 'POST',
+    body: JSON.stringify(input)
+  });
+}
+
+export async function updateSubject(id: string, input: UpdateSubjectDto) {
+  return request<SubjectDto>(`/api/subjects/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(input)
+  });
+}
+
+export async function deleteSubject(id: string) {
+  return request<void>(`/api/subjects/${id}`, {
     method: 'DELETE'
   });
 }

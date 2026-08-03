@@ -16,6 +16,9 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
     public async Task<StudentEnrollment?> GetAsync(Guid studentId, Guid classCourseId, CancellationToken cancellationToken = default)
         => await _dbContext.StudentEnrollments.FirstOrDefaultAsync(x => x.StudentId == studentId && x.ClassCourseId == classCourseId, cancellationToken);
 
+    public async Task<IReadOnlyList<StudentEnrollment>> GetAllAsync(CancellationToken cancellationToken = default)
+        => await _dbContext.StudentEnrollments.ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<StudentEnrollment>> GetByStudentAsync(Guid studentId, CancellationToken cancellationToken = default)
         => await _dbContext.StudentEnrollments.Where(x => x.StudentId == studentId).ToListAsync(cancellationToken);
 

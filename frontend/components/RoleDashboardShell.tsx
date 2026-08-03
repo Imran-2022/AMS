@@ -1,12 +1,17 @@
 "use client";
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { clearStoredAuth, getStoredUser } from '@/lib/auth';
 
 export default function RoleDashboardShell({ title, children, role }: { title: string; children: React.ReactNode; role: string }) {
-  const user = getStoredUser();
+  const [user, setUser] = useState<{ id: string; email: string; role: string; fullName: string; isActive?: boolean } | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    setUser(getStoredUser());
+  }, []);
 
   const navItems = [
     { href: `/roles/${role.toLowerCase()}/dashboard`, label: 'Dashboard' }
@@ -15,7 +20,11 @@ export default function RoleDashboardShell({ title, children, role }: { title: s
   if (role === 'Admin') {
     navItems.push(
       { href: '/roles/admin/users', label: 'Users' },
+      { href: '/roles/admin/classes', label: 'Classes' },
+      { href: '/roles/admin/subjects', label: 'Subjects' },
       { href: '/roles/admin/assignments', label: 'Assignments' },
+      { href: '/roles/admin/teacher-assignments', label: 'Teacher Assignments' },
+      { href: '/roles/admin/enrollments', label: 'Enrollments' },
       { href: '/roles/admin/submissions', label: 'Submissions' }
     );
   }

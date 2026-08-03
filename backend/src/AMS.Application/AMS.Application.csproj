@@ -11,4 +11,7 @@
     <ProjectReference Include="..\AMS.Application.Contracts\AMS.Application.Contracts.csproj" />
     <ProjectReference Include="..\AMS.Domain\AMS.Domain.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\AMS.Application.Services\**\*.cs" />
+  </ItemGroup>
 </Project>

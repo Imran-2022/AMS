@@ -57,6 +57,8 @@ builder.Services.AddScoped<IClassCourseAppService, ClassCourseAppService>();
 builder.Services.AddScoped<ISubjectAppService, SubjectAppService>();
 builder.Services.AddScoped<IAssignmentAppService, AssignmentAppService>();
 builder.Services.AddScoped<ISubmissionAppService, SubmissionAppService>();
+builder.Services.AddScoped<ITeacherSubjectAssignmentAppService, TeacherSubjectAssignmentAppService>();
+builder.Services.AddScoped<IEnrollmentAppService, StudentEnrollmentAppService>();
 
 builder.Services.AddAuthentication(options =>
 {
