@@ -25,6 +25,19 @@ public class SubmissionRepository : ISubmissionRepository
     public async Task<IReadOnlyList<Submission>> GetByStudentAsync(Guid studentId, CancellationToken cancellationToken = default)
         => await _dbContext.Submissions.Where(x => x.StudentId == studentId).ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Submission>> GetByTeacherAsync(Guid teacherId, CancellationToken cancellationToken = default)
+        => await _dbContext.Submissions
+            .Join(_dbContext.Assignments,
+                submission => submission.AssignmentId,
+                assignment => assignment.Id,
+                (submission, assignment) => new { submission, assignment })
+            .Where(joined => joined.assignment.TeacherId == teacherId)
+            .Select(joined => joined.submission)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Submission>> GetAllAsync(CancellationToken cancellationToken = default)
+        => await _dbContext.Submissions.ToListAsync(cancellationToken);
+
     public async Task AddAsync(Submission submission, CancellationToken cancellationToken = default)
     {
         await _dbContext.Submissions.AddAsync(submission, cancellationToken);

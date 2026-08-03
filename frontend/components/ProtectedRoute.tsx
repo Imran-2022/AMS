@@ -4,6 +4,12 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getStoredUser } from '@/lib/auth';
 
+const roleDashboardMap: Record<string, string> = {
+  Admin: '/roles/admin/dashboard',
+  Teacher: '/roles/teacher/dashboard',
+  Student: '/roles/student/dashboard'
+};
+
 export default function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: string[] }) {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
@@ -16,7 +22,7 @@ export default function ProtectedRoute({ children, allowedRoles }: { children: R
     }
 
     if (!allowedRoles.includes(user.role)) {
-      router.replace('/');
+      router.replace(roleDashboardMap[user.role] ?? '/');
       return;
     }
 

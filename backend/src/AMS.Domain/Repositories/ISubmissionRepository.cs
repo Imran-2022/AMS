@@ -8,6 +8,8 @@ public interface ISubmissionRepository
     Task<Submission?> GetByAssignmentAndStudentAsync(Guid assignmentId, Guid studentId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Submission>> GetByAssignmentAsync(Guid assignmentId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Submission>> GetByStudentAsync(Guid studentId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Submission>> GetByTeacherAsync(Guid teacherId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Submission>> GetAllAsync(CancellationToken cancellationToken = default);
     Task AddAsync(Submission submission, CancellationToken cancellationToken = default);
     Task UpdateAsync(Submission submission, CancellationToken cancellationToken = default);
     Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);

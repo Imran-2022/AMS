@@ -24,12 +24,31 @@ public class SubmissionAppService : ISubmissionAppService
 
     public async Task<IReadOnlyList<SubmissionDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
     {
-        var submissions = await _submissionRepository.GetByStudentAsync(currentUserId, cancellationToken);
+        IReadOnlyList<Submission> submissions;
+
+        if (currentUserRole == nameof(UserRole.Admin))
+        {
+            submissions = await _submissionRepository.GetAllAsync(cancellationToken);
+        }
+        else if (currentUserRole == nameof(UserRole.Teacher))
+        {
+            submissions = await _submissionRepository.GetByTeacherAsync(currentUserId, cancellationToken);
+        }
+        else
+        {
+            submissions = await _submissionRepository.GetByStudentAsync(currentUserId, cancellationToken);
+        }
+
         return submissions.Select(ToDto).ToList();
     }
 
     public async Task<IReadOnlyList<SubmissionDto>> GetMineAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
     {
+        if (currentUserRole != nameof(UserRole.Student))
+        {
+            throw new ForbiddenException("Only students can view their own submissions via this endpoint.");
+        }
+
         var submissions = await _submissionRepository.GetByStudentAsync(currentUserId, cancellationToken);
         return submissions.Select(ToDto).ToList();
     }
