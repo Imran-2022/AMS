@@ -15,6 +15,7 @@ public class AppUserConfiguration : IEntityTypeConfiguration<AppUser>
         builder.HasIndex(x => x.Email).IsUnique();
         builder.Property(x => x.PasswordHash).HasColumnName("password_hash").HasMaxLength(500).IsRequired();
         builder.Property(x => x.Role).HasColumnName("role").IsRequired();
+        builder.Property(x => x.ParentMobile).HasColumnName("parent_mobile").HasMaxLength(50).IsRequired(false);
         builder.Property(x => x.IsActive).HasColumnName("is_active").IsRequired();
     }
 }

@@ -7,6 +7,8 @@ public class Assignment
     public Guid Id { get; private set; }
     public string Title { get; private set; }
     public string Description { get; private set; }
+    public string? AttachmentUrl { get; private set; }
+    public string? AttachmentName { get; private set; }
     public Guid ClassCourseId { get; private set; }
     public Guid SubjectId { get; private set; }
     public Guid TeacherId { get; private set; }
@@ -20,7 +22,8 @@ public class Assignment
     private Assignment() { }
 
     public Assignment(Guid id, string title, string description, Guid classCourseId, Guid subjectId, Guid teacherId,
-        DateTime deadline, int maxMarks, AssignmentStatus status, bool allowLateSubmission, bool allowResubmission, DateTime createdAt)
+        DateTime deadline, int maxMarks, AssignmentStatus status, bool allowLateSubmission, bool allowResubmission, DateTime createdAt,
+        string? attachmentUrl = null, string? attachmentName = null)
     {
         if (string.IsNullOrWhiteSpace(title)) throw new DomainException("Title is required.");
         if (maxMarks <= 0) throw new DomainException("Max marks must be positive.");
@@ -29,6 +32,8 @@ public class Assignment
         Id = id;
         Title = title;
         Description = description ?? string.Empty;
+        AttachmentUrl = attachmentUrl;
+        AttachmentName = attachmentName;
         ClassCourseId = classCourseId;
         SubjectId = subjectId;
         TeacherId = teacherId;
@@ -38,6 +43,12 @@ public class Assignment
         AllowLateSubmission = allowLateSubmission;
         AllowResubmission = allowResubmission;
         CreatedAt = createdAt == default ? DateTime.UtcNow : createdAt;
+    }
+
+    public void SetAttachment(string? attachmentUrl, string? attachmentName)
+    {
+        AttachmentUrl = attachmentUrl;
+        AttachmentName = attachmentName;
     }
 
     public void Publish()

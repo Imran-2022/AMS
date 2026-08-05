@@ -59,6 +59,8 @@ builder.Services.AddScoped<IAssignmentAppService, AssignmentAppService>();
 builder.Services.AddScoped<ISubmissionAppService, SubmissionAppService>();
 builder.Services.AddScoped<ITeacherSubjectAssignmentAppService, TeacherSubjectAssignmentAppService>();
 builder.Services.AddScoped<IEnrollmentAppService, StudentEnrollmentAppService>();
+builder.Services.AddScoped<IDashboardAppService, DashboardAppService>();
+builder.Services.AddScoped<IFileAppService, FileAppService>();
 
 builder.Services.AddAuthentication(options =>
 {
@@ -136,6 +138,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+app.UseStaticFiles();
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();

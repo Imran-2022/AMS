@@ -14,7 +14,10 @@ public class SubmissionConfiguration : IEntityTypeConfiguration<Submission>
         builder.Property(x => x.StudentId).HasColumnName("student_id").IsRequired();
         builder.Property(x => x.ContentText).HasColumnName("content_text").HasMaxLength(4000);
         builder.Property(x => x.FileUrl).HasColumnName("file_url").HasMaxLength(500);
+        builder.Property(x => x.FileName).HasColumnName("file_name").HasMaxLength(255);
         builder.Property(x => x.SubmittedAt).HasColumnName("submitted_at").IsRequired();
+        builder.Property(x => x.ResubmittedAt).HasColumnName("resubmitted_at");
+        builder.Property(x => x.ResubmissionCount).HasColumnName("resubmission_count").IsRequired();
         builder.Property(x => x.IsLate).HasColumnName("is_late").IsRequired();
         builder.Property(x => x.Status).HasColumnName("status").IsRequired();
         builder.Property(x => x.Marks).HasColumnName("marks");

@@ -7,6 +7,7 @@ public class UserDto
     public string Email { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
     public bool IsActive { get; set; }
+    public string ParentMobile { get; set; } = string.Empty;
 }
 
 public class CreateUserDto
@@ -16,6 +17,7 @@ public class CreateUserDto
     public string Password { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
+    public string ParentMobile { get; set; } = string.Empty;
 }
 
 public class UpdateUserDto
@@ -25,6 +27,7 @@ public class UpdateUserDto
     public string? Password { get; set; }
     public string? Role { get; set; }
     public bool? IsActive { get; set; }
+    public string? ParentMobile { get; set; }
 }
 
 public class AuthResponseDto

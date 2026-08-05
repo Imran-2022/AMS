@@ -51,7 +51,16 @@ public class AssignmentAppService : IAssignmentAppService
     {
         if (currentUserRole != nameof(UserRole.Admin) && currentUserRole != nameof(UserRole.Teacher)) throw new ForbiddenException("Only teachers and admins can create assignments.");
 
-        var assignment = new Assignment(Guid.NewGuid(), input.Title, input.Description, input.ClassCourseId, input.SubjectId, currentUserId, input.Deadline, input.MaxMarks, AssignmentStatus.Draft, input.AllowLateSubmission, input.AllowResubmission, DateTime.UtcNow);
+        var teacherId = currentUserId;
+        if (currentUserRole == nameof(UserRole.Admin) && input.TeacherId is not null)
+        {
+            var teacher = await _userRepository.GetByIdAsync(input.TeacherId.Value, cancellationToken);
+            if (teacher is null) throw new NotFoundException("Teacher not found.");
+            if (teacher.Role != UserRole.Teacher) throw new ValidationException("Selected user is not a teacher.");
+            teacherId = teacher.Id;
+        }
+
+        var assignment = new Assignment(Guid.NewGuid(), input.Title, input.Description, input.ClassCourseId, input.SubjectId, teacherId, input.Deadline, input.MaxMarks, AssignmentStatus.Draft, input.AllowLateSubmission, input.AllowResubmission, DateTime.UtcNow, input.AttachmentUrl, input.AttachmentName);
         await _assignmentRepository.AddAsync(assignment, cancellationToken);
         return ToDto(assignment);
     }
@@ -73,7 +82,9 @@ public class AssignmentAppService : IAssignmentAppService
             assignment.Status,
             input.AllowLateSubmission ?? assignment.AllowLateSubmission,
             input.AllowResubmission ?? assignment.AllowResubmission,
-            assignment.CreatedAt);
+            assignment.CreatedAt,
+            input.AttachmentUrl ?? assignment.AttachmentUrl,
+            input.AttachmentName ?? assignment.AttachmentName);
 
         await _assignmentRepository.UpdateAsync(assignment, cancellationToken);
         return ToDto(assignment);
@@ -113,6 +124,8 @@ public class AssignmentAppService : IAssignmentAppService
         Id = assignment.Id,
         Title = assignment.Title,
         Description = assignment.Description,
+        AttachmentUrl = assignment.AttachmentUrl,
+        AttachmentName = assignment.AttachmentName,
         ClassCourseId = assignment.ClassCourseId,
         SubjectId = assignment.SubjectId,
         TeacherId = assignment.TeacherId,

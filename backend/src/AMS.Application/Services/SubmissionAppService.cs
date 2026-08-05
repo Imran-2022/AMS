@@ -71,7 +71,7 @@ public class SubmissionAppService : ISubmissionAppService
         var existing = await _submissionRepository.GetByAssignmentAndStudentAsync(assignment.Id, currentUserId, cancellationToken);
         if (existing is not null) throw new ValidationException("A submission already exists for this assignment.");
 
-        var submission = new Submission(Guid.NewGuid(), assignment.Id, currentUserId, input.ContentText, input.FileUrl, DateTime.UtcNow, false, SubmissionStatus.Submitted);
+        var submission = new Submission(Guid.NewGuid(), assignment.Id, currentUserId, input.ContentText, input.FileUrl, DateTime.UtcNow, false, SubmissionStatus.Submitted, input.FileName);
         submission.Submit(DateTime.UtcNow, assignment.Deadline, assignment.AllowLateSubmission, assignment);
         await _submissionRepository.AddAsync(submission, cancellationToken);
         return ToDto(submission);
@@ -83,15 +83,26 @@ public class SubmissionAppService : ISubmissionAppService
         if (submission.StudentId != currentUserId) throw new ForbiddenException("You can only update your own submission.");
 
         var assignment = await _assignmentRepository.GetByIdAsync(submission.AssignmentId, cancellationToken) ?? throw new NotFoundException("Assignment not found.");
-        submission = new Submission(
-            submission.Id,
-            submission.AssignmentId,
-            submission.StudentId,
-            input.ContentText ?? submission.ContentText,
-            input.FileUrl ?? submission.FileUrl,
-            submission.SubmittedAt,
-            submission.IsLate,
-            submission.Status);
+        
+        if (submission.Status == SubmissionStatus.ResubmissionRequested)
+        {
+            submission.Resubmit(input.ContentText ?? submission.ContentText, input.FileUrl ?? submission.FileUrl, input.FileName ?? submission.FileName, DateTime.UtcNow, assignment.Deadline, assignment.AllowLateSubmission);
+        }
+        else
+        {
+            submission = new Submission(
+                submission.Id,
+                submission.AssignmentId,
+                submission.StudentId,
+                input.ContentText ?? submission.ContentText,
+                input.FileUrl ?? submission.FileUrl,
+                submission.SubmittedAt,
+                submission.IsLate,
+                submission.Status,
+                input.FileName ?? submission.FileName,
+                submission.ResubmittedAt,
+                submission.ResubmissionCount);
+        }
 
         await _submissionRepository.UpdateAsync(submission, cancellationToken);
         return ToDto(submission);
@@ -125,7 +136,14 @@ public class SubmissionAppService : ISubmissionAppService
 
         if (Enum.TryParse<SubmissionStatus>(input.Status, true, out var parsed))
         {
-            submission = new Submission(submission.Id, submission.AssignmentId, submission.StudentId, submission.ContentText, submission.FileUrl, submission.SubmittedAt, submission.IsLate, parsed);
+            if (parsed == SubmissionStatus.ResubmissionRequested)
+            {
+                submission.RequestResubmission();
+            }
+            else
+            {
+                submission = new Submission(submission.Id, submission.AssignmentId, submission.StudentId, submission.ContentText, submission.FileUrl, submission.SubmittedAt, submission.IsLate, parsed, submission.FileName, submission.ResubmittedAt, submission.ResubmissionCount);
+            }
             await _submissionRepository.UpdateAsync(submission, cancellationToken);
             return ToDto(submission);
         }
@@ -146,7 +164,10 @@ public class SubmissionAppService : ISubmissionAppService
         StudentId = submission.StudentId,
         ContentText = submission.ContentText,
         FileUrl = submission.FileUrl,
+        FileName = submission.FileName,
         SubmittedAt = submission.SubmittedAt,
+        ResubmittedAt = submission.ResubmittedAt,
+        ResubmissionCount = submission.ResubmissionCount,
         IsLate = submission.IsLate,
         Status = submission.Status.ToString(),
         Marks = submission.Marks,

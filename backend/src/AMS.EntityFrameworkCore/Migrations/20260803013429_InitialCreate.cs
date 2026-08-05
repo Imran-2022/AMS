@@ -20,6 +20,7 @@ namespace AMS.EntityFrameworkCore.Migrations
                     email = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     password_hash = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
                     role = table.Column<int>(type: "integer", nullable: false),
+                    parent_mobile = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
                     is_active = table.Column<bool>(type: "boolean", nullable: false)
                 },
                 constraints: table =>

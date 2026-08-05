@@ -7,7 +7,7 @@ function getAuthToken() {
   return window.localStorage.getItem('ams-token');
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<ApiResponse<T>> {
+export async function request<T>(path: string, init?: RequestInit): Promise<ApiResponse<T>> {
   const token = getAuthToken();
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
@@ -23,13 +23,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<ApiResponse
     throw new Error(errorText || `Request failed: ${response.status}`);
   }
 
-  return response.json() as Promise<ApiResponse<T>>;
+  const text = await response.text();
+  return text ? (JSON.parse(text) as ApiResponse<T>) : (undefined as unknown as ApiResponse<T>);
 }
 
 export type AssignmentDto = {
   id: string;
   title: string;
   description: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
   classCourseId: string;
   subjectId: string;
   teacherId: string;
@@ -62,6 +65,7 @@ export type UserDto = {
   email: string;
   role: string;
   isActive: boolean;
+  parentMobile: string;
 };
 
 export type CreateUserDto = {
@@ -70,6 +74,7 @@ export type CreateUserDto = {
   password: string;
   role: string;
   isActive: boolean;
+  parentMobile: string;
 };
 
 export type UpdateUserDto = {
@@ -78,13 +83,17 @@ export type UpdateUserDto = {
   password?: string;
   role?: string;
   isActive?: boolean;
+  parentMobile?: string;
 };
 
 export type CreateAssignmentDto = {
   title: string;
   description: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
   classCourseId: string;
   subjectId: string;
+  teacherId?: string;
   deadline: string;
   maxMarks: number;
   allowLateSubmission: boolean;
@@ -94,6 +103,8 @@ export type CreateAssignmentDto = {
 export type UpdateAssignmentDto = {
   title?: string;
   description?: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
   classCourseId?: string;
   subjectId?: string;
   deadline?: string;
@@ -200,6 +211,12 @@ export async function updateUser(id: string, input: UpdateUserDto) {
 export async function deleteUser(id: string) {
   return request<void>(`/api/users/${id}`, {
     method: 'DELETE'
+  });
+}
+
+export async function toggleUserStatus(id: string) {
+  return request<UserDto>(`/api/users/${id}/toggle-status`, {
+    method: 'PATCH'
   });
 }
 
@@ -310,5 +327,3 @@ export async function updateSubmissionStatus(id: string, input: UpdateSubmission
     body: JSON.stringify(input)
   });
 }
-
-export { request };

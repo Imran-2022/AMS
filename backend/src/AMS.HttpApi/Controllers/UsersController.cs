@@ -53,6 +53,15 @@ public class UsersController : ControllerBase
         return Ok(user);
     }
 
+    [HttpPatch("{id:guid}/toggle-status")]
+    public async Task<ActionResult<UserDto>> ToggleStatus(Guid id)
+    {
+        var currentUserId = Guid.Parse(User.Identity?.Name ?? Guid.Empty.ToString());
+        var currentUserRole = User.IsInRole("Admin") ? "Admin" : "Student";
+        var user = await _userAppService.ToggleActiveAsync(id, currentUserId, currentUserRole);
+        return Ok(user);
+    }
+
     [HttpDelete("{id:guid}")]
     public async Task<ActionResult> Delete(Guid id)
     {

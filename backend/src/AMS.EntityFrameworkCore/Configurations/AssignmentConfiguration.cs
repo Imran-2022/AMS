@@ -12,6 +12,8 @@ public class AssignmentConfiguration : IEntityTypeConfiguration<Assignment>
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Title).HasColumnName("title").HasMaxLength(200).IsRequired();
         builder.Property(x => x.Description).HasColumnName("description").HasMaxLength(2000);
+        builder.Property(x => x.AttachmentUrl).HasColumnName("attachment_url").HasMaxLength(500);
+        builder.Property(x => x.AttachmentName).HasColumnName("attachment_name").HasMaxLength(255);
         builder.Property(x => x.ClassCourseId).HasColumnName("class_course_id").IsRequired();
         builder.Property(x => x.SubjectId).HasColumnName("subject_id").IsRequired();
         builder.Property(x => x.TeacherId).HasColumnName("teacher_id").IsRequired();

@@ -38,6 +38,7 @@ public class AuthController : ControllerBase
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.Name, user.Id.ToString()),
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Email, user.Email),
             new Claim(ClaimTypes.Role, user.Role),
             new Claim("fullName", user.FullName)
@@ -81,6 +82,40 @@ public class AuthController : ControllerBase
             IsActive = true
         });
     }
+
+    [HttpPut("profile")]
+    [Authorize]
+    public async Task<ActionResult<UserDto>> UpdateProfile([FromBody] UpdateProfileRequest request)
+    {
+        var idStr = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.Identity?.Name;
+        if (!Guid.TryParse(idStr, out var userId)) return Unauthorized();
+
+        var updated = await _authAppService.UpdateProfileAsync(userId, request.FullName, request.ParentMobile);
+        return Ok(updated);
+    }
+
+    [HttpPut("change-password")]
+    [Authorize]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+    {
+        var idStr = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.Identity?.Name;
+        if (!Guid.TryParse(idStr, out var userId)) return Unauthorized();
+
+        await _authAppService.ChangePasswordAsync(userId, request.CurrentPassword, request.NewPassword);
+        return NoContent();
+    }
+}
+
+public class UpdateProfileRequest
+{
+    public string FullName { get; set; } = string.Empty;
+    public string ParentMobile { get; set; } = string.Empty;
+}
+
+public class ChangePasswordRequest
+{
+    public string CurrentPassword { get; set; } = string.Empty;
+    public string NewPassword { get; set; } = string.Empty;
 }
 
 public class LoginRequest

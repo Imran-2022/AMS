@@ -30,5 +30,11 @@ public class AuthControllerTests
     {
         public Task<AMS.Application.Contracts.Dtos.UserDto?> LoginAsync(string email, string password, CancellationToken cancellationToken = default)
             => Task.FromResult<AMS.Application.Contracts.Dtos.UserDto?>(null);
+
+        public Task<AMS.Application.Contracts.Dtos.UserDto> UpdateProfileAsync(Guid userId, string fullName, string parentMobile, CancellationToken cancellationToken = default)
+            => Task.FromResult(new AMS.Application.Contracts.Dtos.UserDto { Id = userId, FullName = fullName, ParentMobile = parentMobile });
+
+        public Task ChangePasswordAsync(Guid userId, string currentPassword, string newPassword, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
     }
 }
