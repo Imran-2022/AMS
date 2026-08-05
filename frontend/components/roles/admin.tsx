@@ -99,134 +99,110 @@ export function AdminDashboardPage() {
   return (
     <AppShell role="Admin" breadcrumb="Admin / Dashboard">
       <div className="grid gap-6">
-        <section className="grid gap-6 rounded-3xl border border-slate-200/80 bg-white/95 p-6 shadow-sm shadow-slate-200/40">
-          <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <section className="rounded-2xl border border-[#ECECEF] bg-white p-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-violet-600">Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'}, System Admin</p>
-              <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950">Here's today's school overview.</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">A cleaner, responsive dashboard for student, teacher, and assignment operations.</p>
+              <p className="text-[12px] font-semibold uppercase tracking-widest text-[#7C3AED] mb-1">GOOD {new Date().getHours() < 12 ? 'MORNING' : new Date().getHours() < 18 ? 'AFTERNOON' : 'EVENING'}, SYSTEM ADMIN</p>
+              <h2 className="text-2xl font-bold mb-1">Here's today's school overview.</h2>
+              <p className="text-[13px] text-[#8A8F98]">A cleaner, responsive dashboard for student, teacher, and assignment operations.</p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <button type="button" className="inline-flex items-center justify-center rounded-2xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/60">Add Student</button>
-              <button type="button" className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/20">Add Teacher</button>
+            <div className="flex flex-wrap gap-3">
+              <button type="button" className="rounded-lg bg-[#7C3AED] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#6B21A8] transition">Add Student</button>
+              <button type="button" className="rounded-lg border border-[#ECECEF] bg-white px-4 py-2.5 text-sm font-semibold text-[#1F2430] hover:bg-[#F5F5F7] transition">Add Teacher</button>
             </div>
           </div>
         </section>
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Metric label="Students" value={isLoading ? '—' : `${stats?.totalStudents ?? 0}`} sub="Active learners" icon={<UserPlus className="h-5 w-5" />} />
-          <Metric label="Teachers" value={isLoading ? '—' : `${stats?.totalTeachers ?? 0}`} sub="Active instructors" icon={<UserCheck className="h-5 w-5" />} />
-          <Metric label="Classes" value={isLoading ? '—' : `${stats?.totalClasses ?? 0}`} sub="Active courses" icon={<BookOpen className="h-5 w-5" />} />
-          <Metric label="Published Assignments" value={isLoading ? '—' : `${stats?.totalAssignments ?? 0}`} sub="Live classroom work" icon={<ClipboardList className="h-5 w-5" />} />
+          <div className="rounded-2xl border border-[#ECECEF] bg-white p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[12px] text-[#8A8F98] font-semibold uppercase tracking-wide">STUDENTS</p>
+              <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#F3EEFF] text-[#7C3AED]">
+                <UserPlus className="h-5 w-5" />
+              </div>
+            </div>
+            <p className="text-3xl font-bold">{isLoading ? '—' : `${stats?.totalStudents ?? 0}`}</p>
+            <p className="text-[12px] text-[#8A8F98] mt-1">Active learners</p>
+          </div>
+          <div className="rounded-2xl border border-[#ECECEF] bg-white p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[12px] text-[#8A8F98] font-semibold uppercase tracking-wide">TEACHERS</p>
+              <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#F3EEFF] text-[#7C3AED]">
+                <UserCheck className="h-5 w-5" />
+              </div>
+            </div>
+            <p className="text-3xl font-bold">{isLoading ? '—' : `${stats?.totalTeachers ?? 0}`}</p>
+            <p className="text-[12px] text-[#8A8F98] mt-1">Active instructors</p>
+          </div>
+          <div className="rounded-2xl border border-[#ECECEF] bg-white p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[12px] text-[#8A8F98] font-semibold uppercase tracking-wide">CLASSES</p>
+              <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#F3EEFF] text-[#7C3AED]">
+                <BookOpen className="h-5 w-5" />
+              </div>
+            </div>
+            <p className="text-3xl font-bold">{isLoading ? '—' : `${stats?.totalClasses ?? 0}`}</p>
+            <p className="text-[12px] text-[#8A8F98] mt-1">Active courses</p>
+          </div>
+          <div className="rounded-2xl border border-[#ECECEF] bg-white p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[12px] text-[#8A8F98] font-semibold uppercase tracking-wide">PUBLISHED ASSIGNMENTS</p>
+              <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#F3EEFF] text-[#7C3AED]">
+                <ClipboardList className="h-5 w-5" />
+              </div>
+            </div>
+            <p className="text-3xl font-bold">{isLoading ? '—' : `${stats?.totalAssignments ?? 0}`}</p>
+            <p className="text-[12px] text-[#8A8F98] mt-1">Live classroom work</p>
+          </div>
         </section>
 
         <div className="grid gap-4 xl:grid-cols-[1.6fr_1fr]">
           <div className="space-y-4">
-            <Card className="overflow-hidden p-0">
-              <div className="border-b border-slate-200/80 bg-slate-50 px-6 py-5">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">Recent assignments</p>
-                    <p className="text-sm text-slate-500">Latest published work from teachers.</p>
-                  </div>
-                  <button type="button" className="text-sm font-medium text-violet-600 transition hover:text-violet-700">View all</button>
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full border-collapse text-left text-sm">
-                  <thead>
-                    <tr className="bg-white">
-                      <Th className="pl-6">Title</Th>
-                      <Th>Class</Th>
-                      <Th>Teacher</Th>
-                      <Th>Deadline</Th>
-                      <Th>Status</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentAssignments.map((assignment) => (
-                      <tr key={assignment.id} className="cursor-pointer transition hover:bg-slate-50">
-                        <Td className="pl-6 text-slate-900">{assignment.title}</Td>
-                        <Td>{assignment.classCourseName ?? assignment.cls ?? '—'}</Td>
-                        <Td>{assignment.teacherName ?? assignment.teacher ?? '—'}</Td>
-                        <Td className="font-mono text-slate-500">{assignment.deadline ?? '—'}</Td>
-                        <Td>
-                          <Pill className={assignment.status === 'Published' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-700'}>
-                            {assignment.status}
-                          </Pill>
-                        </Td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-
-            <Card className="overflow-hidden p-0">
-              <div className="border-b border-slate-200/80 bg-slate-50 px-6 py-5">
+            <div className="rounded-2xl border border-[#ECECEF] bg-white p-5">
+              <div className="flex items-center justify-between mb-3">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">Recent submissions</p>
-                  <p className="text-sm text-slate-500">Review the latest student work.</p>
+                  <p className="text-sm font-semibold text-[#1F2430]">Recent assignments</p>
+                  <p className="text-sm text-[#8A8F98]">Latest published work from teachers.</p>
                 </div>
+                <button type="button" className="text-sm font-semibold text-[#7C3AED] hover:text-[#5B21B6]">View all</button>
               </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full border-collapse text-left text-sm">
-                  <thead>
-                    <tr className="bg-white">
-                      <Th className="pl-6">Student</Th>
-                      <Th>Assignment</Th>
-                      <Th>Submitted</Th>
-                      <Th>Status</Th>
-                      <Th className="text-right">Marks</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentSubmissions.map((submission) => (
-                      <tr key={submission.id} className="cursor-pointer transition hover:bg-slate-50">
-                        <Td className="pl-6 text-slate-900">{submission.studentName ?? submission.userFullName ?? '—'}</Td>
-                        <Td>{submission.assignmentTitle ?? submission.assignment?.title ?? '—'}</Td>
-                        <Td className="font-mono text-slate-500">{submission.submittedAt ?? '—'}</Td>
-                        <Td>
-                          <Pill className={submission.status === 'Graded' ? 'bg-emerald-50 text-emerald-700' : submission.status === 'Late' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-700'}>
-                            {submission.status}
-                          </Pill>
-                        </Td>
-                        <Td className="text-right font-mono text-slate-700">{submission.marks !== null && submission.marks !== undefined ? `${submission.marks}/${submission.maxMarks ?? '—'}` : '—'}</Td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="grid grid-cols-4 gap-2 text-[11px] font-semibold uppercase tracking-wide text-[#8A8F98] border-t border-[#ECECEF] pt-3">
+                <span>Title</span>
+                <span>Class</span>
+                <span>Teacher</span>
+                <span>Deadline</span>
               </div>
-            </Card>
+            </div>
+            <div className="rounded-2xl border border-[#ECECEF] bg-white p-5">
+              <p className="text-sm font-semibold text-[#1F2430]">Recent submissions</p>
+              <p className="text-sm text-[#8A8F98] mb-3">Review the latest student work.</p>
+              <div className="grid grid-cols-4 gap-2 text-[11px] font-semibold uppercase tracking-wide text-[#8A8F98] border-t border-[#ECECEF] pt-3">
+                <span>Student</span>
+                <span>Assignment</span>
+                <span>Submitted</span>
+                <span>Status</span>
+              </div>
+            </div>
           </div>
 
           <div className="space-y-4">
-            <Card>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">Quick actions</p>
-                  <p className="text-sm text-slate-500">Common admin tasks at a glance.</p>
-                </div>
-                <div className="grid gap-3">
-                  <button type="button" className="rounded-3xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Add Student</button>
-                  <button type="button" className="rounded-3xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Add Teacher</button>
-                  <button type="button" className="rounded-3xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Create Assignment</button>
-                  <button type="button" className="rounded-3xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Assign Teacher</button>
-                </div>
+            <div className="rounded-2xl border border-[#ECECEF] bg-white p-5">
+              <p className="text-sm font-semibold text-[#1F2430] mb-1">Quick actions</p>
+              <p className="text-sm text-[#8A8F98] mb-3">Common admin tasks at a glance.</p>
+              <div className="space-y-2">
+                <button type="button" className="w-full rounded-lg border border-[#ECECEF] bg-white px-3 py-2.5 text-left text-[13px] font-medium text-[#1F2430] hover:bg-[#F5F5F7]">Add Student</button>
+                <button type="button" className="w-full rounded-lg border border-[#ECECEF] bg-white px-3 py-2.5 text-left text-[13px] font-medium text-[#1F2430] hover:bg-[#F5F5F7]">Add Teacher</button>
+                <button type="button" className="w-full rounded-lg border border-[#ECECEF] bg-white px-3 py-2.5 text-left text-[13px] font-medium text-[#1F2430] hover:bg-[#F5F5F7]">Create Assignment</button>
+                <button type="button" className="w-full rounded-lg border border-[#ECECEF] bg-white px-3 py-2.5 text-left text-[13px] font-medium text-[#1F2430] hover:bg-[#F5F5F7]">Assign Teacher</button>
               </div>
-            </Card>
-
-            <Card>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">Recent activity</p>
-                  <p className="text-sm text-slate-500">Latest changes coming from the database.</p>
-                </div>
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-                  No activity data available yet. This section is ready for backend activity integration.
-                </div>
+            </div>
+            <div className="rounded-2xl border border-[#ECECEF] bg-white p-5">
+              <p className="text-sm font-semibold text-[#1F2430] mb-1">Recent activity</p>
+              <p className="text-sm text-[#8A8F98] mb-3">Latest changes coming from the database.</p>
+              <div className="rounded-2xl border border-[#ECECEF] bg-[#F7F7F9] p-4 text-sm text-[#8A8F98]">
+                No activity data available yet. This section is ready for backend activity integration.
               </div>
-            </Card>
+            </div>
           </div>
         </div>
       </div>

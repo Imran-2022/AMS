@@ -55,6 +55,31 @@ main {
   margin: 0 auto;
 }
 
+main.layout-main {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(124, 58, 237, 0.35) #F1F5F9;
+}
+
+.layout-main::-webkit-scrollbar {
+  width: 10px;
+}
+
+.layout-main::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+
+.layout-main::-webkit-scrollbar-thumb {
+  background: rgba(124, 58, 237, 0.35);
+  border-radius: 9999px;
+}
+
+.layout-main::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 58, 237, 0.55);
+}
+
 .navbar {
   background: var(--surface);
   border-bottom: 1px solid var(--border);

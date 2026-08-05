@@ -6,17 +6,13 @@ import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import {
   Bell,
-  ChevronLeft,
-  ChevronRight,
   ClipboardList,
   BookOpen,
   Inbox,
   LayoutDashboard,
-  LogOut,
   Menu,
   Settings,
   ShieldCheck,
-  Sun,
   User,
   UserCheck,
   UserPlus,
@@ -53,7 +49,7 @@ const NAV: Record<RoleType, NavItem[]> = {
   ],
 };
 
-function Sidebar({ role, collapsed, mobileOpen, onNavigate, onLogout, userName }: { role: RoleType; collapsed: boolean; mobileOpen: boolean; onNavigate: () => void; onLogout: () => void; userName?: string }) {
+function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, userName }: { role: RoleType; collapsed: boolean; mobileOpen: boolean; onToggle: () => void; onNavigate: () => void; onLogout: () => void; userName?: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const profileItems = [
@@ -63,130 +59,77 @@ function Sidebar({ role, collapsed, mobileOpen, onNavigate, onLogout, userName }
   const [profileHover, setProfileHover] = useState(false);
   const isProfileOpen = profileHover;
 
-  const widthClass = mobileOpen ? 'w-[258px]' : collapsed ? 'w-[88px]' : 'w-[258px]';
+  const widthClass = mobileOpen ? 'w-64' : collapsed ? 'w-[76px]' : 'w-64';
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-50 flex flex-col overflow-hidden border-r border-slate-900/90 bg-slate-950 text-slate-100 shadow-2xl transition-all duration-300 ease-in-out ${widthClass} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:static lg:translate-x-0`}>
-      <div className={`border-l-4 ${role === 'Admin' ? 'border-violet-500' : role === 'Teacher' ? 'border-teal-500' : 'border-sky-500'}`}>
-        <div className={`flex items-center gap-3 px-4 py-5 ${collapsed ? 'justify-center' : ''}`}>
-          <div className="inline-flex h-11 w-11 items-center justify-center rounded-3xl bg-slate-800 text-white shadow-lg ring-1 ring-slate-700">
-            <Menu className="h-6 w-6" />
+      className={`fixed inset-y-0 left-0 z-50 flex flex-col overflow-hidden border-r border-[#ECECEF] bg-white text-[#1F2430] shadow-xl transition-all duration-300 ease-in-out ${widthClass} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
+      <div className="border-b border-[#ECECEF]">
+        <div className={`flex items-center gap-3 px-4 py-4 ${collapsed ? 'justify-center' : ''}`}>
+          <button
+            type="button"
+            onClick={onToggle}
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-[#1F2430] hover:bg-[#F5F5F7] shrink-0"
+            aria-label="Toggle sidebar">
+            <Menu className="h-5 w-5" />
+          </button>
+          <div className={`label min-w-0 transition-all duration-200 ${collapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100 w-full'}`}>
+            <p className="font-semibold text-sm leading-tight truncate">AMS School</p>
+            <p className="text-[11px] text-[#8A8F98] leading-tight truncate">Education management</p>
           </div>
-          {!collapsed && (
-            <div>
-              <p className="text-sm font-semibold text-white">AMS School</p>
-              <p className="text-xs text-slate-400">Education management</p>
-            </div>
-          )}
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-1">
+      <nav className="flex-1 overflow-hidden py-4 px-3 space-y-1">
         {NAV[role].map((item) => {
           const active = pathname === item.href;
           return (
             <Link
               key={item.href}
               href={item.href}
-              title={collapsed ? item.label : undefined}
               aria-label={item.label}
               aria-current={active ? 'page' : undefined}
               onClick={onNavigate}
-              className={`group flex items-center gap-3 rounded-3xl px-3 py-3 text-sm font-medium transition duration-200 ${collapsed ? 'justify-center px-2' : ''} ${active ? 'bg-violet-500/15 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-900/70 hover:text-white'}`}>
-              <item.Icon className={`h-5 w-5 ${active ? 'text-violet-300' : 'text-slate-400'}`} />
-              {!collapsed && <span>{item.label}</span>}
+              className={`group nav-item relative flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-[14px] transition-colors ${collapsed ? 'justify-center' : ''} ${active ? 'bg-[#F3EEFF] text-[#7C3AED]' : 'text-[#1F2430]/80 hover:bg-[#F5F5F7]'}`}>
+              <item.Icon className="shrink-0 h-5 w-5" />
+              {!collapsed ? (
+                <span className="whitespace-nowrap transition-all duration-200 opacity-100">{item.label}</span>
+              ) : null}
             </Link>
           );
         })}
       </nav>
 
-      <div className="border-t border-slate-800/80 px-4 py-4">
-        <div
-          className={`flex items-center gap-3 rounded-3xl border border-slate-800/80 bg-slate-900/90 p-3 transition ${collapsed ? 'justify-center' : 'justify-between'}`}
-          onMouseEnter={() => setProfileHover(true)}
-          onMouseLeave={() => setProfileHover(false)}>
-          <div className="inline-flex h-11 w-11 items-center justify-center rounded-3xl bg-slate-800 text-slate-200">
+      <div className="border-t border-[#ECECEF] p-3">
+        <div className="nav-item relative flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-[#F5F5F7] cursor-pointer">
+          <div className="w-9 h-9 rounded-full bg-[#1F2430] text-white flex items-center justify-center shrink-0">
             <User className="h-5 w-5" />
           </div>
-          {!collapsed && (
-            <div className="min-w-0 text-left">
-              <p className="truncate text-sm font-semibold text-white">{userName ?? 'System Admin'}</p>
-              <p className="truncate text-xs text-slate-500">Admin Account</p>
+          {!collapsed ? (
+            <div className="profile-text label min-w-0 transition-all duration-200 opacity-100">
+              <p className="text-[13px] font-semibold leading-tight truncate">{userName ?? 'System Admin'}</p>
+              <p className="text-[11px] text-[#8A8F98] leading-tight truncate">Admin Account</p>
             </div>
-          )}
+          ) : null}
         </div>
-
-        {isProfileOpen && !collapsed && (
-          <div className="mt-3 rounded-3xl border border-slate-800/80 bg-slate-950 p-3 shadow-2xl">
-            {profileItems.map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                className="flex w-full items-center justify-between rounded-2xl px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
-                onClick={() => {
-                  if (item.key === 'settings') {
-                    router.push('/roles/admin/settings');
-                  }
-                }}>
-                <span>{item.label}</span>
-                <ChevronRight className="h-4 w-4 text-slate-500" />
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={onLogout}
-              className="mt-3 w-full rounded-2xl bg-violet-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-violet-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50">
-              Sign out
-            </button>
-          </div>
-        )}
       </div>
     </aside>
   );
 }
 
-function Topbar({ breadcrumb, collapsed, onToggle }: { breadcrumb: string; collapsed: boolean; onToggle: () => void }) {
+function Topbar({ breadcrumb }: { breadcrumb: string }) {
   return (
-    <div className="sticky top-0 z-20 border-b border-slate-800/80 bg-slate-950/95 text-slate-100 shadow-none">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={onToggle}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900 text-slate-100 shadow-sm transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/60"
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
-            {collapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
-          </button>
-
-          <div className="inline-flex items-center gap-3 rounded-2xl bg-slate-900/80 px-3 py-2">
-            <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-violet-700 text-white">
-              <ChevronLeft className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-100">{breadcrumb}</p>
-              <p className="text-xs text-slate-500">Manage assignments, users and classes.</p>
-            </div>
-          </div>
+    <header className="sticky top-0 z-10 border-b border-[#ECECEF] bg-white">
+      <div className="flex h-16 items-center justify-between px-6">
+        <div>
+          <p className="text-sm font-semibold leading-tight">{breadcrumb}</p>
+          <p className="text-[12px] text-[#8A8F98] leading-tight">Manage assignments, users and classes.</p>
         </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className="relative inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-slate-300 shadow-sm transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/60"
-            aria-label="Notifications">
-            <Bell className="h-5 w-5" />
-            <span className="absolute -right-1 -top-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-semibold text-white">3</span>
-          </button>
-          <button
-            type="button"
-            className="inline-flex h-11 items-center gap-2 rounded-2xl border border-slate-800 bg-slate-900 px-3.5 text-sm font-medium text-slate-100 shadow-sm transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/60"
-            aria-label="User profile">
-            <div className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-violet-600 text-white">SA</div>
-            <span className="hidden sm:inline">System Admin</span>
-          </button>
-        </div>
+        <button className="relative w-9 h-9 rounded-lg flex items-center justify-center hover:bg-[#F5F5F7]" aria-label="Notifications">
+          <Bell className="h-5 w-5 text-[#1F2430]" />
+          <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-[#7C3AED] px-1.5 text-[9px] font-semibold text-white">3</span>
+        </button>
       </div>
-    </div>
+    </header>
   );
 }
 
@@ -243,7 +186,7 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
   }
 
   return (
-    <div className="relative flex min-h-screen bg-slate-50 text-slate-900">
+    <div className="flex h-screen overflow-hidden bg-[#F7F7F9] text-[#1F2430]">
       {mobileOpen && (
         <div className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden" onClick={() => setMobileOpen(false)} aria-hidden="true" />
       )}
@@ -251,23 +194,22 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
         role={role}
         collapsed={isCollapsed}
         mobileOpen={mobileOpen}
+        onToggle={() => {
+          if (isMobile) {
+            setMobileOpen((value) => !value);
+          } else {
+            setIsCollapsed((value) => !value);
+          }
+        }}
         onNavigate={() => setMobileOpen(false)}
         onLogout={handleLogout}
         userName={userName}
       />
-      <div className={`flex-1 transition-all duration-300 ease-in-out ${isCollapsed ? 'lg:ml-[88px]' : 'lg:ml-[258px]'}`}>
-        <Topbar
-          breadcrumb={breadcrumb}
-          collapsed={isCollapsed}
-          onToggle={() => {
-            if (isMobile) {
-              setMobileOpen((value) => !value);
-            } else {
-              setIsCollapsed((value) => !value);
-            }
-          }}
-        />
-        <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+      <div className={`flex-1 flex flex-col min-h-0 transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed ? 'lg:ml-[76px]' : 'lg:ml-64'}`}>
+        <Topbar breadcrumb={breadcrumb} />
+        <main className="layout-main flex-1 min-h-0 w-full overflow-y-auto">
+          <div className="px-6 py-6">{children}</div>
+        </main>
       </div>
     </div>
   );
