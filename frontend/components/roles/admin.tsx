@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { AppShell } from '../layout/AppShell';
-import { Button, Card, Metric, PageHeader, Pill, RoleBadge, Th, Td } from '../ui';
+import { Button, Card, Metric, PageHeader, Pill, RoleBadge, Th, Td, UserFormModal } from '../ui';
 import { ASSIGNMENTS, USERS as INITIAL_USERS, CLASSES as INITIAL_CLASSES, SUBJECTS as INITIAL_SUBJECTS, SUBMISSIONS } from '../data';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
 import { getAssignments, getSubmissions, getUsers as apiGetUsers, getClassCourses as apiGetClassCourses } from '@/lib/api';
@@ -65,12 +65,26 @@ type StudentFormData = {
   section: string;
 };
 
+type UserFormValues = {
+  fullName: string;
+  email: string;
+  password: string;
+  status: 'Active' | 'Inactive';
+  parentMobile?: string;
+  className?: string;
+  section?: string;
+};
+
 export function AdminDashboardPage() {
   const [stats, setStats] = useState<Awaited<ReturnType<typeof getAdminDashboardStats>> | null>(null);
   const [recentAssignments, setRecentAssignments] = useState<any[]>([]);
   const [recentSubmissions, setRecentSubmissions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [studentModalOpen, setStudentModalOpen] = useState(false);
+  const [teacherModalOpen, setTeacherModalOpen] = useState(false);
+  const [modalSubmitting, setModalSubmitting] = useState(false);
+  const [dashboardClassCourses, setDashboardClassCourses] = useState<ClassCourseRecord[]>([]);
 
   const totalAdmins = INITIAL_USERS.filter((user) => user.role === 'Admin').length;
   const totalTeachers = INITIAL_USERS.filter((user) => user.role === 'Teacher').length;
@@ -84,10 +98,21 @@ export function AdminDashboardPage() {
     try {
       setIsLoading(true);
       setLoadError(null);
-      const [s, assignments, submissions] = await Promise.all([getAdminDashboardStats(), getAssignments(), getSubmissions()]);
+      const [s, assignments, submissions, classes] = await Promise.all([
+        getAdminDashboardStats(),
+        getAssignments(),
+        getSubmissions(),
+        getClassCourses(),
+      ]);
       setStats(s);
       setRecentAssignments(assignments.slice(0, 8));
       setRecentSubmissions(submissions.slice(0, 8));
+      setDashboardClassCourses(classes.map((cls) => ({
+        id: cls.id,
+        name: cls.name,
+        section: cls.section,
+        academicYear: cls.academicYear,
+      })));
     } catch (err) {
       console.error(err);
       setLoadError('Unable to load dashboard data.');
@@ -107,8 +132,9 @@ export function AdminDashboardPage() {
               <p className="text-[13px] text-[#8A8F98]">A cleaner, responsive dashboard for student, teacher, and assignment operations.</p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <button type="button" className="rounded-lg bg-[#7C3AED] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#6B21A8] transition">Add Student</button>
-              <button type="button" className="rounded-lg border border-[#ECECEF] bg-white px-4 py-2.5 text-sm font-semibold text-[#1F2430] hover:bg-[#F5F5F7] transition">Add Teacher</button>
+              <Button type="button" onClick={() => setStudentModalOpen(true)}>Add Student</Button>
+              <Button type="button" variant="secondary" onClick={() => setTeacherModalOpen(true)}>Add Teacher</Button>
+              <button type="button" className="rounded-lg border border-[#ECECEF] bg-white px-4 py-2.5 text-sm font-semibold text-[#1F2430] hover:bg-[#F5F5F7] transition">Assign Teacher</button>
             </div>
           </div>
         </section>
@@ -156,55 +182,111 @@ export function AdminDashboardPage() {
           </div>
         </section>
 
-        <div className="grid gap-4 xl:grid-cols-[1.6fr_1fr]">
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-[#ECECEF] bg-white p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <p className="text-sm font-semibold text-[#1F2430]">Recent assignments</p>
-                  <p className="text-sm text-[#8A8F98]">Latest published work from teachers.</p>
-                </div>
-                <button type="button" className="text-sm font-semibold text-[#7C3AED] hover:text-[#5B21B6]">View all</button>
+        <div className="grid gap-4 xl:grid-cols-2">
+          <div className="rounded-2xl border border-[#ECECEF] bg-white p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-semibold text-[#1F2430]">Recent assignments</p>
+                <p className="text-sm text-[#8A8F98]">Latest published work from teachers.</p>
               </div>
-              <div className="grid grid-cols-4 gap-2 text-[11px] font-semibold uppercase tracking-wide text-[#8A8F98] border-t border-[#ECECEF] pt-3">
-                <span>Title</span>
-                <span>Class</span>
-                <span>Teacher</span>
-                <span>Deadline</span>
-              </div>
+              <button type="button" className="text-sm font-semibold text-[#7C3AED] hover:text-[#5B21B6]">View all</button>
             </div>
-            <div className="rounded-2xl border border-[#ECECEF] bg-white p-5">
-              <p className="text-sm font-semibold text-[#1F2430]">Recent submissions</p>
-              <p className="text-sm text-[#8A8F98] mb-3">Review the latest student work.</p>
-              <div className="grid grid-cols-4 gap-2 text-[11px] font-semibold uppercase tracking-wide text-[#8A8F98] border-t border-[#ECECEF] pt-3">
-                <span>Student</span>
-                <span>Assignment</span>
-                <span>Submitted</span>
-                <span>Status</span>
-              </div>
+            <div className="grid grid-cols-4 gap-2 text-[11px] font-semibold uppercase tracking-wide text-[#8A8F98] border-t border-[#ECECEF] pt-3">
+              <span>Title</span>
+              <span>Class</span>
+              <span>Teacher</span>
+              <span>Deadline</span>
             </div>
           </div>
-
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-[#ECECEF] bg-white p-5">
-              <p className="text-sm font-semibold text-[#1F2430] mb-1">Quick actions</p>
-              <p className="text-sm text-[#8A8F98] mb-3">Common admin tasks at a glance.</p>
-              <div className="space-y-2">
-                <button type="button" className="w-full rounded-lg border border-[#ECECEF] bg-white px-3 py-2.5 text-left text-[13px] font-medium text-[#1F2430] hover:bg-[#F5F5F7]">Add Student</button>
-                <button type="button" className="w-full rounded-lg border border-[#ECECEF] bg-white px-3 py-2.5 text-left text-[13px] font-medium text-[#1F2430] hover:bg-[#F5F5F7]">Add Teacher</button>
-                <button type="button" className="w-full rounded-lg border border-[#ECECEF] bg-white px-3 py-2.5 text-left text-[13px] font-medium text-[#1F2430] hover:bg-[#F5F5F7]">Create Assignment</button>
-                <button type="button" className="w-full rounded-lg border border-[#ECECEF] bg-white px-3 py-2.5 text-left text-[13px] font-medium text-[#1F2430] hover:bg-[#F5F5F7]">Assign Teacher</button>
-              </div>
-            </div>
-            <div className="rounded-2xl border border-[#ECECEF] bg-white p-5">
-              <p className="text-sm font-semibold text-[#1F2430] mb-1">Recent activity</p>
-              <p className="text-sm text-[#8A8F98] mb-3">Latest changes coming from the database.</p>
-              <div className="rounded-2xl border border-[#ECECEF] bg-[#F7F7F9] p-4 text-sm text-[#8A8F98]">
-                No activity data available yet. This section is ready for backend activity integration.
-              </div>
+          <div className="rounded-2xl border border-[#ECECEF] bg-white p-5">
+            <p className="text-sm font-semibold text-[#1F2430]">Recent submissions</p>
+            <p className="text-sm text-[#8A8F98] mb-3">Review the latest student work.</p>
+            <div className="grid grid-cols-4 gap-2 text-[11px] font-semibold uppercase tracking-wide text-[#8A8F98] border-t border-[#ECECEF] pt-3">
+              <span>Student</span>
+              <span>Assignment</span>
+              <span>Submitted</span>
+              <span>Status</span>
             </div>
           </div>
         </div>
+
+        <UserFormModal
+          open={studentModalOpen}
+          onClose={() => setStudentModalOpen(false)}
+          title="Add student"
+          submitLabel="Create student"
+          role="Student"
+          classCourses={dashboardClassCourses}
+          initialValues={{
+            fullName: '',
+            email: '',
+            password: '',
+            status: 'Active',
+            parentMobile: '',
+            className: dashboardClassCourses[0]?.name ?? '',
+            section: dashboardClassCourses[0]?.section ?? '',
+          }}
+          isSubmitting={modalSubmitting}
+          onSubmit={async (values) => {
+            try {
+              setModalSubmitting(true);
+              const created = await createUser({
+                fullName: values.fullName,
+                email: values.email,
+                password: values.password,
+                role: 'Student',
+                isActive: values.status === 'Active',
+                parentMobile: values.parentMobile ?? '',
+              });
+              const selectedClass = dashboardClassCourses.find((cls) => cls.name === values.className && cls.section === values.section);
+              if (selectedClass) {
+                await createEnrollment({ studentId: created.id, classCourseId: selectedClass.id });
+              }
+              setStudentModalOpen(false);
+              await loadDashboard();
+            } catch (err) {
+              console.error(err);
+              alert('Unable to create student. Please check the data and try again.');
+            } finally {
+              setModalSubmitting(false);
+            }
+          }}
+        />
+        <UserFormModal
+          open={teacherModalOpen}
+          onClose={() => setTeacherModalOpen(false)}
+          title="Add teacher"
+          submitLabel="Create teacher"
+          role="Teacher"
+          classCourses={[]}
+          initialValues={{
+            fullName: '',
+            email: '',
+            password: '',
+            status: 'Active',
+          }}
+          isSubmitting={modalSubmitting}
+          onSubmit={async (values) => {
+            try {
+              setModalSubmitting(true);
+              await createUser({
+                fullName: values.fullName,
+                email: values.email,
+                password: values.password,
+                role: 'Teacher',
+                isActive: values.status === 'Active',
+                parentMobile: values.parentMobile ?? '',
+              });
+              setTeacherModalOpen(false);
+              await loadDashboard();
+            } catch (err) {
+              console.error(err);
+              alert('Unable to create teacher. Please check the data and try again.');
+            } finally {
+              setModalSubmitting(false);
+            }
+          }}
+        />
       </div>
     </AppShell>
   );
@@ -218,6 +300,9 @@ export function AdminStudentsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingStudent, setEditingStudent] = useState<StudentUserRecord | null>(null);
+  const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
+  const [studentModalSubmitting, setStudentModalSubmitting] = useState(false);
+  const [studentModalInitialValues, setStudentModalInitialValues] = useState<StudentFormData | null>(null);
   const [formData, setFormData] = useState<StudentFormData>({
     fullName: '',
     email: '',
@@ -296,7 +381,7 @@ export function AdminStudentsPage() {
 
   function openNewStudent() {
     setEditingStudent(null);
-    setFormData({
+    setStudentModalInitialValues({
       fullName: '',
       email: '',
       password: '',
@@ -305,7 +390,7 @@ export function AdminStudentsPage() {
       className: classCourses[0]?.name ?? '',
       section: classCourses[0]?.section ?? '',
     });
-    setIsFormOpen(true);
+    setIsStudentModalOpen(true);
     setActionMenuFor(null);
   }
 
@@ -415,6 +500,49 @@ export function AdminStudentsPage() {
   return (
     <AppShell role="Admin" breadcrumb="Admin / Students">
       <PageHeader eyebrow="Administration" title="Students" action={<Button onClick={openNewStudent}>Add student</Button>} />
+
+      <UserFormModal
+        open={isStudentModalOpen}
+        onClose={() => setIsStudentModalOpen(false)}
+        title="Add student"
+        submitLabel="Create student"
+        role="Student"
+        classCourses={classCourses}
+        initialValues={studentModalInitialValues ?? {
+          fullName: '',
+          email: '',
+          password: '',
+          status: 'Active',
+          parentMobile: '',
+          className: classCourses[0]?.name ?? '',
+          section: classCourses[0]?.section ?? '',
+        }}
+        isSubmitting={studentModalSubmitting}
+        onSubmit={async (values) => {
+          try {
+            setStudentModalSubmitting(true);
+            const created = await createUser({
+              fullName: values.fullName,
+              email: values.email,
+              password: values.password,
+              role: 'Student',
+              isActive: values.status === 'Active',
+              parentMobile: values.parentMobile ?? '',
+            });
+            const classCourse = classCourses.find((cls) => cls.name === values.className && cls.section === values.section);
+            if (classCourse) {
+              await createEnrollment({ studentId: created.id, classCourseId: classCourse.id });
+            }
+            setIsStudentModalOpen(false);
+            await loadData(created.id);
+          } catch (err) {
+            console.error(err);
+            alert('Unable to create student. Please check the form and try again.');
+          } finally {
+            setStudentModalSubmitting(false);
+          }
+        }}
+      />
 
       {error && <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>}
 
@@ -641,6 +769,9 @@ export function AdminTeachersPage() {
   const [assignments, setAssignments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isTeacherModalOpen, setIsTeacherModalOpen] = useState(false);
+  const [teacherModalSubmitting, setTeacherModalSubmitting] = useState(false);
+  const [teacherModalInitialValues, setTeacherModalInitialValues] = useState<UserFormValues | null>(null);
 
   useEffect(() => {
     void loadTeachers();
@@ -667,9 +798,56 @@ export function AdminTeachersPage() {
     return teachers.filter((t) => !query || t.fullName.toLowerCase().includes(query) || t.email.toLowerCase().includes(query));
   }, [teachers, search]);
 
+  function openNewTeacher() {
+    setTeacherModalInitialValues({
+      fullName: '',
+      email: '',
+      password: '',
+      status: 'Active',
+    });
+    setIsTeacherModalOpen(true);
+  }
+
+  async function handleCreateTeacher(values: UserFormValues) {
+    try {
+      setTeacherModalSubmitting(true);
+      await createUser({
+        fullName: values.fullName,
+        email: values.email,
+        password: values.password,
+        role: 'Teacher',
+        isActive: values.status === 'Active',
+        parentMobile: values.parentMobile ?? '',
+      });
+      setIsTeacherModalOpen(false);
+      await loadTeachers();
+    } catch (err) {
+      console.error(err);
+      alert('Unable to create teacher. Please check the form and try again.');
+    } finally {
+      setTeacherModalSubmitting(false);
+    }
+  }
+
   return (
     <AppShell role="Admin" breadcrumb="Admin / Teachers">
-      <PageHeader eyebrow="Administration" title="Teachers" action={<Button onClick={() => {}}>Add teacher</Button>} />
+      <PageHeader eyebrow="Administration" title="Teachers" action={<Button onClick={openNewTeacher}>Add teacher</Button>} />
+
+      <UserFormModal
+        open={isTeacherModalOpen}
+        onClose={() => setIsTeacherModalOpen(false)}
+        title="Add teacher"
+        submitLabel="Create teacher"
+        role="Teacher"
+        initialValues={teacherModalInitialValues ?? {
+          fullName: '',
+          email: '',
+          password: '',
+          status: 'Active',
+        }}
+        isSubmitting={teacherModalSubmitting}
+        onSubmit={handleCreateTeacher}
+      />
 
       {error && <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>}
 

@@ -63,7 +63,7 @@ function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, 
   return (
     <aside
       className={`fixed inset-y-0 left-0 z-50 flex flex-col overflow-hidden border-r border-[#ECECEF] bg-white text-[#1F2430] shadow-xl transition-all duration-300 ease-in-out ${widthClass} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
-      <div className="border-b border-[#ECECEF]">
+      <div className="border-[#ECECEF]">
         <div className={`flex items-center gap-3 px-4 py-4 ${collapsed ? 'justify-center' : ''}`}>
           <button
             type="button"
@@ -118,7 +118,7 @@ function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, 
 
 function Topbar({ breadcrumb }: { breadcrumb: string }) {
   return (
-    <header className="sticky top-0 z-10 border-b border-[#ECECEF] bg-white">
+    <header className="sticky top-0 z-10 border-[#ECECEF] bg-white">
       <div className="flex h-16 items-center justify-between px-6">
         <div>
           <p className="text-sm font-semibold leading-tight">{breadcrumb}</p>
