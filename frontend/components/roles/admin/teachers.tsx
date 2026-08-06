@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal, AddTeacherModal, type AddTeacherFormData } from '../../ui';
 import { AppShell } from '../../layout/AppShell';
 
@@ -11,8 +11,8 @@ type TeacherRow = {
   email: string;
   subjects: string[];
   classesCount: number;
-  status: 'Active' | 'On leave';
-  tone: 'emerald' | 'amber';
+  status: 'Active' | 'Inactive' | 'On leave';
+  tone: 'emerald' | 'amber' | 'slate';
 };
 
 const TEACHERS: TeacherRow[] = [
@@ -88,7 +88,7 @@ export function AdminTeachersPage() {
 
   async function handleSaveTeacher(values: AddTeacherFormData) {
     if (editingTeacher) {
-      setTeachers((prev) => prev.map((t) => (t.id === editingTeacher.id ? { ...t, name: values.fullName, email: values.email, status: values.status === 'On leave' ? 'On leave' : values.status === 'Active' ? 'Active' : 'Active', tone: values.status === 'On leave' ? 'amber' : 'emerald' } : t)));
+      setTeachers((prev) => prev.map((t) => (t.id === editingTeacher.id ? { ...t, name: values.fullName, email: values.email, status: values.status, tone: values.status === 'On leave' ? 'amber' : values.status === 'Inactive' ? 'slate' : 'emerald' } : t)));
     } else {
       const id = String(Date.now()).slice(-6);
       const initials = values.fullName
@@ -98,8 +98,7 @@ export function AdminTeachersPage() {
         .slice(0, 2)
         .toUpperCase();
       setTeachers((prev) => [
-        { id, initials, name: values.fullName, email: values.email, subjects: values.subjectSpecialization ? [values.subjectSpecialization] : [], classesCount: 0, status: values.status === 'On leave' ? 'On leave' : values.status === 'Active' ? 'Active' : 'Active', tone: values.status === 'On leave' ? 'amber' : 'emerald' },
-        ...prev,
+        { id, initials, name: values.fullName, email: values.email, subjects: values.subjectSpecialization ? [values.subjectSpecialization] : [], classesCount: 0, status: values.status, tone: values.status === 'On leave' ? 'amber' : values.status === 'Inactive' ? 'slate' : 'emerald' },
       ]);
     }
 
@@ -239,8 +238,13 @@ export function AdminTeachersPage() {
                     </td>
                     <td className="px-2 py-3.5 text-slate-500">{t.classesCount} classes</td>
                     <td className="px-2 py-3.5">
-                      <span className={`badge ${t.tone==='emerald'?'bg-emerald-50 text-emerald-600':'bg-amber-50 text-amber-600'}`}>
-                        <span className={`badge-dot ${t.tone==='emerald'?'bg-emerald-500':'bg-amber-500'}`}></span>{t.status}
+                      <span
+                        className={`badge ${t.tone === 'emerald' ? 'bg-emerald-50 text-emerald-600' : t.tone === 'slate' ? 'bg-slate-100 text-slate-700' : 'bg-amber-50 text-amber-600'}`}
+                      >
+                        <span
+                          className={`badge-dot ${t.tone === 'emerald' ? 'bg-emerald-500' : t.tone === 'slate' ? 'bg-slate-500' : 'bg-amber-500'}`}
+                        ></span>
+                        {t.status}
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-right">
@@ -333,7 +337,7 @@ export function AdminTeachersPage() {
           fullName: editingTeacher.name,
           email: editingTeacher.email,
           password: '',
-          status: editingTeacher.status === 'On leave' ? 'On leave' : 'Active',
+          status: editingTeacher.status,
           phone: '',
           employeeId: '',
           qualification: '',

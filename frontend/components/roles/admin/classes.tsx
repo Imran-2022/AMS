@@ -4,14 +4,16 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { AppShell } from '../../layout/AppShell';
 import {
   createClassCourse,
+  updateClassCourse,
   createSubject,
+  updateSubject,
   deleteClassCourse,
   deleteSubject,
   getClassCourses,
   getSubjects,
   getUsers,
 } from '@/lib/api';
-import { createTeacherAssignment, getTeacherAssignments } from '@/lib/api/teacherAssignments';
+import { createTeacherAssignment, deleteTeacherAssignment, getTeacherAssignments } from '@/lib/api/teacherAssignments';
 import type { ClassCourseDto, SubjectDto, UserDto } from '@/lib/api';
 import type { TeacherSubjectAssignmentDto } from '@/lib/api/teacherAssignments';
 
@@ -25,8 +27,11 @@ export function AdminClassesPage() {
   const [activeModal, setActiveModal] = useState<'class' | 'subject' | 'assign' | 'delete' | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; type: 'class' | 'subject'; label: string } | null>(null);
   const [classForm, setClassForm] = useState({ name: '', section: '', year: '2026 – 2027' });
+  const [editingClass, setEditingClass] = useState<ClassCourseDto | null>(null);
   const [subjectForm, setSubjectForm] = useState({ name: '', code: '', classCourseId: '', teacherId: '' });
+  const [editingSubject, setEditingSubject] = useState<SubjectDto | null>(null);
   const [assignForm, setAssignForm] = useState({ subjectId: '', teacherId: '' });
+  const [actionMenuFor, setActionMenuFor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,6 +56,20 @@ export function AdminClassesPage() {
     }
   }, [teachers, assignForm.teacherId]);
 
+  useEffect(() => {
+    function handleDocumentClick(event: MouseEvent) {
+      if (!actionMenuFor) return;
+      const target = event.target as Node;
+      const menuEl = document.querySelector(`[data-action-menu="${actionMenuFor}"]`);
+      const btnEl = document.querySelector(`[data-action-button="${actionMenuFor}"]`);
+      if (menuEl?.contains(target) || btnEl?.contains(target)) return;
+      setActionMenuFor(null);
+    }
+
+    document.addEventListener('click', handleDocumentClick);
+    return () => document.removeEventListener('click', handleDocumentClick);
+  }, [actionMenuFor]);
+
   async function loadData() {
     try {
       setError(null);
@@ -72,14 +91,33 @@ export function AdminClassesPage() {
   }
 
   function openModal(modal: 'class' | 'subject' | 'assign') {
+    if (modal === 'class') {
+      setEditingClass(null);
+      setClassForm({ name: '', section: '', year: '2026 – 2027' });
+    }
+
+    if (modal === 'subject') {
+      setEditingSubject(null);
+      setSubjectForm({ name: '', code: '', classCourseId: classes[0]?.id ?? '', teacherId: '' });
+    }
+
+    if (modal === 'assign') {
+      setAssignForm({ subjectId: subjects[0]?.id ?? '', teacherId: teachers[0]?.id ?? '' });
+    }
+
     setActiveModal(modal);
   }
 
   function closeModal() {
     setActiveModal(null);
+    setEditingSubject(null);
+    setSubjectForm({ name: '', code: '', classCourseId: classes[0]?.id ?? '', teacherId: '' });
+    setEditingClass(null);
+    setClassForm({ name: '', section: '', year: '2026 – 2027' });
   }
 
   function handleDelete(type: 'class' | 'subject', id: string, label: string) {
+    setActionMenuFor(null);
     setDeleteTarget({ id, type, label });
     setActiveModal('delete');
   }
@@ -106,12 +144,21 @@ export function AdminClassesPage() {
     event.preventDefault();
 
     try {
-      await createClassCourse({
-        name: classForm.name,
-        section: classForm.section,
-        academicYear: classForm.year,
-      });
+      if (editingClass) {
+        await updateClassCourse(editingClass.id, {
+          name: classForm.name,
+          section: classForm.section,
+          academicYear: classForm.year,
+        });
+      } else {
+        await createClassCourse({
+          name: classForm.name,
+          section: classForm.section,
+          academicYear: classForm.year,
+        });
+      }
       setClassForm({ name: '', section: '', year: classForm.year });
+      setEditingClass(null);
       await loadData();
       closeModal();
     } catch (err) {
@@ -120,31 +167,70 @@ export function AdminClassesPage() {
     }
   }
 
+  function openEditClass(cls: ClassCourseDto) {
+    setEditingClass(cls);
+    setClassForm({ name: cls.name, section: cls.section, year: cls.academicYear });
+    setActiveModal('class');
+  }
+
   async function handleCreateSubject(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     try {
-      const subject = await createSubject({
-        name: subjectForm.name,
-        code: subjectForm.code,
-        classCourseId: subjectForm.classCourseId,
-      });
-
-      if (subjectForm.teacherId) {
-        await createTeacherAssignment({
-          teacherId: subjectForm.teacherId,
-          subjectId: subject.id,
+      if (editingSubject) {
+        await updateSubject(editingSubject.id, {
+          name: subjectForm.name,
+          code: subjectForm.code,
           classCourseId: subjectForm.classCourseId,
         });
+
+        const currentAssignment = assignmentMap[editingSubject.id];
+        const selectedTeacherId = subjectForm.teacherId;
+
+        if (selectedTeacherId) {
+          if (currentAssignment?.teacherId !== selectedTeacherId || currentAssignment?.classCourseId !== subjectForm.classCourseId) {
+            if (currentAssignment) {
+              await deleteTeacherAssignment(currentAssignment.teacherId, editingSubject.id);
+            }
+            await createTeacherAssignment({
+              teacherId: selectedTeacherId,
+              subjectId: editingSubject.id,
+              classCourseId: subjectForm.classCourseId,
+            });
+          }
+        } else if (currentAssignment) {
+          await deleteTeacherAssignment(currentAssignment.teacherId, editingSubject.id);
+        }
+      } else {
+        const subject = await createSubject({
+          name: subjectForm.name,
+          code: subjectForm.code,
+          classCourseId: subjectForm.classCourseId,
+        });
+
+        if (subjectForm.teacherId) {
+          await createTeacherAssignment({
+            teacherId: subjectForm.teacherId,
+            subjectId: subject.id,
+            classCourseId: subjectForm.classCourseId,
+          });
+        }
       }
 
       setSubjectForm({ name: '', code: '', classCourseId: classes[0]?.id ?? '', teacherId: '' });
+      setEditingSubject(null);
       await loadData();
       closeModal();
     } catch (err) {
       console.error(err);
-      alert('Unable to create subject. Please check the details and try again.');
+      alert('Unable to save subject. Please check the details and try again.');
     }
+  }
+
+  function openEditSubject(subject: SubjectDto) {
+    setEditingSubject(subject);
+    setSubjectForm({ name: subject.name, code: subject.code, classCourseId: subject.classCourseId, teacherId: assignmentMap[subject.id]?.teacherId ?? '' });
+    setActiveModal('subject');
   }
 
   async function handleAssignTeacher(event: FormEvent<HTMLFormElement>) {
@@ -262,7 +348,7 @@ export function AdminClassesPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {classes.map((cls) => (
               <div key={cls.id} className="bg-white rounded-2xl border border-slate-200 p-5">
-                <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between">
                   <div>
                     <p className="text-base font-bold text-slate-800">{cls.name} — {cls.section}</p>
                     <div className="flex items-center gap-2 mt-1">
@@ -272,15 +358,41 @@ export function AdminClassesPage() {
                       </span>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleDelete('class', cls.id, `${cls.name} — ${cls.section}`)}
-                    className="w-8 h-8 rounded-lg hover:bg-rose-50 text-slate-300 hover:text-rose-500 flex items-center justify-center shrink-0"
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 6h18" />
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                    </svg>
-                  </button>
+                  <div className="relative inline-flex">
+                    <button
+                      type="button"
+                      data-action-button={`class-${cls.id}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setActionMenuFor(actionMenuFor === `class-${cls.id}` ? null : `class-${cls.id}`);
+                      }}
+                      className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-400 inline-flex items-center justify-center"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                    </button>
+                    {actionMenuFor === `class-${cls.id}` ? (
+                      <div
+                        data-action-menu={`class-${cls.id}`}
+                        onClick={(ev) => ev.stopPropagation()}
+                        className="absolute right-0 top-full z-20 mt-2 w-40 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => openEditClass(cls)}
+                          className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
+                        >
+                          Edit class
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete('class', cls.id, `${cls.name} — ${cls.section}`)}
+                          className="w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50"
+                        >
+                          Delete class
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
                 <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-100 text-sm text-slate-500">
                   <p><span className="font-bold text-slate-900">{classSubjectCounts[cls.id] ?? 0}</span> subjects</p>
@@ -383,12 +495,41 @@ export function AdminClassesPage() {
                         )}
                       </td>
                       <td className="px-5 py-3.5 text-right">
-                        <button
-                          onClick={() => handleDelete('subject', subject.id, subject.name)}
-                          className="w-8 h-8 rounded-lg hover:bg-rose-50 text-slate-300 hover:text-rose-500 inline-flex items-center justify-center"
-                        >
-                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                        </button>
+                        <div className="relative inline-flex">
+                          <button
+                            type="button"
+                            data-action-button={`subject-${subject.id}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setActionMenuFor(actionMenuFor === `subject-${subject.id}` ? null : `subject-${subject.id}`);
+                            }}
+                            className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-400 inline-flex items-center justify-center"
+                          >
+                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                          </button>
+                          {actionMenuFor === `subject-${subject.id}` ? (
+                            <div
+                              data-action-menu={`subject-${subject.id}`}
+                              onClick={(ev) => ev.stopPropagation()}
+                              className="absolute right-0 top-full z-20 mt-2 w-40 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl"
+                            >
+                              <button
+                                type="button"
+                                onClick={() => openEditSubject(subject)}
+                                className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
+                              >
+                                Edit subject
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDelete('subject', subject.id, subject.name)}
+                                className="w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50"
+                              >
+                                Delete subject
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -406,7 +547,7 @@ export function AdminClassesPage() {
       <div className={`${activeModal === 'class' ? 'flex' : 'hidden'} fixed inset-0 z-50 items-center justify-center bg-slate-900/40 p-4`}>
         <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl">
           <div className="flex items-start justify-between px-7 pt-6 pb-5 border-b border-slate-100">
-            <h2 className="text-xl font-extrabold text-slate-800">Add class</h2>
+            <h2 className="text-xl font-extrabold text-slate-800">{editingClass ? 'Edit class' : 'Add class'}</h2>
             <button onClick={closeModal} className="text-slate-400 hover:text-slate-600">
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
             </button>
@@ -447,7 +588,7 @@ export function AdminClassesPage() {
             </div>
             <div className="flex items-center justify-end gap-3 px-7 py-5 border-t border-slate-100 bg-slate-50/60 rounded-b-3xl">
               <button type="button" onClick={closeModal} className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-semibold hover:bg-slate-50">Cancel</button>
-              <button type="submit" className="px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700">Create class</button>
+              <button type="submit" className="px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700">{editingClass ? 'Save changes' : 'Create class'}</button>
             </div>
           </form>
         </div>
@@ -456,7 +597,7 @@ export function AdminClassesPage() {
       <div className={`${activeModal === 'subject' ? 'flex' : 'hidden'} fixed inset-0 z-50 items-center justify-center bg-slate-900/40 p-4`}>
         <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl">
           <div className="flex items-start justify-between px-7 pt-6 pb-5 border-b border-slate-100">
-            <h2 className="text-xl font-extrabold text-slate-800">Add subject</h2>
+            <h2 className="text-xl font-extrabold text-slate-800">{editingSubject ? 'Edit subject' : 'Add subject'}</h2>
             <button onClick={closeModal} className="text-slate-400 hover:text-slate-600">
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
             </button>
@@ -512,7 +653,7 @@ export function AdminClassesPage() {
             </div>
             <div className="flex items-center justify-end gap-3 px-7 py-5 border-t border-slate-100 bg-slate-50/60 rounded-b-3xl">
               <button type="button" onClick={closeModal} className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-semibold hover:bg-slate-50">Cancel</button>
-              <button type="submit" className="px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700">Create subject</button>
+              <button type="submit" className="px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700">{editingSubject ? 'Save changes' : 'Create subject'}</button>
             </div>
           </form>
         </div>

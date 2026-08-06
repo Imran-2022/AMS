@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Button } from './Button';
 import { Modal } from './Modal';
 
-type AddTeacherFormData = {
+export type AddTeacherFormData = {
   fullName: string;
   email: string;
   password: string;
@@ -71,7 +71,7 @@ export function AddTeacherModal({
       subjectSpecialization: initialValues?.subjectSpecialization ?? '',
       avatarUrl: initialValues?.avatarUrl ?? '',
     });
-  }, [open]);
+  }, [open, initialValues]);
 
   function handleChange<Key extends keyof AddTeacherFormData>(field: Key, value: AddTeacherFormData[Key]) {
     setValues((current) => ({ ...current, [field]: value }));
