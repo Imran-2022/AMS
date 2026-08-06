@@ -59,10 +59,11 @@ public class TeacherSubjectAssignmentAppService : ITeacherSubjectAssignmentAppSe
         var teacher = await _userRepository.GetByIdAsync(input.TeacherId, cancellationToken) ?? throw new NotFoundException("Teacher not found.");
         if (teacher.Role != UserRole.Teacher) throw new ValidationException("Selected user is not a teacher.");
 
+        var classCourse = await _classCourseRepository.GetByIdAsync(input.ClassCourseId, cancellationToken) ?? throw new NotFoundException("Class/course not found.");
         var subject = await _subjectRepository.GetByIdAsync(input.SubjectId, cancellationToken) ?? throw new NotFoundException("Subject not found.");
-        var classCourse = await _classCourseRepository.GetByIdAsync(subject.ClassCourseId, cancellationToken) ?? throw new NotFoundException("Class/course not found.");
+        if (subject.ClassCourseId != input.ClassCourseId) throw new ValidationException("Selected subject does not belong to the chosen class.");
 
-        var assignment = new TeacherSubjectAssignment(input.TeacherId, input.SubjectId, subject.ClassCourseId);
+        var assignment = new TeacherSubjectAssignment(input.TeacherId, input.SubjectId, input.ClassCourseId);
         await _assignmentRepository.AddAsync(assignment, cancellationToken);
 
         return new TeacherSubjectAssignmentDto

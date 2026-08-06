@@ -65,6 +65,19 @@ export type UserDto = {
   email: string;
   role: string;
   isActive: boolean;
+  avatarUrl: string;
+  phoneNumber: string;
+  employeeId: string;
+  subjectSpecialization: string;
+  qualification: string;
+  guardianName: string;
+  guardianEmail: string;
+  address: string;
+  studentId: string;
+  gender: string;
+  dateOfBirth?: string;
+  admissionDate?: string;
+  joiningDate?: string;
   parentMobile: string;
 };
 
@@ -74,7 +87,20 @@ export type CreateUserDto = {
   password: string;
   role: string;
   isActive: boolean;
-  parentMobile: string;
+  avatarUrl?: string;
+  phoneNumber?: string;
+  employeeId?: string;
+  subjectSpecialization?: string;
+  qualification?: string;
+  guardianName?: string;
+  guardianEmail?: string;
+  address?: string;
+  studentId?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  admissionDate?: string;
+  joiningDate?: string;
+  parentMobile?: string;
 };
 
 export type UpdateUserDto = {
@@ -83,6 +109,19 @@ export type UpdateUserDto = {
   password?: string;
   role?: string;
   isActive?: boolean;
+  avatarUrl?: string;
+  phoneNumber?: string;
+  employeeId?: string;
+  subjectSpecialization?: string;
+  qualification?: string;
+  guardianName?: string;
+  guardianEmail?: string;
+  address?: string;
+  studentId?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  admissionDate?: string;
+  joiningDate?: string;
   parentMobile?: string;
 };
 

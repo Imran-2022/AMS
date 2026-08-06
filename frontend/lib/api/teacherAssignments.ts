@@ -11,6 +11,7 @@ export type TeacherSubjectAssignmentDto = {
 
 export type CreateTeacherSubjectAssignmentDto = {
   teacherId: string;
+  classCourseId: string;
   subjectId: string;
 };
 

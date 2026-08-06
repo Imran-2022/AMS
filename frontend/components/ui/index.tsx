@@ -3,6 +3,7 @@ import { ROLE } from '../data';
 export { Button } from './Button';
 export { FileUpload } from './FileUpload';
 export { UserFormModal } from './UserFormModal';
+export { TeacherAssignmentModal } from './TeacherAssignmentModal';
 
 export function Pill({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (

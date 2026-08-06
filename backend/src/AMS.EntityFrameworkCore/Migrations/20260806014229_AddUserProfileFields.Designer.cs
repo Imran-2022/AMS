@@ -3,17 +3,20 @@ using System;
 using AMS.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace AMS.EntityFrameworkCore.Migrations
+namespace AMS.EntityFrameworkCore.src.AMS.EntityFrameworkCore.Migrations
 {
     [DbContext(typeof(AmsDbContext))]
-    partial class AmsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260806014229_AddUserProfileFields")]
+    partial class AddUserProfileFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

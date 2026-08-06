@@ -40,6 +40,19 @@ public class UserAppService : IUserAppService
             input.Email,
             BCrypt.Net.BCrypt.HashPassword(input.Password),
             role,
+            input.AvatarUrl,
+            input.PhoneNumber,
+            input.EmployeeId,
+            input.SubjectSpecialization,
+            input.Qualification,
+            input.GuardianName,
+            input.GuardianEmail,
+            input.Address,
+            input.StudentId,
+            input.Gender,
+            input.DateOfBirth,
+            input.AdmissionDate,
+            input.JoiningDate,
             input.ParentMobile,
             input.IsActive);
 
@@ -51,12 +64,25 @@ public class UserAppService : IUserAppService
     {
         if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can manage users.");
         var user = await _userRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException("User not found.");
-        if (input.FullName is not null) user = new AppUser(user.Id, input.FullName, user.Email, user.PasswordHash, user.Role, user.ParentMobile, user.IsActive);
-        if (input.Email is not null) user = new AppUser(user.Id, user.FullName, input.Email, user.PasswordHash, user.Role, user.ParentMobile, user.IsActive);
-        if (input.Role is not null && Enum.TryParse<UserRole>(input.Role, true, out var role)) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, role, user.ParentMobile, user.IsActive);
-        if (input.Password is not null) user = new AppUser(user.Id, user.FullName, user.Email, BCrypt.Net.BCrypt.HashPassword(input.Password), user.Role, user.ParentMobile, user.IsActive);
-        if (input.ParentMobile is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, input.ParentMobile, user.IsActive);
-        if (input.IsActive is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.ParentMobile, input.IsActive.Value);
+        if (input.FullName is not null) user = new AppUser(user.Id, input.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
+        if (input.Email is not null) user = new AppUser(user.Id, user.FullName, input.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
+        if (input.Role is not null && Enum.TryParse<UserRole>(input.Role, true, out var role)) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
+        if (input.Password is not null) user = new AppUser(user.Id, user.FullName, user.Email, BCrypt.Net.BCrypt.HashPassword(input.Password), user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
+        if (input.AvatarUrl is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, input.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
+        if (input.PhoneNumber is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, input.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
+        if (input.EmployeeId is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, input.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
+        if (input.SubjectSpecialization is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, input.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
+        if (input.Qualification is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, input.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
+        if (input.GuardianName is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, input.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
+        if (input.GuardianEmail is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, input.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
+        if (input.Address is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, input.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
+        if (input.StudentId is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, input.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
+        if (input.Gender is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, input.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
+        if (input.DateOfBirth is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, input.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
+        if (input.AdmissionDate is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, input.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
+        if (input.JoiningDate is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, input.JoiningDate, user.ParentMobile, user.IsActive);
+        if (input.ParentMobile is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, input.ParentMobile, user.IsActive);
+        if (input.IsActive is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, input.IsActive.Value);
         await _userRepository.UpdateAsync(user, cancellationToken);
         return ToDto(user);
     }
@@ -83,6 +109,19 @@ public class UserAppService : IUserAppService
         Email = user.Email,
         Role = user.Role.ToString(),
         IsActive = user.IsActive,
+        AvatarUrl = user.AvatarUrl,
+        PhoneNumber = user.PhoneNumber,
+        EmployeeId = user.EmployeeId,
+        SubjectSpecialization = user.SubjectSpecialization,
+        Qualification = user.Qualification,
+        GuardianName = user.GuardianName,
+        GuardianEmail = user.GuardianEmail,
+        Address = user.Address,
+        StudentId = user.StudentId,
+        Gender = user.Gender,
+        DateOfBirth = user.DateOfBirth,
+        AdmissionDate = user.AdmissionDate,
+        JoiningDate = user.JoiningDate,
         ParentMobile = user.ParentMobile
     };
 }

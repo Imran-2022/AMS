@@ -15,6 +15,19 @@ type UserFormValues = {
   email: string;
   password: string;
   status: 'Active' | 'Inactive';
+  avatarUrl?: string;
+  phoneNumber?: string;
+  gender?: string;
+  address?: string;
+  studentId?: string;
+  employeeId?: string;
+  subjectSpecialization?: string;
+  qualification?: string;
+  dateOfBirth?: string;
+  admissionDate?: string;
+  joiningDate?: string;
+  guardianName?: string;
+  guardianEmail?: string;
   parentMobile?: string;
   className?: string;
   section?: string;
@@ -30,6 +43,7 @@ type UserFormModalProps = {
   classCourses?: ClassCourseOption[];
   onSubmit: (values: UserFormValues) => Promise<void>;
   isSubmitting?: boolean;
+  requirePassword?: boolean;
 };
 
 export function UserFormModal({
@@ -42,6 +56,7 @@ export function UserFormModal({
   classCourses = [],
   onSubmit,
   isSubmitting = false,
+  requirePassword = true,
 }: UserFormModalProps) {
   const [values, setValues] = useState<UserFormValues>(
     initialValues ?? {
@@ -49,6 +64,20 @@ export function UserFormModal({
       email: '',
       password: '',
       status: 'Active',
+      avatarUrl: '',
+      phoneNumber: '',
+      gender: '',
+      address: '',
+      studentId: '',
+      employeeId: '',
+      subjectSpecialization: '',
+      qualification: '',
+      dateOfBirth: '',
+      admissionDate: '',
+      joiningDate: '',
+      guardianName: '',
+      guardianEmail: '',
+      guardianAddress: '',
       parentMobile: '',
       className: classCourses[0]?.name ?? '',
       section: classCourses[0]?.section ?? '',
@@ -61,6 +90,20 @@ export function UserFormModal({
       email: initialValues?.email ?? '',
       password: initialValues?.password ?? '',
       status: initialValues?.status ?? 'Active',
+      avatarUrl: initialValues?.avatarUrl ?? '',
+      phoneNumber: initialValues?.phoneNumber ?? '',
+      gender: initialValues?.gender ?? '',
+      address: initialValues?.address ?? '',
+      studentId: initialValues?.studentId ?? '',
+      employeeId: initialValues?.employeeId ?? '',
+      subjectSpecialization: initialValues?.subjectSpecialization ?? '',
+      qualification: initialValues?.qualification ?? '',
+      dateOfBirth: initialValues?.dateOfBirth ?? '',
+      admissionDate: initialValues?.admissionDate ?? '',
+      joiningDate: initialValues?.joiningDate ?? '',
+      guardianName: initialValues?.guardianName ?? '',
+      guardianEmail: initialValues?.guardianEmail ?? '',
+      guardianAddress: initialValues?.guardianAddress ?? '',
       parentMobile: initialValues?.parentMobile ?? '',
       className: initialValues?.className ?? classCourses[0]?.name ?? '',
       section: initialValues?.section ?? classCourses[0]?.section ?? '',
@@ -135,7 +178,7 @@ export function UserFormModal({
               onChange={(event) => handleChange('password', event.target.value)}
               placeholder={role === 'Student' ? 'Create a password' : 'Create a password'}
               className="w-full rounded-2xl border border-slate-300 px-4 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-              required
+              required={requirePassword}
               type="password"
             />
           </div>
@@ -150,6 +193,135 @@ export function UserFormModal({
               <option>Inactive</option>
             </select>
           </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Avatar URL</label>
+            <input
+              value={values.avatarUrl}
+              onChange={(event) => handleChange('avatarUrl', event.target.value)}
+              placeholder="https://..."
+              className="w-full rounded-2xl border border-slate-300 px-4 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              type="url"
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Phone</label>
+            <input
+              value={values.phoneNumber}
+              onChange={(event) => handleChange('phoneNumber', event.target.value)}
+              placeholder="Phone number"
+              className="w-full rounded-2xl border border-slate-300 px-4 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              type="tel"
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Gender</label>
+            <select
+              value={values.gender}
+              onChange={(event) => handleChange('gender', event.target.value)}
+              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+            >
+              <option value="">Select gender</option>
+              <option value="Female">Female</option>
+              <option value="Male">Male</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Student / Employee ID</label>
+            <input
+              value={values.studentId}
+              onChange={(event) => handleChange('studentId', event.target.value)}
+              placeholder={role === 'Student' ? 'Student ID' : 'Employee ID'}
+              className="w-full rounded-2xl border border-slate-300 px-4 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Qualification</label>
+            <input
+              value={values.qualification}
+              onChange={(event) => handleChange('qualification', event.target.value)}
+              placeholder="Qualification"
+              className="w-full rounded-2xl border border-slate-300 px-4 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Specialization</label>
+            <input
+              value={values.subjectSpecialization}
+              onChange={(event) => handleChange('subjectSpecialization', event.target.value)}
+              placeholder="Subject specialization"
+              className="w-full rounded-2xl border border-slate-300 px-4 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Date of birth</label>
+            <input
+              value={values.dateOfBirth}
+              onChange={(event) => handleChange('dateOfBirth', event.target.value)}
+              className="w-full rounded-2xl border border-slate-300 px-4 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              type="date"
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Admission date</label>
+            <input
+              value={values.admissionDate}
+              onChange={(event) => handleChange('admissionDate', event.target.value)}
+              className="w-full rounded-2xl border border-slate-300 px-4 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              type="date"
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Joining date</label>
+            <input
+              value={values.joiningDate}
+              onChange={(event) => handleChange('joiningDate', event.target.value)}
+              className="w-full rounded-2xl border border-slate-300 px-4 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              type="date"
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Guardian name</label>
+            <input
+              value={values.guardianName}
+              onChange={(event) => handleChange('guardianName', event.target.value)}
+              placeholder="Guardian name"
+              className="w-full rounded-2xl border border-slate-300 px-4 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Guardian email</label>
+            <input
+              value={values.guardianEmail}
+              onChange={(event) => handleChange('guardianEmail', event.target.value)}
+              placeholder="Guardian email"
+              className="w-full rounded-2xl border border-slate-300 px-4 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              type="email"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Address</label>
+          <textarea
+            value={values.address}
+            onChange={(event) => handleChange('address', event.target.value)}
+            placeholder="Address"
+            className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+            rows={3}
+          />
         </div>
 
         {role === 'Student' && (

@@ -13,5 +13,6 @@ public class TeacherSubjectAssignmentDto
 public class CreateTeacherSubjectAssignmentDto
 {
     public Guid TeacherId { get; set; }
+    public Guid ClassCourseId { get; set; }
     public Guid SubjectId { get; set; }
 }
