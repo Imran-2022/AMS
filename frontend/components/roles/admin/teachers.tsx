@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { Modal, AddTeacherModal, type AddTeacherFormData } from '../../ui';
 import { AppShell } from '../../layout/AppShell';
 
 type TeacherRow = {
@@ -27,37 +28,88 @@ export function AdminTeachersPage() {
   const [selectedTab, setSelectedTab] = useState<'All' | 'Active' | 'On leave'>('All');
   const [roleFilter] = useState('All subjects');
   const [search, setSearch] = useState('');
-  const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
+  const [teachers, setTeachers] = useState<TeacherRow[]>(TEACHERS);
+  const [actionMenuFor, setActionMenuFor] = useState<string | null>(null);
+  const [pendingDeleteTeacher, setPendingDeleteTeacher] = useState<TeacherRow | null>(null);
+  const [isTeacherModalOpen, setIsTeacherModalOpen] = useState(false);
+  const [editingTeacher, setEditingTeacher] = useState<TeacherRow | null>(null);
 
   useEffect(() => {
     setMode('data');
   }, []);
 
+  useEffect(() => {
+    function handleDocumentClick(event: MouseEvent) {
+      if (!actionMenuFor) return;
+      const target = event.target as Node;
+      const menuEl = document.querySelector(`[data-action-menu="${actionMenuFor}"]`);
+      const btnEl = document.querySelector(`[data-action-button="${actionMenuFor}"]`);
+      if (menuEl && menuEl.contains(target)) return;
+      if (btnEl && btnEl.contains(target)) return;
+      setActionMenuFor(null);
+    }
+    document.addEventListener('click', handleDocumentClick);
+    return () => document.removeEventListener('click', handleDocumentClick);
+  }, [actionMenuFor]);
+
   function setState(s: 'data' | 'empty' | 'error') {
     setMode(s);
-    if (s !== 'data') setSelectedIds({});
+    if (s !== 'data') setActionMenuFor(null);
   }
 
   function setTab(tab: 'All' | 'Active' | 'On leave') {
     setSelectedTab(tab);
-    setSelectedIds({});
+    setActionMenuFor(null);
   }
 
-  function toggleAll(checked: boolean) {
-    if (!checked) return setSelectedIds({});
-    const map: Record<string, boolean> = {};
-    visibleRows().forEach((r) => (map[r.id] = true));
-    setSelectedIds(map);
+  function openDeleteTeacher(t: TeacherRow) {
+    setPendingDeleteTeacher(t);
+    setActionMenuFor(null);
   }
 
-  function toggleBulk(id?: string) {
-    if (!id) return;
-    setSelectedIds((prev) => ({ ...prev, [id]: !prev[id] }));
+  function openNewTeacher() {
+    setEditingTeacher(null);
+    setIsTeacherModalOpen(true);
+    setActionMenuFor(null);
+  }
+
+  function handleEditTeacher(t: TeacherRow) {
+    setEditingTeacher(t);
+    setIsTeacherModalOpen(true);
+    setActionMenuFor(null);
+  }
+
+  async function confirmDeleteTeacher() {
+    if (!pendingDeleteTeacher) return;
+    setTeachers((prev) => prev.filter((p) => p.id !== pendingDeleteTeacher.id));
+    setPendingDeleteTeacher(null);
+    setActionMenuFor(null);
+  }
+
+  async function handleSaveTeacher(values: AddTeacherFormData) {
+    if (editingTeacher) {
+      setTeachers((prev) => prev.map((t) => (t.id === editingTeacher.id ? { ...t, name: values.fullName, email: values.email, status: values.status === 'On leave' ? 'On leave' : values.status === 'Active' ? 'Active' : 'Active', tone: values.status === 'On leave' ? 'amber' : 'emerald' } : t)));
+    } else {
+      const id = String(Date.now()).slice(-6);
+      const initials = values.fullName
+        .split(' ')
+        .map((p) => p[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase();
+      setTeachers((prev) => [
+        { id, initials, name: values.fullName, email: values.email, subjects: values.subjectSpecialization ? [values.subjectSpecialization] : [], classesCount: 0, status: values.status === 'On leave' ? 'On leave' : values.status === 'Active' ? 'Active' : 'Active', tone: values.status === 'On leave' ? 'amber' : 'emerald' },
+        ...prev,
+      ]);
+    }
+
+    setIsTeacherModalOpen(false);
+    setEditingTeacher(null);
   }
 
   function visibleRows() {
     const q = search.trim().toLowerCase();
-    return TEACHERS.filter((t) => {
+    return teachers.filter((t) => {
       if (selectedTab === 'Active' && t.status !== 'Active') return false;
       if (selectedTab === 'On leave' && t.status !== 'On leave') return false;
       if (q && !(`${t.name} ${t.email}`.toLowerCase().includes(q))) return false;
@@ -66,7 +118,6 @@ export function AdminTeachersPage() {
   }
 
   const rows = visibleRows();
-  const selectedCount = Object.values(selectedIds).filter(Boolean).length;
 
   return (
     <AppShell role="Admin" breadcrumb="Admin / Teachers">
@@ -76,10 +127,11 @@ export function AdminTeachersPage() {
             <p className="text-xs font-bold tracking-widest text-brand-600">ADMINISTRATION</p>
             <h1 className="text-3xl font-extrabold text-slate-800 mt-0.5">Teachers</h1>
           </div>
-          <button className="px-4 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 flex items-center gap-2"> 
+          <button onClick={openNewTeacher} className="px-4 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 flex items-center gap-2"> 
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Add teacher
           </button>
+          
         </div>
 
         <div className={`hidden ${mode === 'error' ? 'flex' : ''} bg-rose-50 border border-rose-200 rounded-2xl px-5 py-4 items-center justify-between`} id="errorBanner">
@@ -103,7 +155,7 @@ export function AdminTeachersPage() {
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
               </div>
             </div>
-            <p className="text-2xl font-extrabold text-slate-800 stat-num">{mode === 'data' ? TEACHERS.length : 0}</p>
+            <p className="text-2xl font-extrabold text-slate-800 stat-num">{mode === 'data' ? teachers.length : 0}</p>
             <p className="text-xs text-slate-400 mt-1">Across all departments</p>
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
@@ -113,7 +165,7 @@ export function AdminTeachersPage() {
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
               </div>
             </div>
-            <p className="text-2xl font-extrabold text-slate-800 stat-num">{mode === 'data' ? TEACHERS.filter(t => t.status==='Active').length : 0}</p>
+            <p className="text-2xl font-extrabold text-slate-800 stat-num">{mode === 'data' ? teachers.filter(t => t.status==='Active').length : 0}</p>
             <p className="text-xs text-slate-400 mt-1">Currently teaching</p>
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
@@ -123,7 +175,7 @@ export function AdminTeachersPage() {
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
               </div>
             </div>
-            <p className="text-2xl font-extrabold text-slate-800 stat-num">{mode === 'data' ? TEACHERS.filter(t => t.status==='On leave').length : 0}</p>
+            <p className="text-2xl font-extrabold text-slate-800 stat-num">{mode === 'data' ? teachers.filter(t => t.status==='On leave').length : 0}</p>
             <p className="text-xs text-slate-400 mt-1">Temporarily unavailable</p>
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
@@ -133,16 +185,16 @@ export function AdminTeachersPage() {
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
               </div>
             </div>
-            <p className="text-2xl font-extrabold text-slate-800 stat-num">{mode === 'data' ? Array.from(new Set(TEACHERS.flatMap(t=>t.subjects))).length : 0}</p>
+            <p className="text-2xl font-extrabold text-slate-800 stat-num">{mode === 'data' ? Array.from(new Set(teachers.flatMap(t=>t.subjects))).length : 0}</p>
             <p className="text-xs text-slate-400 mt-1">Distinct subjects taught</p>
           </div>
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-2">
-            <button onClick={()=>setTab('All')} className={`tab px-4 py-2 rounded-xl text-sm font-semibold ${selectedTab==='All' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>All <span className="opacity-70 font-normal">{TEACHERS.length}</span></button>
-            <button onClick={()=>setTab('Active')} className={`tab px-4 py-2 rounded-xl text-sm font-semibold ${selectedTab==='Active' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>Active <span className="opacity-60 font-normal">{TEACHERS.filter(t=>t.status==='Active').length}</span></button>
-            <button onClick={()=>setTab('On leave')} className={`tab px-4 py-2 rounded-xl text-sm font-semibold ${selectedTab==='On leave' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>On leave <span className="opacity-60 font-normal">{TEACHERS.filter(t=>t.status==='On leave').length}</span></button>
+            <button onClick={()=>setTab('All')} className={`tab px-4 py-2 rounded-xl text-sm font-semibold ${selectedTab==='All' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>All <span className="opacity-70 font-normal">{teachers.length}</span></button>
+            <button onClick={()=>setTab('Active')} className={`tab px-4 py-2 rounded-xl text-sm font-semibold ${selectedTab==='Active' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>Active <span className="opacity-60 font-normal">{teachers.filter(t=>t.status==='Active').length}</span></button>
+            <button onClick={()=>setTab('On leave')} className={`tab px-4 py-2 rounded-xl text-sm font-semibold ${selectedTab==='On leave' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>On leave <span className="opacity-60 font-normal">{teachers.filter(t=>t.status==='On leave').length}</span></button>
           </div>
           <div className="flex items-center gap-2.5 flex-1 justify-end min-w-[280px]">
             <select className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white">
@@ -155,21 +207,14 @@ export function AdminTeachersPage() {
           </div>
         </div>
 
-        <div className={`${selectedCount>0 ? 'flex' : 'hidden'} items-center justify-between bg-brand-600 text-white rounded-2xl px-5 py-3`} id="bulkBar">
-          <p className="text-sm font-semibold"><span>{selectedCount}</span> selected</p>
-          <div className="flex items-center gap-2">
-            <button className="px-3.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-sm font-medium">Set active</button>
-            <button className="px-3.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-sm font-medium">Set on leave</button>
-            <button className="px-3.5 py-1.5 rounded-lg bg-rose-500/90 hover:bg-rose-500 text-sm font-medium">Remove</button>
-          </div>
-        </div>
+        
 
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
           <div id="dataTable" className={`${mode==='data' ? '' : 'hidden'}`}>
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 text-left">
-                  <th className="w-10 px-5 py-3.5"><input onChange={(e)=>toggleAll(e.target.checked)} type="checkbox" className="accent-brand-600 w-4 h-4" /></th>
+                  
                   <th className="px-2 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">NAME</th>
                   <th className="px-2 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">EMAIL</th>
                   <th className="px-2 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">SUBJECTS</th>
@@ -181,7 +226,7 @@ export function AdminTeachersPage() {
               <tbody className="divide-y divide-slate-50">
                 {rows.map((t) => (
                   <tr key={t.id} className="hover:bg-slate-50">
-                    <td className="px-5 py-3.5"><input checked={!!selectedIds[t.id]} onChange={()=>toggleBulk(t.id)} type="checkbox" className="row-chk accent-brand-600 w-4 h-4" /></td>
+                    
                     <td className="px-2 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${t.id==='mh'?'bg-brand-100 text-brand-700':'bg-slate-100 text-slate-700'}`}>{t.initials}</div>
@@ -199,9 +244,22 @@ export function AdminTeachersPage() {
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-right">
-                      <button className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-400 inline-flex items-center justify-center">
-                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-                      </button>
+                      <div className="relative inline-flex">
+                        <button
+                          type="button"
+                          data-action-button={t.id}
+                          onClick={(e)=>{ e.stopPropagation(); setActionMenuFor(actionMenuFor===t.id? null : t.id); }}
+                          className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-400 inline-flex items-center justify-center"
+                        >
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                        </button>
+                        {actionMenuFor===t.id ? (
+                          <div data-action-menu={t.id} onClick={(ev)=>ev.stopPropagation()} className="absolute right-0 top-full z-20 mt-2 w-44 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl">
+                            <button type="button" onClick={()=>handleEditTeacher(t)} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">Edit teacher</button>
+                            <button type="button" onClick={()=>openDeleteTeacher(t)} className="w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50">Delete teacher</button>
+                          </div>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -209,7 +267,7 @@ export function AdminTeachersPage() {
             </table>
 
             <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100">
-              <p className="text-xs text-slate-400">Showing <span className="font-semibold text-slate-600">1–{rows.length}</span> of <span className="font-semibold text-slate-600">{TEACHERS.length}</span> teachers</p>
+              <p className="text-xs text-slate-400">Showing <span className="font-semibold text-slate-600">1–{rows.length}</span> of <span className="font-semibold text-slate-600">{teachers.length}</span> teachers</p>
               <div className="flex items-center gap-2">
                 <select className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-slate-500">
                   <option>10 / page</option>
@@ -234,11 +292,59 @@ export function AdminTeachersPage() {
             <p className="text-base font-bold text-slate-700">No teachers yet</p>
             <p className="text-sm text-slate-400 mt-1 max-w-sm">Add your first teacher to start assigning them to classes and subjects.</p>
             <div className="flex items-center gap-2.5 mt-5">
-              <button className="px-4 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700">Add teacher</button>
+              <button onClick={openNewTeacher} className="px-4 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700">Add teacher</button>
             </div>
           </div>
         </div>
       </div>
+
+      <Modal
+        open={Boolean(pendingDeleteTeacher)}
+        onClose={() => setPendingDeleteTeacher(null)}
+        title="Delete teacher?"
+        description={pendingDeleteTeacher ? `${pendingDeleteTeacher.name} will be removed. This action cannot be undone.` : undefined}
+        footer={
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <button type="button" className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50" onClick={() => setPendingDeleteTeacher(null)}>Cancel</button>
+            <button type="button" className="px-4 py-2.5 rounded-xl bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700" onClick={confirmDeleteTeacher}>Delete</button>
+          </div>
+        }
+      >
+        <div className="flex flex-col items-center justify-center gap-4 py-6">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-rose-50 text-rose-500">
+            <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+          </div>
+          <p className="text-sm text-slate-500">This action will permanently delete the teacher record.</p>
+        </div>
+      </Modal>
+      <AddTeacherModal
+        open={isTeacherModalOpen}
+        onClose={() => {
+          setIsTeacherModalOpen(false);
+          setEditingTeacher(null);
+        }}
+        title={editingTeacher ? 'Edit teacher' : 'Add teacher'}
+        submitLabel={editingTeacher ? 'Save changes' : 'Create teacher'}
+        initialValues={editingTeacher ? {
+          fullName: editingTeacher.name,
+          email: editingTeacher.email,
+          password: '',
+          status: editingTeacher.status === 'On leave' ? 'On leave' : 'Active',
+          phone: '',
+          employeeId: '',
+          qualification: '',
+          joiningDate: '',
+          subjectSpecialization: editingTeacher.subjects[0] ?? '',
+          avatarUrl: '',
+        } : undefined}
+        isSubmitting={false}
+        requirePassword={!editingTeacher}
+        onSubmit={handleSaveTeacher}
+      />
     </AppShell>
   );
 }
