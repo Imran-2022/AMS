@@ -58,6 +58,7 @@ export function AddTeacherModal({
   });
 
   useEffect(() => {
+    if (!open) return;
     setValues({
       fullName: initialValues?.fullName ?? '',
       email: initialValues?.email ?? '',
@@ -70,7 +71,7 @@ export function AddTeacherModal({
       subjectSpecialization: initialValues?.subjectSpecialization ?? '',
       avatarUrl: initialValues?.avatarUrl ?? '',
     });
-  }, [initialValues, open]);
+  }, [open]);
 
   function handleChange<Key extends keyof AddTeacherFormData>(field: Key, value: AddTeacherFormData[Key]) {
     setValues((current) => ({ ...current, [field]: value }));

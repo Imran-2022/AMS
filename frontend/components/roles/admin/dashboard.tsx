@@ -236,7 +236,11 @@ export function AdminDashboardPage() {
                 password: values.password,
                 role: 'Teacher',
                 isActive: values.status === 'Active',
-                parentMobile: values.parentMobile ?? '',
+                phoneNumber: values.phone ?? '',
+                employeeId: values.employeeId ?? '',
+                qualification: values.qualification ?? '',
+                joiningDate: values.joiningDate ?? '',
+                subjectSpecialization: values.subjectSpecialization ?? '',
               });
               setTeacherModalOpen(false);
               await loadDashboard();

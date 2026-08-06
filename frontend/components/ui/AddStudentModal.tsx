@@ -74,6 +74,7 @@ export function AddStudentModal({
   });
 
   useEffect(() => {
+    if (!open) return;
     setValues({
       fullName: initialValues?.fullName ?? '',
       email: initialValues?.email ?? '',
@@ -90,7 +91,7 @@ export function AddStudentModal({
       guardianEmail: initialValues?.guardianEmail ?? '',
       avatarUrl: initialValues?.avatarUrl ?? '',
     });
-  }, [initialValues, classCourses, open]);
+  }, [open]);
 
   useEffect(() => {
     if (classCourses.length && !values.className) {
