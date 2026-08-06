@@ -68,7 +68,7 @@ public class AuthController : ControllerBase
         if (!User.Identity?.IsAuthenticated ?? true)
             return Unauthorized();
 
-        var id = Guid.TryParse(User.Identity.Name, out var userId) ? userId : Guid.Empty;
+        var id = Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : Guid.Empty;
         var email = User.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
         var role = User.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
         var fullName = User.FindFirstValue("fullName") ?? string.Empty;

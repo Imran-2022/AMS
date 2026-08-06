@@ -18,7 +18,7 @@ export function AdminUsersPage() {
   const [search, setSearch] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserRecord | null>(null);
-  const [formData, setFormData] = useState<UserRecord>({ id: Date.now(), name: '', email: '', role: 'Student', status: 'Active' });
+  const [formData, setFormData] = useState<UserRecord>({ id: Date.now().toString(), name: '', email: '', role: 'Student', status: 'Active' });
 
   useEffect(() => {
     void loadUsers();
@@ -27,11 +27,11 @@ export function AdminUsersPage() {
   async function loadUsers() {
     try {
       const apiUsers = await getUsers();
-      const mapped = apiUsers.map((u: any) => ({ id: u.id, name: u.fullName, email: u.email, role: u.role as UserRecord['role'], status: u.isActive ? 'Active' : 'Inactive' }));
-      setUsers(mapped);
+      const mapped = apiUsers.map((u: any) => ({ id: String(u.id), name: u.fullName, email: u.email, role: u.role as UserRecord['role'], status: u.isActive ? 'Active' : 'Inactive' as UserRecord['status'] }));
+      setUsers(mapped as UserRecord[]);
     } catch (err) {
       console.error(err);
-      setUsers([...INITIAL_USERS]);
+      setUsers(INITIAL_USERS.map((user) => ({ ...user, id: String(user.id) })) as UserRecord[]);
     }
   }
 

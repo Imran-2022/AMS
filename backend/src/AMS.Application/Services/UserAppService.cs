@@ -15,6 +15,16 @@ public class UserAppService : IUserAppService
         _userRepository = userRepository;
     }
 
+    private static DateTime? NormalizeDateTimeUtc(DateTime? value)
+        => value is null
+            ? null
+            : value.Value.Kind switch
+            {
+                DateTimeKind.Local => value.Value.ToUniversalTime(),
+                DateTimeKind.Unspecified => DateTime.SpecifyKind(value.Value, DateTimeKind.Utc),
+                _ => value.Value,
+            };
+
     public async Task<IReadOnlyList<UserDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
     {
         if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can manage users.");
@@ -34,6 +44,20 @@ public class UserAppService : IUserAppService
         if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can manage users.");
         if (!Enum.TryParse<UserRole>(input.Role, true, out var role)) throw new ValidationException("Invalid role.");
 
+        // Validate gender when provided: only allow Male or Female
+        if (!string.IsNullOrWhiteSpace(input.Gender))
+        {
+            var g = input.Gender.Trim().ToLowerInvariant();
+            if (g != "male" && g != "female") throw new ValidationException("Invalid gender. Allowed values: Male, Female.");
+        }
+
+        // Auto-generate EmployeeId for teachers when not provided
+        var employeeId = input.EmployeeId;
+        if (role == UserRole.Teacher && string.IsNullOrWhiteSpace(employeeId))
+        {
+            employeeId = $"EMP-{DateTime.UtcNow:yyyyMMddHHmmssfff}";
+        }
+
         var user = new AppUser(
             Guid.NewGuid(),
             input.FullName,
@@ -42,7 +66,7 @@ public class UserAppService : IUserAppService
             role,
             input.AvatarUrl,
             input.PhoneNumber,
-            input.EmployeeId,
+            employeeId,
             input.SubjectSpecialization,
             input.Qualification,
             input.GuardianName,
@@ -50,9 +74,9 @@ public class UserAppService : IUserAppService
             input.Address,
             input.StudentId,
             input.Gender,
-            input.DateOfBirth,
-            input.AdmissionDate,
-            input.JoiningDate,
+            NormalizeDateTimeUtc(input.DateOfBirth),
+            NormalizeDateTimeUtc(input.AdmissionDate),
+            NormalizeDateTimeUtc(input.JoiningDate),
             input.ParentMobile,
             input.IsActive);
 
@@ -77,10 +101,15 @@ public class UserAppService : IUserAppService
         if (input.GuardianEmail is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, input.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
         if (input.Address is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, input.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
         if (input.StudentId is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, input.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
-        if (input.Gender is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, input.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
-        if (input.DateOfBirth is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, input.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
-        if (input.AdmissionDate is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, input.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
-        if (input.JoiningDate is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, input.JoiningDate, user.ParentMobile, user.IsActive);
+        if (input.Gender is not null)
+        {
+            var g = input.Gender?.Trim();
+            if (!string.IsNullOrWhiteSpace(g) && g?.ToLowerInvariant() != "male" && g?.ToLowerInvariant() != "female") throw new ValidationException("Invalid gender. Allowed values: Male, Female.");
+            user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, input.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
+        }
+        if (input.DateOfBirth is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, NormalizeDateTimeUtc(input.DateOfBirth), user.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
+        if (input.AdmissionDate is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, NormalizeDateTimeUtc(input.AdmissionDate), user.JoiningDate, user.ParentMobile, user.IsActive);
+        if (input.JoiningDate is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, NormalizeDateTimeUtc(input.JoiningDate), user.ParentMobile, user.IsActive);
         if (input.ParentMobile is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, input.ParentMobile, user.IsActive);
         if (input.IsActive is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, input.IsActive.Value);
         await _userRepository.UpdateAsync(user, cancellationToken);

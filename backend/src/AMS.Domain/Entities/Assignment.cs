@@ -5,8 +5,8 @@ namespace AMS.Domain.Entities;
 public class Assignment
 {
     public Guid Id { get; private set; }
-    public string Title { get; private set; }
-    public string Description { get; private set; }
+    public string Title { get; private set; } = null!;
+    public string Description { get; private set; } = null!;
     public string? AttachmentUrl { get; private set; }
     public string? AttachmentName { get; private set; }
     public Guid ClassCourseId { get; private set; }

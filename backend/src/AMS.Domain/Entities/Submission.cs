@@ -7,7 +7,7 @@ public class Submission
     public Guid Id { get; private set; }
     public Guid AssignmentId { get; private set; }
     public Guid StudentId { get; private set; }
-    public string ContentText { get; private set; }
+    public string ContentText { get; private set; } = null!;
     public string? FileUrl { get; private set; }
     public string? FileName { get; private set; }
     public DateTime SubmittedAt { get; private set; }

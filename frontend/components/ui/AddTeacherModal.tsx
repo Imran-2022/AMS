@@ -10,7 +10,7 @@ export type AddTeacherFormData = {
   password: string;
   status: 'Active' | 'Inactive' | 'On leave';
   phone?: string;
-  employeeId?: string;
+  gender?: string;
   qualification?: string;
   joiningDate?: string;
   subjectSpecialization?: string;
@@ -50,7 +50,7 @@ export function AddTeacherModal({
     password: '',
     status: 'Active',
     phone: '',
-    employeeId: '',
+    gender: '',
     qualification: '',
     joiningDate: '',
     subjectSpecialization: '',
@@ -65,7 +65,7 @@ export function AddTeacherModal({
       password: initialValues?.password ?? '',
       status: initialValues?.status ?? 'Active',
       phone: initialValues?.phone ?? '',
-      employeeId: initialValues?.employeeId ?? '',
+      gender: initialValues?.gender ?? '',
       qualification: initialValues?.qualification ?? '',
       joiningDate: initialValues?.joiningDate ?? '',
       subjectSpecialization: initialValues?.subjectSpecialization ?? '',
@@ -154,13 +154,16 @@ export function AddTeacherModal({
               />
             </div>
             <div>
-              <label className={labelClass}>Employee ID</label>
-              <input
-                value={values.employeeId}
-                onChange={(event) => handleChange('employeeId', event.target.value)}
-                placeholder="e.g. EMP-0032"
-                className={inputClass}
-              />
+              <label className={labelClass}>Gender</label>
+              <select
+                value={values.gender}
+                onChange={(event) => handleChange('gender', event.target.value)}
+                className={`${inputClass} text-slate-700`}
+              >
+                <option value="">Select gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
             </div>
             <div>
               <label className={labelClass}>
@@ -180,7 +183,8 @@ export function AddTeacherModal({
               <select
                 value={values.status}
                 onChange={(event) => handleChange('status', event.target.value as AddTeacherFormData['status'])}
-                className={`${inputClass} text-slate-700`}>
+                className={`${inputClass} text-slate-700`}
+              >
                 <option>Active</option>
                 <option>Inactive</option>
                 <option>On leave</option>
@@ -202,12 +206,15 @@ export function AddTeacherModal({
               />
             </div>
             <div>
-              <label className={labelClass}>Joining date</label>
+              <label className={labelClass}>
+                Joining date <span className="text-rose-500">*</span>
+              </label>
               <input
                 value={values.joiningDate}
                 onChange={(event) => handleChange('joiningDate', event.target.value)}
                 className={`${inputClass} text-slate-500`}
                 type="date"
+                required
               />
             </div>
           </div>

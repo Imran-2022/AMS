@@ -198,16 +198,18 @@ export function AdminStudentsPage() {
   const filteredStudents = useMemo(() => {
     const query = search.trim().toLowerCase();
     return students.filter((student) => {
+      const classCourseName = student.classCourseName ?? '';
+      const section = student.section ?? '';
       const matchesStatus = statusFilter === 'All' || student.status === statusFilter;
       const matchesSearch =
         !query ||
         student.fullName.toLowerCase().includes(query) ||
         student.email.toLowerCase().includes(query) ||
         student.parentMobile.toLowerCase().includes(query) ||
-        student.classCourseName.toLowerCase().includes(query) ||
-        student.section.toLowerCase().includes(query);
-      const matchesClass = classFilter === 'All classes' || student.classCourseName === classFilter;
-      const matchesSection = sectionFilter === 'All sections' || student.section === sectionFilter;
+        classCourseName.toLowerCase().includes(query) ||
+        section.toLowerCase().includes(query);
+      const matchesClass = classFilter === 'All classes' || classCourseName === classFilter;
+      const matchesSection = sectionFilter === 'All sections' || section === sectionFilter;
       return matchesStatus && matchesSearch && matchesClass && matchesSection;
     });
   }, [students, search, statusFilter, classFilter, sectionFilter]);

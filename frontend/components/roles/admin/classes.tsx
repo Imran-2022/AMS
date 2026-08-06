@@ -13,6 +13,7 @@ import {
   getSubjects,
   getUsers,
 } from '@/lib/api';
+import { getEnrollments } from '@/lib/api/enrollments';
 import { createTeacherAssignment, deleteTeacherAssignment, getTeacherAssignments } from '@/lib/api/teacherAssignments';
 import type { ClassCourseDto, SubjectDto, UserDto } from '@/lib/api';
 import type { TeacherSubjectAssignmentDto } from '@/lib/api/teacherAssignments';
@@ -33,6 +34,7 @@ export function AdminClassesPage() {
   const [assignForm, setAssignForm] = useState({ subjectId: '', teacherId: '' });
   const [actionMenuFor, setActionMenuFor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [classStudentCountsState, setClassStudentCountsState] = useState<Record<string, number>>({});
 
   useEffect(() => {
     void loadData();
@@ -73,17 +75,30 @@ export function AdminClassesPage() {
   async function loadData() {
     try {
       setError(null);
-      const [apiClasses, apiSubjects, apiUsers, apiAssignments] = await Promise.all([
+      const [apiClasses, apiSubjects, apiUsers, apiAssignments, apiEnrollments] = await Promise.all([
         getClassCourses(),
         getSubjects(),
         getUsers(),
         getTeacherAssignments(),
+        getEnrollments(),
       ]);
 
       setClasses(apiClasses);
       setSubjects(apiSubjects);
       setTeachers(apiUsers.filter((user) => user.role === 'Teacher'));
       setAssignments(apiAssignments);
+
+      // build enrollment counts per class
+      const enrollmentCounts = apiEnrollments.reduce<Record<string, number>>((acc, e) => {
+        acc[e.classCourseId] = (acc[e.classCourseId] ?? 0) + 1;
+        return acc;
+      }, {});
+      // attach counts to classes state by replacing classes with enriched objects is not necessary; store counts locally
+      // we'll compute classStudentCounts in a memo below
+      // store enrollmentCounts via closure by setting a ref (simpler: compute classStudentCounts memo using apiEnrollments and setSubjects/classes)
+      // For simplicity, set subjects/classes as before and compute counts later
+      // Save enrollmentCounts to a local state? we'll compute via useMemo from classes and apiEnrollments stored in a ref — but to keep minimal, set a new state
+      setClassStudentCountsState(enrollmentCounts);
     } catch (err) {
       console.error(err);
       setError('Unable to load class data. Please refresh the page.');
@@ -176,26 +191,41 @@ export function AdminClassesPage() {
   async function handleCreateSubject(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    const selectedTeacherId = subjectForm.teacherId?.trim();
+    const classCourseId = subjectForm.classCourseId?.trim();
+
+    if (!subjectForm.name.trim() || !subjectForm.code.trim() || !classCourseId) {
+      alert('Please enter a valid subject name, code, and class before saving.');
+      return;
+    }
+
+    if (selectedTeacherId && !teachers.some((teacher) => teacher.id === selectedTeacherId)) {
+      alert('Selected teacher is not valid. Please choose a teacher from the list.');
+      return;
+    }
+
     try {
+      let subjectId = editingSubject?.id;
+
       if (editingSubject) {
         await updateSubject(editingSubject.id, {
           name: subjectForm.name,
           code: subjectForm.code,
-          classCourseId: subjectForm.classCourseId,
+          classCourseId,
         });
 
+        subjectId = editingSubject.id;
         const currentAssignment = assignmentMap[editingSubject.id];
-        const selectedTeacherId = subjectForm.teacherId;
 
         if (selectedTeacherId) {
-          if (currentAssignment?.teacherId !== selectedTeacherId || currentAssignment?.classCourseId !== subjectForm.classCourseId) {
+          if (currentAssignment?.teacherId !== selectedTeacherId || currentAssignment?.classCourseId !== classCourseId) {
             if (currentAssignment) {
               await deleteTeacherAssignment(currentAssignment.teacherId, editingSubject.id);
             }
             await createTeacherAssignment({
               teacherId: selectedTeacherId,
               subjectId: editingSubject.id,
-              classCourseId: subjectForm.classCourseId,
+              classCourseId,
             });
           }
         } else if (currentAssignment) {
@@ -205,14 +235,16 @@ export function AdminClassesPage() {
         const subject = await createSubject({
           name: subjectForm.name,
           code: subjectForm.code,
-          classCourseId: subjectForm.classCourseId,
+          classCourseId,
         });
 
-        if (subjectForm.teacherId) {
+        subjectId = subject.id;
+
+        if (selectedTeacherId) {
           await createTeacherAssignment({
-            teacherId: subjectForm.teacherId,
-            subjectId: subject.id,
-            classCourseId: subjectForm.classCourseId,
+            teacherId: selectedTeacherId,
+            subjectId,
+            classCourseId,
           });
         }
       }
@@ -222,8 +254,9 @@ export function AdminClassesPage() {
       await loadData();
       closeModal();
     } catch (err) {
-      console.error(err);
-      alert('Unable to save subject. Please check the details and try again.');
+      console.error('Subject save failed:', err);
+      const message = err instanceof Error ? err.message : String(err);
+      alert(`Unable to save subject. ${message}`);
     }
   }
 
@@ -236,24 +269,32 @@ export function AdminClassesPage() {
   async function handleAssignTeacher(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    try {
-      const subject = subjects.find((item) => item.id === assignForm.subjectId);
-      if (!subject) {
-        alert('Please select a subject to assign.');
-        return;
-      }
+    const selectedTeacherId = assignForm.teacherId?.trim();
+    const subject = subjects.find((item) => item.id === assignForm.subjectId);
 
+    if (!subject) {
+      alert('Please select a valid subject to assign.');
+      return;
+    }
+
+    if (!selectedTeacherId || !teachers.some((teacher) => teacher.id === selectedTeacherId)) {
+      alert('Please select a valid teacher to assign.');
+      return;
+    }
+
+    try {
       await createTeacherAssignment({
-        teacherId: assignForm.teacherId,
-        subjectId: assignForm.subjectId,
+        teacherId: selectedTeacherId,
+        subjectId: subject.id,
         classCourseId: subject.classCourseId,
       });
 
       await loadData();
       closeModal();
     } catch (err) {
-      console.error(err);
-      alert('Unable to assign the teacher. Please try again.');
+      console.error('Teacher assignment failed:', err);
+      const message = err instanceof Error ? err.message : String(err);
+      alert(`Unable to assign the teacher. ${message}`);
     }
   }
 
@@ -396,21 +437,10 @@ export function AdminClassesPage() {
                 </div>
                 <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-100 text-sm text-slate-500">
                   <p><span className="font-bold text-slate-900">{classSubjectCounts[cls.id] ?? 0}</span> subjects</p>
-                  <p><span className="font-bold text-slate-900">0</span> students</p>
+                  <p><span className="font-bold text-slate-900">{classStudentCountsState[cls.id] ?? 0}</span> students</p>
                 </div>
               </div>
             ))}
-
-            <button
-              onClick={() => openModal('class')}
-              className="rounded-2xl border-2 border-dashed border-slate-200 hover:border-brand-300 hover:bg-brand-50/40 flex flex-col items-center justify-center gap-2 py-8 text-slate-400 hover:text-brand-500 transition-colors"
-            >
-              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              <span className="text-xs font-semibold">Add another class</span>
-            </button>
           </div>
         </div>
 

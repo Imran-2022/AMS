@@ -30,7 +30,13 @@ public class SubjectRepository : ISubjectRepository
 
     public async Task UpdateAsync(Subject subject, CancellationToken cancellationToken = default)
     {
-        _dbContext.Subjects.Update(subject);
+        var entry = _dbContext.Entry(subject);
+        if (entry.State == EntityState.Detached)
+        {
+            // If the instance is detached, try to attach as modified.
+            _dbContext.Subjects.Update(subject);
+        }
+
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 

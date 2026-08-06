@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Modal, AddTeacherModal, type AddTeacherFormData } from '../../ui';
 import { AppShell } from '../../layout/AppShell';
+import { createUser, deleteUser, getUsers, updateUser } from '@/lib/api';
 
 type TeacherRow = {
   id: string;
@@ -13,30 +14,80 @@ type TeacherRow = {
   classesCount: number;
   status: 'Active' | 'Inactive' | 'On leave';
   tone: 'emerald' | 'amber' | 'slate';
+  phone?: string;
+  gender?: string;
+  qualification?: string;
+  joiningDate?: string;
+  subjectSpecialization?: string;
+  avatarUrl?: string;
 };
 
-const TEACHERS: TeacherRow[] = [
-  { id: 'mh', initials: 'MH', name: 'Mahfuz Hasan', email: 'mahfuz.h@ams.edu', subjects: ['Mathematics', 'Physics'], classesCount: 3, status: 'Active', tone: 'emerald' },
-  { id: 'sr', initials: 'SR', name: 'Sabrina Rahim', email: 'sabrina.r@ams.edu', subjects: ['English'], classesCount: 4, status: 'Active', tone: 'emerald' },
-  { id: 'ik', initials: 'IK', name: 'Imran Kabir', email: 'imran.k@ams.edu', subjects: ['Biology', 'Chemistry'], classesCount: 2, status: 'On leave', tone: 'amber' },
-  { id: 'fa', initials: 'FA', name: 'Farzana Aktar', email: 'farzana.a@ams.edu', subjects: ['History', 'Civics'], classesCount: 3, status: 'Active', tone: 'emerald' },
-  { id: 'rc', initials: 'RC', name: 'Rezwan Chowdhury', email: 'rezwan.c@ams.edu', subjects: ['Computer Science'], classesCount: 2, status: 'Active', tone: 'emerald' },
-];
+function mapUserToTeacherRow(user: {
+  id: string;
+  fullName: string;
+  email: string;
+  role: string;
+  isActive: boolean;
+  subjectSpecialization?: string;
+  phoneNumber?: string;
+  employeeId?: string;
+  gender?: string;
+  qualification?: string;
+  joiningDate?: string;
+  avatarUrl?: string;
+}) {
+  const initials = user.fullName
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
+  return {
+    id: user.id,
+    initials,
+    name: user.fullName,
+    email: user.email,
+    subjects: user.subjectSpecialization ? [user.subjectSpecialization] : [],
+    classesCount: 0,
+    status: user.isActive ? 'Active' : 'Inactive',
+    tone: user.isActive ? 'emerald' : 'slate',
+    phone: user.phoneNumber,
+    gender: user.gender,
+    qualification: user.qualification,
+    joiningDate: user.joiningDate,
+    subjectSpecialization: user.subjectSpecialization,
+    avatarUrl: user.avatarUrl,
+  } as TeacherRow;
+}
 
 export function AdminTeachersPage() {
   const [mode, setMode] = useState<'data' | 'empty' | 'error'>('data');
   const [selectedTab, setSelectedTab] = useState<'All' | 'Active' | 'On leave'>('All');
   const [roleFilter] = useState('All subjects');
   const [search, setSearch] = useState('');
-  const [teachers, setTeachers] = useState<TeacherRow[]>(TEACHERS);
+  const [teachers, setTeachers] = useState<TeacherRow[]>([]);
   const [actionMenuFor, setActionMenuFor] = useState<string | null>(null);
   const [pendingDeleteTeacher, setPendingDeleteTeacher] = useState<TeacherRow | null>(null);
   const [isTeacherModalOpen, setIsTeacherModalOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<TeacherRow | null>(null);
+  const [teacherModalSubmitting, setTeacherModalSubmitting] = useState(false);
 
   useEffect(() => {
-    setMode('data');
+    void loadTeachers();
   }, []);
+
+  async function loadTeachers() {
+    try {
+      const apiUsers = await getUsers();
+      const teacherUsers = apiUsers.filter((user) => user.role === 'Teacher');
+      setTeachers(teacherUsers.map((user) => mapUserToTeacherRow(user)));
+      setMode('data');
+    } catch (err) {
+      console.error(err);
+      setMode('error');
+    }
+  }
 
   useEffect(() => {
     function handleDocumentClick(event: MouseEvent) {
@@ -81,29 +132,74 @@ export function AdminTeachersPage() {
 
   async function confirmDeleteTeacher() {
     if (!pendingDeleteTeacher) return;
-    setTeachers((prev) => prev.filter((p) => p.id !== pendingDeleteTeacher.id));
-    setPendingDeleteTeacher(null);
-    setActionMenuFor(null);
+
+    try {
+      await deleteUser(pendingDeleteTeacher.id);
+      await loadTeachers();
+    } catch (err) {
+      console.error(err);
+      alert('Unable to delete teacher.');
+    } finally {
+      setPendingDeleteTeacher(null);
+      setActionMenuFor(null);
+    }
   }
 
   async function handleSaveTeacher(values: AddTeacherFormData) {
-    if (editingTeacher) {
-      setTeachers((prev) => prev.map((t) => (t.id === editingTeacher.id ? { ...t, name: values.fullName, email: values.email, status: values.status, tone: values.status === 'On leave' ? 'amber' : values.status === 'Inactive' ? 'slate' : 'emerald' } : t)));
-    } else {
-      const id = String(Date.now()).slice(-6);
-      const initials = values.fullName
-        .split(' ')
-        .map((p) => p[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase();
-      setTeachers((prev) => [
-        { id, initials, name: values.fullName, email: values.email, subjects: values.subjectSpecialization ? [values.subjectSpecialization] : [], classesCount: 0, status: values.status, tone: values.status === 'On leave' ? 'amber' : values.status === 'Inactive' ? 'slate' : 'emerald' },
-      ]);
+    if (!values.fullName.trim() || !values.email.trim()) {
+      alert('Full name and email are required.');
+      return;
     }
 
-    setIsTeacherModalOpen(false);
-    setEditingTeacher(null);
+    if (!values.joiningDate?.trim()) {
+      alert('Joining date is required.');
+      return;
+    }
+
+    if (!editingTeacher && !values.password.trim()) {
+      alert('Password is required when creating a new teacher.');
+      return;
+    }
+
+    setTeacherModalSubmitting(true);
+    try {
+      if (editingTeacher) {
+        await updateUser(editingTeacher.id, {
+          fullName: values.fullName,
+          email: values.email,
+          isActive: values.status === 'Active',
+          subjectSpecialization: values.subjectSpecialization,
+          phoneNumber: values.phone,
+          gender: values.gender,
+          qualification: values.qualification,
+          joiningDate: values.joiningDate,
+          password: values.password?.trim() ? values.password : undefined,
+        });
+      } else {
+        await createUser({
+          fullName: values.fullName,
+          email: values.email,
+          password: values.password,
+          role: 'Teacher',
+          isActive: values.status === 'Active',
+          subjectSpecialization: values.subjectSpecialization,
+          phoneNumber: values.phone,
+          gender: values.gender,
+          qualification: values.qualification,
+          joiningDate: values.joiningDate,
+        });
+      }
+
+      await loadTeachers();
+      setIsTeacherModalOpen(false);
+      setEditingTeacher(null);
+    } catch (err) {
+      console.error(err);
+      const message = err instanceof Error ? err.message : String(err);
+      alert(`Unable to save teacher. ${message}`);
+    } finally {
+      setTeacherModalSubmitting(false);
+    }
   }
 
   function visibleRows() {
@@ -330,6 +426,7 @@ export function AdminTeachersPage() {
         onClose={() => {
           setIsTeacherModalOpen(false);
           setEditingTeacher(null);
+          setTeacherModalSubmitting(false);
         }}
         title={editingTeacher ? 'Edit teacher' : 'Add teacher'}
         submitLabel={editingTeacher ? 'Save changes' : 'Create teacher'}
@@ -338,14 +435,14 @@ export function AdminTeachersPage() {
           email: editingTeacher.email,
           password: '',
           status: editingTeacher.status,
-          phone: '',
-          employeeId: '',
-          qualification: '',
-          joiningDate: '',
-          subjectSpecialization: editingTeacher.subjects[0] ?? '',
-          avatarUrl: '',
+          phone: editingTeacher.phone ?? '',
+          gender: editingTeacher.gender ?? '',
+          qualification: editingTeacher.qualification ?? '',
+          joiningDate: editingTeacher.joiningDate ?? '',
+          subjectSpecialization: editingTeacher.subjectSpecialization ?? editingTeacher.subjects[0] ?? '',
+          avatarUrl: editingTeacher.avatarUrl ?? '',
         } : undefined}
-        isSubmitting={false}
+        isSubmitting={teacherModalSubmitting}
         requirePassword={!editingTeacher}
         onSubmit={handleSaveTeacher}
       />

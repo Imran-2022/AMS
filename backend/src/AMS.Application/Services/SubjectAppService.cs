@@ -41,9 +41,9 @@ public class SubjectAppService : ISubjectAppService
     {
         if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can manage subjects.");
         var entity = await _subjectRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Subject not found.");
-        var updated = new Subject(entity.Id, input.Name ?? entity.Name, input.Code ?? entity.Code, input.ClassCourseId ?? entity.ClassCourseId);
-        await _subjectRepository.UpdateAsync(updated, cancellationToken);
-        return ToDto(updated);
+        entity.Update(input.Name, input.Code, input.ClassCourseId);
+        await _subjectRepository.UpdateAsync(entity, cancellationToken);
+        return ToDto(entity);
     }
 
     public async Task DeleteAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)

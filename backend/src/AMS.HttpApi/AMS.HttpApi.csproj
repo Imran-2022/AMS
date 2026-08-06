@@ -6,7 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="6.31.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.22.0" />
     <ProjectReference Include="..\AMS.Application\AMS.Application.csproj" />
     <ProjectReference Include="..\AMS.Application.Contracts\AMS.Application.Contracts.csproj" />
   </ItemGroup>

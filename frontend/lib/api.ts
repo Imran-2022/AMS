@@ -6,6 +6,17 @@ function getAuthToken() {
   if (typeof window === 'undefined') return null;
   return window.localStorage.getItem('ams-token');
 }
+export function logout(redirect = true) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem('ams-token');
+  } catch {
+    /* ignore */
+  }
+  if (redirect) {
+    window.location.href = '/login';
+  }
+}
 
 export async function request<T>(path: string, init?: RequestInit): Promise<ApiResponse<T>> {
   const token = getAuthToken();
@@ -19,6 +30,13 @@ export async function request<T>(path: string, init?: RequestInit): Promise<ApiR
   });
 
   if (!response.ok) {
+    // If the token is invalid or expired, sign the user out and redirect to login.
+    if (response.status === 401) {
+      logout(true);
+      // Throw so callers get a rejected promise; UI will redirect.
+      throw new Error('Unauthorized');
+    }
+
     const errorText = await response.text();
     throw new Error(errorText || `Request failed: ${response.status}`);
   }

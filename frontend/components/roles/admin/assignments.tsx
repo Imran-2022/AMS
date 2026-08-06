@@ -42,11 +42,15 @@ export function AdminAssignmentsPage() {
     });
   }, [activeTab, selectedClass, selectedTeacher, search]);
 
+  function isOverdueStatus(status: string): status is 'Overdue' {
+    return status === 'Overdue';
+  }
+
   const totals = useMemo(() => {
     const total = ASSIGNMENTS.length;
     const published = ASSIGNMENTS.filter((item) => item.status === 'Published').length;
     const drafts = ASSIGNMENTS.filter((item) => item.status === 'Draft').length;
-    const overdue = ASSIGNMENTS.filter((item) => item.status === 'Overdue').length;
+    const overdue = ASSIGNMENTS.filter((item) => isOverdueStatus(item.status)).length;
     return { total, published, drafts, overdue };
   }, []);
 
@@ -220,6 +224,8 @@ export function AdminAssignmentsPage() {
                         ? 'bg-slate-100 text-slate-500'
                         : 'bg-rose-50 text-rose-600';
 
+                    const isOverdue = isOverdueStatus(assignment.status);
+
                     return (
                       <tr key={assignment.id}>
                         <td className="px-5 py-3.5 font-semibold text-slate-700">{assignment.title}</td>
@@ -230,7 +236,7 @@ export function AdminAssignmentsPage() {
                             <span className="text-slate-600">{assignment.teacher}</span>
                           </div>
                         </td>
-                        <td className={`px-2 py-3.5 ${assignment.status === 'Overdue' ? 'text-rose-500 font-semibold' : 'text-slate-500'}`}>{assignment.deadline}</td>
+                        <td className={`px-2 py-3.5 ${isOverdue ? 'text-rose-500 font-semibold' : 'text-slate-500'}`}>{assignment.deadline}</td>
                         <td className="px-2 py-3.5 text-slate-500">{assignment.submissions} / {assignment.total}</td>
                         <td className="px-2 py-3.5">
                           <span className={`badge ${statusClasses}`}>

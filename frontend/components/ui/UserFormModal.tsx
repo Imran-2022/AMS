@@ -20,7 +20,6 @@ type UserFormValues = {
   gender?: string;
   address?: string;
   studentId?: string;
-  employeeId?: string;
   subjectSpecialization?: string;
   qualification?: string;
   dateOfBirth?: string;
@@ -28,6 +27,7 @@ type UserFormValues = {
   joiningDate?: string;
   guardianName?: string;
   guardianEmail?: string;
+  guardianAddress?: string;
   parentMobile?: string;
   className?: string;
   section?: string;
@@ -69,7 +69,6 @@ export function UserFormModal({
       gender: '',
       address: '',
       studentId: '',
-      employeeId: '',
       subjectSpecialization: '',
       qualification: '',
       dateOfBirth: '',
@@ -95,7 +94,6 @@ export function UserFormModal({
       gender: initialValues?.gender ?? '',
       address: initialValues?.address ?? '',
       studentId: initialValues?.studentId ?? '',
-      employeeId: initialValues?.employeeId ?? '',
       subjectSpecialization: initialValues?.subjectSpecialization ?? '',
       qualification: initialValues?.qualification ?? '',
       dateOfBirth: initialValues?.dateOfBirth ?? '',
@@ -224,42 +222,44 @@ export function UserFormModal({
               className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
             >
               <option value="">Select gender</option>
-              <option value="Female">Female</option>
               <option value="Male">Male</option>
-              <option value="Other">Other</option>
+              <option value="Female">Female</option>
             </select>
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Student / Employee ID</label>
-            <input
-              value={values.studentId}
-              onChange={(event) => handleChange('studentId', event.target.value)}
-              placeholder={role === 'Student' ? 'Student ID' : 'Employee ID'}
-              className="w-full rounded-2xl border border-slate-300 px-4 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-            />
+        {role === 'Student' && (
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Student ID</label>
+              <input
+                value={values.studentId}
+                onChange={(event) => handleChange('studentId', event.target.value)}
+                placeholder="Student ID"
+                className="w-full rounded-2xl border border-slate-300 px-4 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Qualification</label>
+              <input
+                value={values.qualification}
+                onChange={(event) => handleChange('qualification', event.target.value)}
+                placeholder="Qualification"
+                className="w-full rounded-2xl border border-slate-300 px-4 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Specialization</label>
+              <input
+                value={values.subjectSpecialization}
+                onChange={(event) => handleChange('subjectSpecialization', event.target.value)}
+                placeholder="Subject specialization"
+                className="w-full rounded-2xl border border-slate-300 px-4 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
           </div>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Qualification</label>
-            <input
-              value={values.qualification}
-              onChange={(event) => handleChange('qualification', event.target.value)}
-              placeholder="Qualification"
-              className="w-full rounded-2xl border border-slate-300 px-4 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-            />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Specialization</label>
-            <input
-              value={values.subjectSpecialization}
-              onChange={(event) => handleChange('subjectSpecialization', event.target.value)}
-              placeholder="Subject specialization"
-              className="w-full rounded-2xl border border-slate-300 px-4 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-            />
-          </div>
-        </div>
+        )}
+        
 
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
