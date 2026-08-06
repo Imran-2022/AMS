@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '../../layout/AppShell';
-import { Button, Card, Pill, Th, Td, UserFormModal } from '../../ui';
+import { Button, Card, Pill, Th, Td, AddStudentModal, type AddStudentFormData } from '../../ui';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
 import { createUser, deleteUser, getClassCourses, getUsers, updateUser } from '@/lib/api';
 import { createEnrollment, deleteEnrollment, getEnrollments } from '@/lib/api/enrollments';
@@ -127,7 +127,7 @@ export function AdminStudentsPage() {
     setActionMenuFor(null);
   }
 
-  async function handleSaveStudent(values: StudentFormData) {
+  async function handleSaveStudent(values: AddStudentFormData) {
     setStudentModalSubmitting(true);
     try {
       const classCourse = classCourses.find((cls) => cls.name === values.className && cls.section === values.section);
@@ -581,7 +581,7 @@ export function AdminStudentsPage() {
         ) : null}
       </div>
 
-      <UserFormModal
+      <AddStudentModal
         open={isStudentModalOpen}
         onClose={() => {
           setIsStudentModalOpen(false);
@@ -589,24 +589,29 @@ export function AdminStudentsPage() {
         }}
         title={editingStudent ? 'Edit student' : 'Add student'}
         submitLabel={editingStudent ? 'Save changes' : 'Create student'}
-        role="Student"
         classCourses={classCourses}
         initialValues={editingStudent ? {
           fullName: editingStudent.fullName,
           email: editingStudent.email,
           password: '',
           status: editingStudent.status,
-          parentMobile: editingStudent.parentMobile,
+          studentId: '',
           className: editingStudent.classCourseName ?? classCourses[0]?.name ?? '',
           section: editingStudent.section ?? classCourses[0]?.section ?? '',
+          guardianName: '',
+          parentMobile: editingStudent.parentMobile,
+          guardianEmail: '',
         } : {
           fullName: '',
           email: '',
           password: '',
           status: 'Active',
-          parentMobile: '',
+          studentId: '',
           className: classCourses[0]?.name ?? '',
           section: classCourses[0]?.section ?? '',
+          guardianName: '',
+          parentMobile: '',
+          guardianEmail: '',
         }}
         isSubmitting={studentModalSubmitting}
         requirePassword={!editingStudent}

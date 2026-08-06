@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { AppShell } from '../../layout/AppShell';
-import { Button, Card, Metric, PageHeader, Pill, RoleBadge, Th, Td, UserFormModal } from '../../ui';
+import { Button, Card, Metric, PageHeader, Pill, RoleBadge, Th, Td, AddTeacherModal, type AddTeacherFormData } from '../../ui';
 import { ASSIGNMENTS, USERS as INITIAL_USERS, CLASSES as INITIAL_CLASSES, SUBJECTS as INITIAL_SUBJECTS, SUBMISSIONS } from '../../data';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
 import { getAssignments, getSubmissions, getUsers as apiGetUsers, getClassCourses as apiGetClassCourses } from '@/lib/api';
@@ -57,7 +57,7 @@ export function AdminTeachersPage() {
     setIsTeacherModalOpen(true);
   }
 
-  async function handleCreateTeacher(values: UserFormValues) {
+  async function handleCreateTeacher(values: AddTeacherFormData) {
     try {
       setTeacherModalSubmitting(true);
       await createUser({
@@ -82,19 +82,24 @@ export function AdminTeachersPage() {
     <AppShell role="Admin" breadcrumb="Admin / Teachers">
       <PageHeader eyebrow="Administration" title="Teachers" action={<Button onClick={openNewTeacher}>Add teacher</Button>} />
 
-      <UserFormModal
+      <AddTeacherModal
         open={isTeacherModalOpen}
         onClose={() => setIsTeacherModalOpen(false)}
         title="Add teacher"
         submitLabel="Create teacher"
-        role="Teacher"
         initialValues={teacherModalInitialValues ?? {
           fullName: '',
           email: '',
           password: '',
           status: 'Active',
+          phone: '',
+          employeeId: '',
+          qualification: '',
+          joiningDate: '',
+          subjectSpecialization: '',
         }}
         isSubmitting={teacherModalSubmitting}
+        requirePassword
         onSubmit={handleCreateTeacher}
       />
 

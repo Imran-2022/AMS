@@ -4,6 +4,10 @@ export { Button } from './Button';
 export { FileUpload } from './FileUpload';
 export { UserFormModal } from './UserFormModal';
 export { TeacherAssignmentModal } from './TeacherAssignmentModal';
+export { AddStudentModal } from './AddStudentModal';
+export { AddTeacherModal } from './AddTeacherModal';
+export type { AddStudentFormData } from './AddStudentModal';
+export type { AddTeacherFormData } from './AddTeacherModal';
 
 export function Pill({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (

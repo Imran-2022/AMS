@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { AppShell } from '../../layout/AppShell';
-import { Button, Card, Metric, PageHeader, Pill, RoleBadge, Th, Td, UserFormModal } from '../../ui';
+import { Button, Card, Metric, PageHeader, Pill, RoleBadge, Th, Td, AddStudentModal, AddTeacherModal, TeacherAssignmentModal } from '../../ui';
 import { ASSIGNMENTS, USERS as INITIAL_USERS, CLASSES as INITIAL_CLASSES, SUBJECTS as INITIAL_SUBJECTS, SUBMISSIONS } from '../../data';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
-import { getAssignments, getSubmissions, getUsers as apiGetUsers, getClassCourses as apiGetClassCourses } from '@/lib/api';
+import { getAssignments, getSubmissions, getUsers as apiGetUsers, getSubjects } from '@/lib/api';
 import { MoreVertical, UserPlus, UserCheck, BookOpen, ClipboardList } from 'lucide-react';
 import { createUser, deleteUser, getClassCourses, getUsers, updateUser } from '@/lib/api';
 import { createEnrollment, deleteEnrollment, getEnrollments } from '@/lib/api/enrollments';
+import { createTeacherAssignment } from '@/lib/api/teacherAssignments';
 
 import type { ClassCourseRecord} from './types';
 
@@ -20,8 +21,13 @@ export function AdminDashboardPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [studentModalOpen, setStudentModalOpen] = useState(false);
   const [teacherModalOpen, setTeacherModalOpen] = useState(false);
-  const [modalSubmitting, setModalSubmitting] = useState(false);
+  const [assignTeacherOpen, setAssignTeacherOpen] = useState(false);
+  const [studentModalSubmitting, setStudentModalSubmitting] = useState(false);
+  const [teacherModalSubmitting, setTeacherModalSubmitting] = useState(false);
+  const [assignTeacherSubmitting, setAssignTeacherSubmitting] = useState(false);
   const [dashboardClassCourses, setDashboardClassCourses] = useState<ClassCourseRecord[]>([]);
+  const [dashboardTeachers, setDashboardTeachers] = useState<{ id: string; fullName: string }[]>([]);
+  const [dashboardSubjects, setDashboardSubjects] = useState<{ id: string; name: string; classCourseId: string }[]>([]);
 
   const totalAdmins = INITIAL_USERS.filter((user) => user.role === 'Admin').length;
   const totalTeachers = INITIAL_USERS.filter((user) => user.role === 'Teacher').length;
@@ -35,11 +41,13 @@ export function AdminDashboardPage() {
     try {
       setIsLoading(true);
       setLoadError(null);
-      const [s, assignments, submissions, classes] = await Promise.all([
+      const [s, assignments, submissions, classes, users, subjects] = await Promise.all([
         getAdminDashboardStats(),
         getAssignments(),
         getSubmissions(),
         getClassCourses(),
+        apiGetUsers(),
+        getSubjects(),
       ]);
       setStats(s);
       setRecentAssignments(assignments.slice(0, 8));
@@ -49,6 +57,15 @@ export function AdminDashboardPage() {
         name: cls.name,
         section: cls.section,
         academicYear: cls.academicYear,
+      })));
+      setDashboardTeachers(users.filter((user: any) => user.role === 'Teacher').map((teacher: any) => ({
+        id: teacher.id,
+        fullName: teacher.fullName,
+      })));
+      setDashboardSubjects(subjects.map((subject: any) => ({
+        id: subject.id,
+        name: subject.name,
+        classCourseId: subject.classCourseId,
       })));
     } catch (err) {
       console.error(err);
@@ -71,7 +88,7 @@ export function AdminDashboardPage() {
             <div className="flex flex-wrap gap-3">
               <Button type="button" onClick={() => setStudentModalOpen(true)}>Add Student</Button>
               <Button type="button" variant="secondary" onClick={() => setTeacherModalOpen(true)}>Add Teacher</Button>
-              <button type="button" className="rounded-lg border border-[#ECECEF] bg-white px-4 py-2.5 text-sm font-semibold text-[#1F2430] hover:bg-[#F5F5F7] transition">Assign Teacher</button>
+              <Button type="button" variant="secondary" onClick={() => setAssignTeacherOpen(true)}>Assign Teacher</Button>
             </div>
           </div>
         </section>
@@ -147,26 +164,29 @@ export function AdminDashboardPage() {
           </div>
         </div>
 
-        <UserFormModal
+        <AddStudentModal
           open={studentModalOpen}
           onClose={() => setStudentModalOpen(false)}
           title="Add student"
           submitLabel="Create student"
-          role="Student"
           classCourses={dashboardClassCourses}
           initialValues={{
             fullName: '',
             email: '',
             password: '',
             status: 'Active',
-            parentMobile: '',
+            studentId: '',
             className: dashboardClassCourses[0]?.name ?? '',
             section: dashboardClassCourses[0]?.section ?? '',
+            guardianName: '',
+            parentMobile: '',
+            guardianEmail: '',
           }}
-          isSubmitting={modalSubmitting}
+          isSubmitting={studentModalSubmitting}
+          requirePassword
           onSubmit={async (values) => {
             try {
-              setModalSubmitting(true);
+              setStudentModalSubmitting(true);
               const created = await createUser({
                 fullName: values.fullName,
                 email: values.email,
@@ -185,27 +205,31 @@ export function AdminDashboardPage() {
               console.error(err);
               alert('Unable to create student. Please check the data and try again.');
             } finally {
-              setModalSubmitting(false);
+              setStudentModalSubmitting(false);
             }
           }}
         />
-        <UserFormModal
+        <AddTeacherModal
           open={teacherModalOpen}
           onClose={() => setTeacherModalOpen(false)}
           title="Add teacher"
           submitLabel="Create teacher"
-          role="Teacher"
-          classCourses={[]}
           initialValues={{
             fullName: '',
             email: '',
             password: '',
             status: 'Active',
+            phone: '',
+            employeeId: '',
+            qualification: '',
+            joiningDate: '',
+            subjectSpecialization: '',
           }}
-          isSubmitting={modalSubmitting}
+          isSubmitting={teacherModalSubmitting}
+          requirePassword
           onSubmit={async (values) => {
             try {
-              setModalSubmitting(true);
+              setTeacherModalSubmitting(true);
               await createUser({
                 fullName: values.fullName,
                 email: values.email,
@@ -220,7 +244,30 @@ export function AdminDashboardPage() {
               console.error(err);
               alert('Unable to create teacher. Please check the data and try again.');
             } finally {
-              setModalSubmitting(false);
+              setTeacherModalSubmitting(false);
+            }
+          }}
+        />
+        <TeacherAssignmentModal
+          open={assignTeacherOpen}
+          onClose={() => setAssignTeacherOpen(false)}
+          title="Assign teacher"
+          submitLabel="Assign teacher"
+          teachers={dashboardTeachers}
+          classCourses={dashboardClassCourses}
+          subjects={dashboardSubjects}
+          isSubmitting={assignTeacherSubmitting}
+          onSubmit={async (values) => {
+            try {
+              setAssignTeacherSubmitting(true);
+              await createTeacherAssignment(values);
+              setAssignTeacherOpen(false);
+              await loadDashboard();
+            } catch (err) {
+              console.error(err);
+              alert('Unable to assign teacher. Please try again.');
+            } finally {
+              setAssignTeacherSubmitting(false);
             }
           }}
         />
