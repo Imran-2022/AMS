@@ -10,6 +10,7 @@ import {
   BookOpen,
   Inbox,
   LayoutDashboard,
+  LogOut,
   Menu,
   Settings,
   ShieldCheck,
@@ -52,12 +53,6 @@ const NAV: Record<RoleType, NavItem[]> = {
 function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, userName }: { role: RoleType; collapsed: boolean; mobileOpen: boolean; onToggle: () => void; onNavigate: () => void; onLogout: () => void; userName?: string }) {
   const pathname = usePathname();
   const router = useRouter();
-  const profileItems = [
-    { label: 'My Profile', key: 'profile' },
-    { label: 'Account Settings', key: 'settings' },
-  ];
-  const [profileHover, setProfileHover] = useState(false);
-  const isProfileOpen = profileHover;
 
   const widthClass = mobileOpen ? 'w-64' : collapsed ? 'w-[76px]' : 'w-64';
   return (
@@ -100,16 +95,38 @@ function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, 
       </nav>
 
       <div className="border-t border-[#ECECEF] p-3">
-        <div className="nav-item relative flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-[#F5F5F7] cursor-pointer">
-          <div className="w-9 h-9 rounded-full bg-[#1F2430] text-white flex items-center justify-center shrink-0">
-            <User className="h-5 w-5" />
-          </div>
-          {!collapsed ? (
-            <div className="profile-text label min-w-0 transition-all duration-200 opacity-100">
-              <p className="text-[13px] font-semibold leading-tight truncate">{userName ?? 'System Admin'}</p>
-              <p className="text-[11px] text-[#8A8F98] leading-tight truncate">Admin Account</p>
+        <div className="relative group">
+          <div className="w-full nav-item relative flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-[#F5F5F7] text-left cursor-pointer">
+            <div className="w-9 h-9 rounded-full bg-[#1F2430] text-white flex items-center justify-center shrink-0">
+              <User className="h-5 w-5" />
             </div>
-          ) : null}
+            {!collapsed ? (
+              <div className="profile-text label min-w-0 transition-all duration-200 opacity-100">
+                <p className="text-[13px] font-semibold leading-tight truncate">{userName ?? 'System Admin'}</p>
+                <p className="text-[11px] text-[#8A8F98] leading-tight truncate">Admin Account</p>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="absolute left-0 bottom-full hidden min-w-full pb-2 group-hover:block">
+            <div className="rounded-xl border border-[#ECECEF] bg-white p-2 shadow-lg">
+              <button
+                type="button"
+                onClick={() => router.push('/roles/admin/settings')}
+                className="w-full inline-flex items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] font-medium text-[#1F2430]/80 transition-colors hover:bg-[#F5F5F7]">
+                <Settings className="h-5 w-5" />
+                {!collapsed ? <span>Account Settings</span> : null}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onLogout()}
+                className="w-full inline-flex items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] font-medium text-[#1F2430]/80 transition-colors hover:bg-[#F5F5F7]">
+                <LogOut className="h-5 w-5" />
+                {!collapsed ? <span>Sign out</span> : null}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </aside>
