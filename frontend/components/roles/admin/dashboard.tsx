@@ -101,7 +101,7 @@ export function AdminDashboardPage() {
                 <UserPlus className="h-5 w-5" />
               </div>
             </div>
-            <p className="text-3xl font-bold">{isLoading ? 'â€”' : `${stats?.totalStudents ?? 0}`}</p>
+            <p className="text-3xl font-bold">{isLoading ? '—' : `${stats?.totalStudents ?? 0}`}</p>
             <p className="text-[12px] text-[#8A8F98] mt-1">Active learners</p>
           </div>
           <div className="rounded-2xl border border-[#ECECEF] bg-white p-4">
@@ -111,7 +111,7 @@ export function AdminDashboardPage() {
                 <UserCheck className="h-5 w-5" />
               </div>
             </div>
-            <p className="text-3xl font-bold">{isLoading ? 'â€”' : `${stats?.totalTeachers ?? 0}`}</p>
+            <p className="text-3xl font-bold">{isLoading ? '—' : `${stats?.totalTeachers ?? 0}`}</p>
             <p className="text-[12px] text-[#8A8F98] mt-1">Active instructors</p>
           </div>
           <div className="rounded-2xl border border-[#ECECEF] bg-white p-4">
@@ -121,7 +121,7 @@ export function AdminDashboardPage() {
                 <BookOpen className="h-5 w-5" />
               </div>
             </div>
-            <p className="text-3xl font-bold">{isLoading ? 'â€”' : `${stats?.totalClasses ?? 0}`}</p>
+            <p className="text-3xl font-bold">{isLoading ? '—' : `${stats?.totalClasses ?? 0}`}</p>
             <p className="text-[12px] text-[#8A8F98] mt-1">Active courses</p>
           </div>
           <div className="rounded-2xl border border-[#ECECEF] bg-white p-4">
@@ -131,7 +131,7 @@ export function AdminDashboardPage() {
                 <ClipboardList className="h-5 w-5" />
               </div>
             </div>
-            <p className="text-3xl font-bold">{isLoading ? 'â€”' : `${stats?.totalAssignments ?? 0}`}</p>
+            <p className="text-3xl font-bold">{isLoading ? '—' : `${stats?.totalAssignments ?? 0}`}</p>
             <p className="text-[12px] text-[#8A8F98] mt-1">Live classroom work</p>
           </div>
         </section>
