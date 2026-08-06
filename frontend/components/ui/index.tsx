@@ -6,6 +6,7 @@ export { UserFormModal } from './UserFormModal';
 export { TeacherAssignmentModal } from './TeacherAssignmentModal';
 export { AddStudentModal } from './AddStudentModal';
 export { AddTeacherModal } from './AddTeacherModal';
+export { Modal } from './Modal';
 export type { AddStudentFormData } from './AddStudentModal';
 export type { AddTeacherFormData } from './AddTeacherModal';
 

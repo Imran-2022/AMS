@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AppShell } from '../../layout/AppShell';
-import { Button, Card, Pill, Th, Td, AddStudentModal, type AddStudentFormData } from '../../ui';
+import { Button, Card, Pill, Th, Td, AddStudentModal, Modal, type AddStudentFormData } from '../../ui';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
 import { createUser, deleteUser, getClassCourses, getUsers, updateUser } from '@/lib/api';
 import { createEnrollment, deleteEnrollment, getEnrollments } from '@/lib/api/enrollments';
-import { MoreVertical } from 'lucide-react';
+import { MoreVertical, Plus } from 'lucide-react';
 import type { ClassCourseRecord, StudentFormData, StudentUserRecord } from './types';
 
 const STATUS_OPTIONS = ['All', 'Active', 'Inactive'] as const;
@@ -22,10 +23,11 @@ export function AdminStudentsPage() {
   const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Inactive'>('All');
   const [classFilter, setClassFilter] = useState('All classes');
   const [sectionFilter, setSectionFilter] = useState('All sections');
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [actionMenuFor, setActionMenuFor] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<StudentUserRecord | null>(null);
+  const [pendingDeleteStudent, setPendingDeleteStudent] = useState<StudentUserRecord | null>(null);
   const [studentModalSubmitting, setStudentModalSubmitting] = useState(false);
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
   const [pageIndex, setPageIndex] = useState(0);
@@ -97,22 +99,7 @@ export function AdminStudentsPage() {
   }
 
   function resetSelection() {
-    setSelectedIds([]);
     setActionMenuFor(null);
-  }
-
-  function toggleAll(checked: boolean) {
-    if (checked) {
-      setSelectedIds(paginatedStudents.map((student) => student.id));
-      return;
-    }
-    setSelectedIds([]);
-  }
-
-  function toggleSelection(studentId: string) {
-    setSelectedIds((current) =>
-      current.includes(studentId) ? current.filter((id) => id !== studentId) : [...current, studentId]
-    );
   }
 
   function openNewStudent() {
@@ -179,87 +166,28 @@ export function AdminStudentsPage() {
     }
   }
 
-  async function handleDeleteStudent(student: StudentUserRecord) {
-    if (!window.confirm(`Delete ${student.fullName}? This cannot be undone.`)) {
+  function openDeleteStudent(student: StudentUserRecord) {
+    setPendingDeleteStudent(student);
+    setActionMenuFor(null);
+  }
+
+  async function confirmDeleteStudent() {
+    if (!pendingDeleteStudent) {
       return;
     }
 
     try {
-      await deleteUser(student.id);
+      await deleteUser(pendingDeleteStudent.id);
       await loadData();
       resetSelection();
     } catch (err) {
       console.error(err);
       alert('Unable to delete student.');
+    } finally {
+      setPendingDeleteStudent(null);
     }
   }
 
-  async function handleBulkUpdateStatus(isActive: boolean) {
-    if (!selectedIds.length) {
-      return;
-    }
-
-    try {
-      await Promise.all(
-        selectedIds.map((studentId) => {
-          const student = students.find((item) => item.id === studentId);
-          if (!student) return Promise.resolve();
-          return updateUser(studentId, {
-            fullName: student.fullName,
-            email: student.email,
-            isActive,
-          });
-        })
-      );
-      await loadData();
-      resetSelection();
-    } catch (err) {
-      console.error(err);
-      alert('Unable to update selected students.');
-    }
-  }
-
-  async function handleBulkDelete() {
-    if (!selectedIds.length || !window.confirm(`Delete ${selectedIds.length} selected student(s)? This cannot be undone.`)) {
-      return;
-    }
-
-    try {
-      await Promise.all(selectedIds.map((studentId) => deleteUser(studentId)));
-      await loadData();
-      resetSelection();
-    } catch (err) {
-      console.error(err);
-      alert('Unable to delete selected students.');
-    }
-  }
-
-  function handleExportSelected() {
-    if (!selectedIds.length) {
-      return;
-    }
-
-    const rows = selectedIds
-      .map((id) => students.find((student) => student.id === id))
-      .filter(Boolean)
-      .map((student) => ({
-        name: student!.fullName,
-        email: student!.email,
-        class: student!.classCourseName ?? 'Unassigned',
-        section: student!.section ?? '',
-        parent: student!.parentMobile ?? '',
-        status: student!.status,
-      }));
-
-    const csv = ['Name,Email,Class,Section,Parent,Status', ...rows.map((row) => `${JSON.stringify(row.name)},${JSON.stringify(row.email)},${JSON.stringify(row.class)},${JSON.stringify(row.section)},${JSON.stringify(row.parent)},${JSON.stringify(row.status)}`)].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = 'students-export.csv';
-    anchor.click();
-    URL.revokeObjectURL(url);
-  }
 
   const classNames = useMemo(() => Array.from(new Set(classCourses.map((cls) => cls.name))), [classCourses]);
   const sectionNames = useMemo(() => {
@@ -296,6 +224,35 @@ export function AdminStudentsPage() {
     }
   }, [pageCount, pageIndex]);
 
+  useEffect(() => {
+    function handleDocumentClick(event: MouseEvent) {
+      if (!actionMenuFor) return;
+      const target = event.target as Node;
+      const menuEl = document.querySelector(`[data-action-menu="${actionMenuFor}"]`);
+      const btnEl = document.querySelector(`[data-action-button="${actionMenuFor}"]`);
+      if (menuEl && menuEl.contains(target)) return;
+      if (btnEl && btnEl.contains(target)) return;
+      setActionMenuFor(null);
+    }
+
+    document.addEventListener('click', handleDocumentClick);
+    return () => document.removeEventListener('click', handleDocumentClick);
+  }, [actionMenuFor]);
+
+  // Close menu on scroll/resize so it doesn't float away from its button
+  useEffect(() => {
+    if (!actionMenuFor) return;
+    function handleReposition() {
+      setActionMenuFor(null);
+    }
+    window.addEventListener('scroll', handleReposition, true);
+    window.addEventListener('resize', handleReposition);
+    return () => {
+      window.removeEventListener('scroll', handleReposition, true);
+      window.removeEventListener('resize', handleReposition);
+    };
+  }, [actionMenuFor]);
+
   return (
     <AppShell role="Admin" breadcrumb="Admin / Students">
       <div className="flex flex-col gap-5">
@@ -304,7 +261,10 @@ export function AdminStudentsPage() {
             <p className="text-xs font-bold uppercase tracking-widest text-indigo-600">Administration</p>
             <h1 className="text-3xl font-extrabold text-slate-900 mt-1">Students</h1>
           </div>
-          <Button onClick={openNewStudent}>Add student</Button>
+          <Button onClick={openNewStudent} className="inline-flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Add student
+          </Button>
         </div>
 
         {error && (
@@ -423,39 +383,12 @@ export function AdminStudentsPage() {
           </div>
         </Card>
 
-        {selectedIds.length > 0 ? (
-          <div className="flex flex-col gap-3 rounded-2xl bg-indigo-600 px-5 py-3 text-white sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm font-semibold"><span className="font-bold">{selectedIds.length}</span> selected</p>
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="secondary" className="bg-white/10 text-white hover:bg-white/20" onClick={() => void handleBulkUpdateStatus(true)}>
-                Set active
-              </Button>
-              <Button type="button" variant="secondary" className="bg-white/10 text-white hover:bg-white/20" onClick={() => void handleBulkUpdateStatus(false)}>
-                Set inactive
-              </Button>
-              <Button type="button" variant="secondary" className="bg-white/10 text-white hover:bg-white/20" onClick={handleExportSelected}>
-                Export
-              </Button>
-              <Button type="button" variant="secondary" className="bg-rose-500/90 text-white hover:bg-rose-500" onClick={handleBulkDelete}>
-                Delete
-              </Button>
-            </div>
-          </div>
-        ) : null}
 
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[960px] text-sm">
               <thead>
                 <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-widest text-slate-400">
-                  <Th className="w-10 px-5 py-3.5">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.length > 0 && selectedIds.length === paginatedStudents.length}
-                      onChange={(event) => toggleAll(event.target.checked)}
-                      className="accent-indigo-600 h-4 w-4"
-                    />
-                  </Th>
                   <Th>Name</Th>
                   <Th>Email</Th>
                   <Th>Class</Th>
@@ -468,14 +401,6 @@ export function AdminStudentsPage() {
               <tbody className="divide-y divide-slate-100">
                 {paginatedStudents.map((student) => (
                   <tr key={student.id} className="hover:bg-slate-50 transition-colors duration-150">
-                    <Td className="px-5 py-3.5">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(student.id)}
-                        onChange={() => toggleSelection(student.id)}
-                        className="accent-indigo-600 h-4 w-4"
-                      />
-                    </Td>
                     <Td className="px-2 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-semibold">
@@ -502,21 +427,47 @@ export function AdminStudentsPage() {
                       <div className="relative inline-flex">
                         <button
                           type="button"
-                          onClick={() => setActionMenuFor(actionMenuFor === student.id ? null : student.id)}
+                          data-action-button={student.id}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (actionMenuFor === student.id) {
+                              setActionMenuFor(null);
+                              return;
+                            }
+                            const rect = event.currentTarget.getBoundingClientRect();
+                            setMenuPosition({
+                              top: rect.bottom + 8,
+                              left: rect.right - 176, // 176px = menu width (w-44), right-aligned to button
+                            });
+                            setActionMenuFor(student.id);
+                          }}
                           className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100"
                         >
                           <MoreVertical className="h-5 w-5" />
                         </button>
-                        {actionMenuFor === student.id ? (
-                          <div className="absolute right-0 top-full z-20 mt-2 w-44 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl">
-                            <button type="button" onClick={() => handleEditStudent(student)} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">
-                              Edit student
-                            </button>
-                            <button type="button" onClick={() => handleDeleteStudent(student)} className="w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50">
-                              Delete student
-                            </button>
-                          </div>
-                        ) : null}
+                        {actionMenuFor === student.id && typeof document !== 'undefined'
+                          ? createPortal(
+                              <div
+                                data-action-menu={student.id}
+                                onClick={(event) => event.stopPropagation()}
+                                style={{
+                                  position: 'fixed',
+                                  top: menuPosition.top,
+                                  left: menuPosition.left,
+                                  zIndex: 9999,
+                                }}
+                                className="w-44 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl"
+                              >
+                                <button type="button" onClick={() => handleEditStudent(student)} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">
+                                  Edit student
+                                </button>
+                                <button type="button" onClick={() => openDeleteStudent(student)} className="w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50">
+                                  Delete student
+                                </button>
+                              </div>,
+                              document.body
+                            )
+                          : null}
                       </div>
                     </Td>
                   </tr>
@@ -617,6 +568,34 @@ export function AdminStudentsPage() {
         requirePassword={!editingStudent}
         onSubmit={handleSaveStudent}
       />
+
+      <Modal
+        open={Boolean(pendingDeleteStudent)}
+        onClose={() => setPendingDeleteStudent(null)}
+        title="Delete student?"
+        description={pendingDeleteStudent ? `${pendingDeleteStudent.fullName} will be removed. This action cannot be undone.` : undefined}
+        footer={
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <Button type="button" variant="secondary" onClick={() => setPendingDeleteStudent(null)}>
+              Cancel
+            </Button>
+            <Button type="button" variant="danger" onClick={confirmDeleteStudent}>
+              Delete
+            </Button>
+          </div>
+        }
+      >
+        <div className="flex flex-col items-center justify-center gap-4 py-6">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-rose-50 text-rose-500">
+            <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+          </div>
+          <p className="text-sm text-slate-500">This action will permanently delete the student record.</p>
+        </div>
+      </Modal>
     </AppShell>
   );
 }
