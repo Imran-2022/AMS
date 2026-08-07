@@ -260,7 +260,7 @@ export function AdminStudentsPage() {
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-indigo-600">Administration</p>
+            <p className="text-xs font-bold uppercase text-indigo-600">Administration</p>
             <h1 className="text-3xl font-extrabold text-slate-900 mt-1">Students</h1>
           </div>
           <Button onClick={openNewStudent} className="inline-flex items-center gap-2">
@@ -292,7 +292,7 @@ export function AdminStudentsPage() {
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
           <Card>
             <div className="flex items-center justify-between mb-4">
-              <p className="text-[11px] font-bold tracking-widest text-slate-400">TOTAL STUDENTS</p>
+              <p className="text-[11px] font-bold text-slate-400">TOTAL STUDENTS</p>
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
               </div>
@@ -302,7 +302,7 @@ export function AdminStudentsPage() {
           </Card>
           <Card>
             <div className="flex items-center justify-between mb-4">
-              <p className="text-[11px] font-bold tracking-widest text-slate-400">ACTIVE</p>
+              <p className="text-[11px] font-bold text-slate-400">ACTIVE</p>
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-500">
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
               </div>
@@ -312,7 +312,7 @@ export function AdminStudentsPage() {
           </Card>
           <Card>
             <div className="flex items-center justify-between mb-4">
-              <p className="text-[11px] font-bold tracking-widest text-slate-400">INACTIVE</p>
+              <p className="text-[11px] font-bold text-slate-400">INACTIVE</p>
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
               </div>
@@ -322,7 +322,7 @@ export function AdminStudentsPage() {
           </Card>
           <Card>
             <div className="flex items-center justify-between mb-4">
-              <p className="text-[11px] font-bold tracking-widest text-slate-400">NEW THIS MONTH</p>
+              <p className="text-[11px] font-bold text-slate-400">NEW THIS MONTH</p>
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-500">
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               </div>
@@ -390,7 +390,7 @@ export function AdminStudentsPage() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[960px] text-sm">
               <thead>
-                <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-widest text-slate-400">
+                <tr className="border-b border-slate-100 text-left text-xs uppercase text-slate-400">
                   <Th>Name</Th>
                   <Th>Email</Th>
                   <Th>Class</Th>

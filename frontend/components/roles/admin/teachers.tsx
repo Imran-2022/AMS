@@ -238,7 +238,7 @@ export function AdminTeachersPage() {
       <div className="space-y-5">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-xs font-bold tracking-widest text-brand-600">ADMINISTRATION</p>
+            <p className="text-xs font-bold text-brand-600">ADMINISTRATION</p>
             <h1 className="text-3xl font-extrabold text-slate-800 mt-0.5">Teachers</h1>
           </div>
           <button onClick={openNewTeacher} className="px-4 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 flex items-center gap-2"> 
@@ -264,7 +264,7 @@ export function AdminTeachersPage() {
         <div className="grid grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-[11px] font-bold tracking-widest text-slate-400">TOTAL TEACHERS</p>
+              <p className="text-[11px] font-bold text-slate-400">TOTAL TEACHERS</p>
               <div className="w-8 h-8 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
               </div>
@@ -274,7 +274,7 @@ export function AdminTeachersPage() {
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-[11px] font-bold tracking-widest text-slate-400">ACTIVE</p>
+              <p className="text-[11px] font-bold text-slate-400">ACTIVE</p>
               <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
               </div>
@@ -284,7 +284,7 @@ export function AdminTeachersPage() {
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-[11px] font-bold tracking-widest text-slate-400">ON LEAVE</p>
+              <p className="text-[11px] font-bold text-slate-400">ON LEAVE</p>
               <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
               </div>
@@ -294,7 +294,7 @@ export function AdminTeachersPage() {
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-[11px] font-bold tracking-widest text-slate-400">SUBJECTS COVERED</p>
+              <p className="text-[11px] font-bold text-slate-400">SUBJECTS COVERED</p>
               <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-500 flex items-center justify-center">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
               </div>
@@ -329,12 +329,12 @@ export function AdminTeachersPage() {
               <thead>
                 <tr className="border-b border-slate-100 text-left">
                   
-                  <th className="px-2 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">NAME</th>
-                  <th className="px-2 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">EMAIL</th>
-                  <th className="px-2 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">SUBJECTS</th>
-                  <th className="px-2 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">CLASSES</th>
-                  <th className="px-2 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">STATUS</th>
-                  <th className="w-16 px-5 py-3.5 text-right text-[11px] font-bold tracking-widest text-slate-400">ACTIONS</th>
+                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">NAME</th>
+                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">EMAIL</th>
+                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">SUBJECTS</th>
+                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">CLASSES</th>
+                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">STATUS</th>
+                  <th className="w-16 px-5 py-3.5 text-right text-[11px] font-bold text-slate-400">ACTIONS</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">

@@ -79,7 +79,7 @@ export function AdminAdministratorsPage() {
       <div className="space-y-5">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-bold tracking-widest text-brand-600">ADMINISTRATION</p>
+            <p className="text-xs font-bold text-brand-600">ADMINISTRATION</p>
             <h1 className="text-3xl font-extrabold text-slate-800 mt-1">Administrators</h1>
           </div>
           <button
@@ -107,7 +107,7 @@ export function AdminAdministratorsPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="rounded-2xl border border-slate-200 bg-white p-5">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-[11px] font-bold tracking-widest text-slate-400">ADMIN USERS</p>
+              <p className="text-[11px] font-bold text-slate-400">ADMIN USERS</p>
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
@@ -119,7 +119,7 @@ export function AdminAdministratorsPage() {
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-[11px] font-bold tracking-widest text-slate-400">ACTIVE</p>
+              <p className="text-[11px] font-bold text-slate-400">ACTIVE</p>
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-500">
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="m9 12 2 2 4-4" />
@@ -132,7 +132,7 @@ export function AdminAdministratorsPage() {
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-[11px] font-bold tracking-widest text-slate-400">PENDING INVITES</p>
+              <p className="text-[11px] font-bold text-slate-400">PENDING INVITES</p>
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-500">
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="3" y="5" width="18" height="14" rx="2" />
@@ -188,12 +188,12 @@ export function AdminAdministratorsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-left">
-                <th className="px-5 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">NAME</th>
-                <th className="px-2 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">EMAIL</th>
-                <th className="px-2 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">ROLE</th>
-                <th className="px-2 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">STATUS</th>
-                <th className="px-2 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">LAST ACTIVE</th>
-                <th className="w-40 px-5 py-3.5 text-right text-[11px] font-bold tracking-widest text-slate-400">ACTIONS</th>
+                <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">NAME</th>
+                <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">EMAIL</th>
+                <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">ROLE</th>
+                <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">STATUS</th>
+                <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">LAST ACTIVE</th>
+                <th className="w-40 px-5 py-3.5 text-right text-[11px] font-bold text-slate-400">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -260,7 +260,7 @@ export function AdminAdministratorsPage() {
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
-          <p className="text-xs font-bold tracking-widest text-slate-400 mb-3">ROLE PERMISSIONS</p>
+          <p className="text-xs font-bold text-slate-400 mb-3">ROLE PERMISSIONS</p>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="flex gap-3">
               <span className="inline-flex items-center rounded-[8px] bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">Super Admin</span>

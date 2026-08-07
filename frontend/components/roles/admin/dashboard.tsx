@@ -81,7 +81,7 @@ export function AdminDashboardPage() {
         <section className="rounded-2xl border border-[#ECECEF] bg-white p-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="text-[12px] font-semibold uppercase tracking-widest text-[#7C3AED] mb-1">GOOD {new Date().getHours() < 12 ? 'MORNING' : new Date().getHours() < 18 ? 'AFTERNOON' : 'EVENING'}, SYSTEM ADMIN</p>
+              <p className="text-[12px] font-semibold uppercase text-[#7C3AED] mb-1">GOOD {new Date().getHours() < 12 ? 'MORNING' : new Date().getHours() < 18 ? 'AFTERNOON' : 'EVENING'}, SYSTEM ADMIN</p>
               <h2 className="text-2xl font-bold mb-1">Here's today's school overview.</h2>
               <p className="text-[13px] text-[#8A8F98]">A cleaner, responsive dashboard for student, teacher, and assignment operations.</p>
             </div>

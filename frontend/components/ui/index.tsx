@@ -94,7 +94,7 @@ export function PageHeader({ eyebrow, title, action }: { eyebrow?: string; title
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
       <div>
-        {eyebrow && <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-1">{eyebrow}</p>}
+        {eyebrow && <p className="text-xs font-bold text-indigo-600 uppercase mb-1">{eyebrow}</p>}
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">{title}</h1>
       </div>
       {action && <div className="flex items-center gap-3">{action}</div>}

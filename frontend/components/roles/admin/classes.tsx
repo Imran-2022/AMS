@@ -360,7 +360,7 @@ export function AdminClassesPage() {
     <AppShell role="Admin" breadcrumb="Admin / Classes & subjects">
       <div className="space-y-6">
         <div>
-          <p className="text-xs font-bold tracking-widest text-brand-600">ADMINISTRATION</p>
+          <p className="text-xs font-bold text-brand-600">ADMINISTRATION</p>
           <h1 className="text-3xl font-extrabold text-slate-800 mt-0.5">Classes &amp; subjects</h1>
         </div>
 
@@ -493,11 +493,11 @@ export function AdminClassesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 text-left">
-                  <th className="px-5 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">SUBJECT</th>
-                  <th className="px-2 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">CODE</th>
-                  <th className="px-2 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">CLASS</th>
-                  <th className="px-2 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">TEACHER</th>
-                  <th className="w-20 px-5 py-3.5 text-right text-[11px] font-bold tracking-widest text-slate-400">ACTIONS</th>
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">SUBJECT</th>
+                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">CODE</th>
+                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">CLASS</th>
+                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">TEACHER</th>
+                  <th className="w-20 px-5 py-3.5 text-right text-[11px] font-bold text-slate-400">ACTIONS</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">

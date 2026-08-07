@@ -54,13 +54,13 @@ export default function ProtectedRoute({ children, allowedRoles }: { children: R
   if (!checkedAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-700">
-        <div className="flex flex-col items-center gap-4 rounded-3xl border border-slate-200 bg-white px-8 py-10 shadow-lg shadow-slate-200/60">
+        <div className="flex flex-col items-center gap-4 rounded-2xl bg-white px-8 py-10 shadow-lg shadow-slate-200/60">
           <div className="flex h-14 w-14 items-center justify-center rounded-full border border-slate-200 bg-slate-50">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-slate-700" />
           </div>
           <div className="text-center">
             <p className="text-base font-semibold text-slate-900">Checking your session</p>
-            <p className="mt-1 text-sm text-slate-500">Please wait while we verify access to your dashboard.</p>
+            <p className="mt-1 text-sm text-slate-500">Please wait while we verify access to your Account.</p>
           </div>
         </div>
       </div>

@@ -83,7 +83,7 @@ export function AdminAssignmentsPage() {
     <AppShell role="Admin" breadcrumb="Admin / Assignments">
       <div ref={rootRef} className="space-y-5">
           <div>
-          <p className="text-xs font-bold tracking-widest text-brand-600">ADMINISTRATION</p>
+          <p className="text-xs font-bold text-brand-600">ADMINISTRATION</p>
           <h1 className="text-3xl font-extrabold text-slate-800 mt-0.5">Assignments</h1>
         </div>
 
@@ -101,7 +101,7 @@ export function AdminAssignmentsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-[11px] font-bold tracking-widest text-slate-400">TOTAL ASSIGNMENTS</p>
+              <p className="text-[11px] font-bold text-slate-400">TOTAL ASSIGNMENTS</p>
               <div className="w-8 h-8 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="3" y="4" width="18" height="18" rx="2" />
@@ -114,7 +114,7 @@ export function AdminAssignmentsPage() {
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-[11px] font-bold tracking-widest text-slate-400">PUBLISHED</p>
+              <p className="text-[11px] font-bold text-slate-400">PUBLISHED</p>
               <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="m9 12 2 2 4-4" />
@@ -127,7 +127,7 @@ export function AdminAssignmentsPage() {
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-[11px] font-bold tracking-widest text-slate-400">DRAFTS</p>
+              <p className="text-[11px] font-bold text-slate-400">DRAFTS</p>
               <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M12 20h9" />
@@ -140,7 +140,7 @@ export function AdminAssignmentsPage() {
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-[11px] font-bold tracking-widest text-slate-400">PAST DEADLINE</p>
+              <p className="text-[11px] font-bold text-slate-400">PAST DEADLINE</p>
               <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="12" cy="12" r="10" />
@@ -202,13 +202,13 @@ export function AdminAssignmentsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-100 text-left">
-                    <th className="px-5 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">TITLE</th>
-                    <th className="px-2 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">CLASS</th>
-                    <th className="px-2 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">TEACHER</th>
-                    <th className="px-2 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">DEADLINE</th>
-                    <th className="px-2 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">SUBMISSIONS</th>
-                    <th className="px-2 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">STATUS</th>
-                    <th className="w-16 px-5 py-3.5 text-right text-[11px] font-bold tracking-widest text-slate-400">ACTIONS</th>
+                    <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">TITLE</th>
+                    <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">CLASS</th>
+                    <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">TEACHER</th>
+                    <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">DEADLINE</th>
+                    <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">SUBMISSIONS</th>
+                    <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">STATUS</th>
+                    <th className="w-16 px-5 py-3.5 text-right text-[11px] font-bold text-slate-400">ACTIONS</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">

@@ -89,7 +89,7 @@ export default function StudentsPage(){
 
           <main className="flex-1 overflow-y-auto p-6 space-y-5">
             <div>
-              <p className="text-xs font-bold tracking-widest text-[#7C3AED]">TEACHER PORTAL</p>
+              <p className="text-xs font-bold text-[#7C3AED]">TEACHER PORTAL</p>
               <h1 className="text-3xl font-extrabold text-slate-800 mt-0.5">Students</h1>
             </div>
 
@@ -101,7 +101,7 @@ export default function StudentsPage(){
             <div className="grid grid-cols-4 gap-4">
               <div className="bg-white rounded-2xl border border-slate-200 p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <p className="text-[11px] font-bold tracking-widest text-slate-400">TOTAL STUDENTS</p>
+                  <p className="text-[11px] font-bold text-slate-400">TOTAL STUDENTS</p>
                 </div>
                 <p className="text-2xl font-extrabold text-slate-800">58</p>
                 <p className="text-xs text-slate-400 mt-1">Across your 2 classes</p>
@@ -142,12 +142,12 @@ export default function StudentsPage(){
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-100 text-left">
-                    <th className="px-5 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">STUDENT</th>
-                    <th className="px-2 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">CLASS</th>
-                    <th className="px-2 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">PARENT CONTACT</th>
-                    <th className="px-2 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">AVG. IN YOUR SUBJECTS</th>
-                    <th className="px-2 py-3.5 text-[11px] font-bold tracking-widest text-slate-400">LAST SUBMISSION</th>
-                    <th className="w-20 px-5 py-3.5 text-right text-[11px] font-bold tracking-widest text-slate-400">ACTIONS</th>
+                    <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">STUDENT</th>
+                    <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">CLASS</th>
+                    <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">PARENT CONTACT</th>
+                    <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">AVG. IN YOUR SUBJECTS</th>
+                    <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">LAST SUBMISSION</th>
+                    <th className="w-20 px-5 py-3.5 text-right text-[11px] font-bold text-slate-400">ACTIONS</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
@@ -206,11 +206,11 @@ export default function StudentsPage(){
             </div>
             <div className="overflow-y-auto px-7 py-6 space-y-5">
               <div>
-                <p className="text-xs font-bold tracking-widest text-slate-400 mb-2">CONTACT</p>
+                <p className="text-xs font-bold text-slate-400 mb-2">CONTACT</p>
                 <p className="text-sm text-slate-600">{selected.contact}</p>
               </div>
               <div>
-                <p className="text-xs font-bold tracking-widest text-slate-400 mb-2">PERFORMANCE IN YOUR SUBJECTS</p>
+                <p className="text-xs font-bold text-slate-400 mb-2">PERFORMANCE IN YOUR SUBJECTS</p>
                 <div className="space-y-2">
                   {selected.perf.map((x,i)=> (
                     <div key={i} className="flex items-center justify-between border border-slate-100 rounded-lg px-3.5 py-2.5">
@@ -221,7 +221,7 @@ export default function StudentsPage(){
                 </div>
               </div>
               <div>
-                <p className="text-xs font-bold tracking-widest text-slate-400 mb-2">RECENT SUBMISSIONS</p>
+                <p className="text-xs font-bold text-slate-400 mb-2">RECENT SUBMISSIONS</p>
                 <div className="space-y-2">
                   {selected.recent.map((x,i)=> (
                     <div key={i} className="border border-slate-100 rounded-lg px-3.5 py-2.5">

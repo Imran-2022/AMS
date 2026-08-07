@@ -53,14 +53,14 @@ const NAV: Record<RoleType, NavItem[]> = {
     { href: '/roles/student/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
     { href: '/roles/student/assignments', label: 'Assignments', Icon: ClipboardList },
     { href: '/roles/student/submissions', label: 'Submissions', Icon: Inbox },
-    { href: '/roles/student/settings', label: 'Settings', Icon: Settings },
   ],
 };
 
 function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, userName }: { role: RoleType; collapsed: boolean; mobileOpen: boolean; onToggle: () => void; onNavigate: () => void; onLogout: () => void; userName?: string }) {
   const pathname = usePathname();
   const router = useRouter();
-  const isTeacher = role === 'Teacher';
+  const settingsHref = role === 'Admin' ? '/roles/admin/settings' : role === 'Teacher' ? '/roles/teacher/settings' : '/roles/student/settings';
+  const settingsLabel = role === 'Teacher' ? 'Teacher Settings' : role === 'Student' ? 'Account Settings' : 'Admin Settings';
 
   const widthClass = mobileOpen ? 'w-64' : collapsed ? 'w-[76px]' : 'w-64';
   return (
@@ -105,7 +105,7 @@ function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, 
       <div className="border-t border-[#ECECEF] p-3">
         <div className="relative group">
           <div className="w-full nav-item relative flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-[#F5F5F7] text-left cursor-pointer">
-            <div className={`w-9 h-9 rounded-full ${role === 'Teacher' ? 'bg-brand-600' : role === 'Student' ? 'bg-sky-600' : 'bg-[#1F2430]'} text-white flex items-center justify-center shrink-0`}>
+            <div className={`w-9 h-9 rounded-full ${role === 'Teacher' || role === 'Student' ? 'bg-brand-600' : 'bg-[#1F2430]'} text-white flex items-center justify-center shrink-0`}>
               <User className="h-5 w-5" />
             </div>
             {!collapsed ? (
@@ -122,10 +122,10 @@ function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, 
             <div className="rounded-xl border border-[#ECECEF] bg-white p-2 shadow-lg">
               <button
                 type="button"
-                onClick={() => router.push('/roles/admin/settings')}
+                onClick={() => router.push(settingsHref)}
                 className="w-full inline-flex items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] font-medium text-[#1F2430]/80 transition-colors hover:bg-[#F5F5F7]">
                 <Settings className="h-5 w-5" />
-                {!collapsed ? <span>{isTeacher ? 'Teacher Settings' : 'Account Settings'}</span> : null}
+                {!collapsed ? <span>{settingsLabel}</span> : null}
               </button>
 
               <button

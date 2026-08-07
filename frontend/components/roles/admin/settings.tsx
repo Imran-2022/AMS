@@ -59,7 +59,7 @@ export function AdminSettingsPage() {
     <AppShell role="Admin" breadcrumb="Admin / Settings">
       <div className="space-y-5">
         <div>
-          <p className="text-xs font-bold tracking-widest text-brand-600">ADMINISTRATION</p>
+          <p className="text-xs font-bold text-brand-600">ADMINISTRATION</p>
           <h1 className="text-3xl font-extrabold text-slate-800 mt-0.5">Settings</h1>
         </div>
 
@@ -356,10 +356,10 @@ export function AdminSettingsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-100 text-left">
-                    <th className="px-6 py-3 text-[11px] font-bold tracking-widest text-slate-400">ADMIN</th>
-                    <th className="px-2 py-3 text-[11px] font-bold tracking-widest text-slate-400">ACTION</th>
-                    <th className="px-2 py-3 text-[11px] font-bold tracking-widest text-slate-400">TIME</th>
-                    <th className="px-6 py-3 text-[11px] font-bold tracking-widest text-slate-400">IP ADDRESS</th>
+                    <th className="px-6 py-3 text-[11px] font-bold text-slate-400">ADMIN</th>
+                    <th className="px-2 py-3 text-[11px] font-bold text-slate-400">ACTION</th>
+                    <th className="px-2 py-3 text-[11px] font-bold text-slate-400">TIME</th>
+                    <th className="px-6 py-3 text-[11px] font-bold text-slate-400">IP ADDRESS</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">

@@ -40,7 +40,7 @@ export default function Page() {
     <AppShell role="Teacher" breadcrumb="Teacher / Settings">
       <div className="space-y-6">
         <div>
-          <p className="text-xs font-bold tracking-widest text-brand-600">TEACHER PORTAL</p>
+          <p className="text-xs font-bold text-brand-600">TEACHER PORTAL</p>
           <h1 className="text-3xl font-extrabold text-slate-800 mt-1">Settings</h1>
         </div>
 

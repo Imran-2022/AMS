@@ -38,7 +38,7 @@ export function StudentDashboardPage() {
       <div className="space-y-6">
         <div className="bg-white rounded-2xl border border-slate-200 p-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
           <div>
-            <p className="text-xs font-bold tracking-widest text-brand-600 mb-1">GOOD EVENING, AYESHA</p>
+            <p className="text-xs font-bold text-brand-600 mb-1">GOOD EVENING, AYESHA</p>
             <h1 className="text-2xl font-extrabold text-slate-800">You have {pendingCount} assignments due this week.</h1>
             <p className="text-sm text-slate-400 mt-1">Class 9 - A · Mathematics & Physics</p>
           </div>
@@ -48,28 +48,28 @@ export function StudentDashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-[11px] font-bold tracking-widest text-slate-400">DUE THIS WEEK</p>
+              <p className="text-[11px] font-bold text-slate-400">DUE THIS WEEK</p>
             </div>
             <p className="text-2xl font-extrabold text-slate-800">{pendingCount}</p>
             <p className="text-xs text-slate-400 mt-1">Not yet submitted</p>
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-[11px] font-bold tracking-widest text-slate-400">SUBMITTED</p>
+              <p className="text-[11px] font-bold text-slate-400">SUBMITTED</p>
             </div>
             <p className="text-2xl font-extrabold text-slate-800">{submittedCount}</p>
             <p className="text-xs text-slate-400 mt-1">This term</p>
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-[11px] font-bold tracking-widest text-slate-400">AVERAGE GRADE</p>
+              <p className="text-[11px] font-bold text-slate-400">AVERAGE GRADE</p>
             </div>
             <p className="text-2xl font-extrabold text-slate-800">{averageGrade}%</p>
             <p className="text-xs text-slate-400 mt-1">Across graded work</p>
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-[11px] font-bold tracking-widest text-slate-400">MISSING</p>
+              <p className="text-[11px] font-bold text-slate-400">MISSING</p>
             </div>
             <p className="text-2xl font-extrabold text-slate-800">0</p>
             <p className="text-xs text-slate-400 mt-1">Past deadline, ungraded</p>
@@ -275,7 +275,7 @@ export function StudentAssignmentsPage() {
     <AppShell role="Student" breadcrumb="Student / Assignments">
       <div className="space-y-5">
         <div>
-          <p className="text-xs font-bold tracking-widest text-brand-600">STUDENT PORTAL</p>
+          <p className="text-xs font-bold text-brand-600">STUDENT PORTAL</p>
           <h1 className="text-3xl font-extrabold text-slate-800 mt-1">My Assignments</h1>
           <p className="text-sm text-slate-400 mt-1">View and submit your work</p>
         </div>
