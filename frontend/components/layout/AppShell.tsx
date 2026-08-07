@@ -53,6 +53,7 @@ const NAV: Record<RoleType, NavItem[]> = {
     { href: '/roles/student/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
     { href: '/roles/student/assignments', label: 'Assignments', Icon: ClipboardList },
     { href: '/roles/student/submissions', label: 'Submissions', Icon: Inbox },
+    { href: '/roles/student/settings', label: 'Settings', Icon: Settings },
   ],
 };
 
@@ -104,13 +105,15 @@ function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, 
       <div className="border-t border-[#ECECEF] p-3">
         <div className="relative group">
           <div className="w-full nav-item relative flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-[#F5F5F7] text-left cursor-pointer">
-            <div className={`w-9 h-9 rounded-full ${isTeacher ? 'bg-brand-600' : 'bg-[#1F2430]'} text-white flex items-center justify-center shrink-0`}>
+            <div className={`w-9 h-9 rounded-full ${role === 'Teacher' ? 'bg-brand-600' : role === 'Student' ? 'bg-sky-600' : 'bg-[#1F2430]'} text-white flex items-center justify-center shrink-0`}>
               <User className="h-5 w-5" />
             </div>
             {!collapsed ? (
               <div className="profile-text label min-w-0 transition-all duration-200 opacity-100">
-                <p className="text-[13px] font-semibold leading-tight truncate">{userName ?? 'Teacher User'}</p>
-                <p className="text-[11px] text-[#8A8F98] leading-tight truncate">{isTeacher ? 'Teacher Account' : 'Admin Account'}</p>
+                <p className="text-[13px] font-semibold leading-tight truncate">{userName ?? `${role} User`}</p>
+                <p className="text-[11px] text-[#8A8F98] leading-tight truncate">
+                  {role === 'Teacher' ? 'Teacher Account' : role === 'Student' ? 'Student Account' : 'Admin Account'}
+                </p>
               </div>
             ) : null}
           </div>

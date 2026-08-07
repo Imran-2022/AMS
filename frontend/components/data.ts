@@ -62,4 +62,13 @@ export const STUDENT_GRADES = [
   { id: 2, title: "Cell Structure — Worksheet", subject: "Biology", marks: 22, maxMarks: 25, feedback: "Clear diagrams. Add labels for the mitochondria next time.", gradedAt: "2026-07-22" },
 ] as const;
 
+export const STUDENT_SUBMISSIONS = [
+  { id: 1, title: "Ecosystem Report", subject: "Biology", teacher: "Dr. Nasrin Chowdhury", submittedAt: "Aug 3, 2026 · 5:10 PM", status: "Graded", max: 25, marks: 21, feedback: "Nice use of local examples. Include a citation for your data sources next time." },
+  { id: 2, title: "Quadratic Equations — Quiz", subject: "Mathematics", teacher: "Rafiul Islam", submittedAt: "Jul 27, 2026 · 4:02 PM", status: "Pending", max: 25 },
+  { id: 3, title: "Cell Structure Worksheet", subject: "Biology", teacher: "Dr. Nasrin Chowdhury", submittedAt: "Jul 22, 2026 · 6:45 PM", status: "Graded", max: 25, marks: 22, feedback: "Good understanding of the formula method. Watch your sign errors in step 3." },
+  { id: 4, title: "Poetry Analysis Essay", subject: "English", teacher: "Farzana Karim", submittedAt: "Jul 19, 2026 · 9:30 AM", status: "Graded", max: 20, marks: 18, feedback: "Strong argument, well-structured. Add more textual evidence next time." },
+  { id: 5, title: "States of Matter Quiz", subject: "Physics", teacher: "Rafiul Islam", submittedAt: "Jul 14, 2026 · 3:15 PM", status: "Graded", max: 25, marks: 20, feedback: "Solid grasp of the core concepts. Review the difference between sublimation and evaporation." },
+  { id: 6, title: "Fractions Practice Sheet", subject: "Mathematics", teacher: "Rafiul Islam", submittedAt: "Jul 10, 2026 · 8:05 PM", status: "Graded", max: 20, marks: 19, feedback: "Excellent accuracy. Keep showing your working like this." },
+] as const;
+
 export type RoleType = keyof typeof ROLE;
