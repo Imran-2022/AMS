@@ -50,6 +50,7 @@ builder.Services.AddScoped<IAssignmentRepository, AssignmentRepository>();
 builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
 builder.Services.AddScoped<ITeacherSubjectAssignmentRepository, TeacherSubjectAssignmentRepository>();
 builder.Services.AddScoped<IStudentEnrollmentRepository, StudentEnrollmentRepository>();
+builder.Services.AddScoped<IAttachmentRepository, AttachmentRepository>();
 
 builder.Services.AddScoped<IAuthAppService, AuthAppService>();
 builder.Services.AddScoped<IUserAppService, UserAppService>();
@@ -61,6 +62,7 @@ builder.Services.AddScoped<ITeacherSubjectAssignmentAppService, TeacherSubjectAs
 builder.Services.AddScoped<IEnrollmentAppService, StudentEnrollmentAppService>();
 builder.Services.AddScoped<IDashboardAppService, DashboardAppService>();
 builder.Services.AddScoped<IFileAppService, FileAppService>();
+builder.Services.AddScoped<IAttachmentAppService, AttachmentAppService>();
 
 builder.Services.AddAuthentication(options =>
 {

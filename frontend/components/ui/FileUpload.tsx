@@ -3,6 +3,7 @@ import { uploadFile } from '@/lib/api/files';
 
 interface FileUploadProps {
   onFileUploaded: (fileUrl: string, fileName: string) => void;
+  onFileSelected?: (file: File) => void;
   allowedTypesText?: string;
   maxSizeBytes?: number;
   initialFileUrl?: string;
@@ -11,6 +12,7 @@ interface FileUploadProps {
 
 export function FileUpload({
   onFileUploaded,
+  onFileSelected,
   allowedTypesText = 'PDF, DOCX, TXT, ZIP, PNG, JPG (Max 10MB)',
   maxSizeBytes = 10 * 1024 * 1024,
   initialFileUrl,
@@ -36,10 +38,16 @@ export function FileUpload({
     setUploading(true);
 
     try {
-      const result = await uploadFile(file);
-      setFileUrl(result.fileUrl);
-      setFileName(result.fileName);
-      onFileUploaded(result.fileUrl, result.fileName);
+      if (onFileSelected) {
+        // defer upload to caller
+        setFileName(file.name);
+        onFileSelected(file);
+      } else {
+        const result = await uploadFile(file);
+        setFileUrl(result.fileUrl);
+        setFileName(result.fileName);
+        onFileUploaded(result.fileUrl, result.fileName);
+      }
     } catch (err: any) {
       setError(err.message || 'File upload failed');
     } finally {

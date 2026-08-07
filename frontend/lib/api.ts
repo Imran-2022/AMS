@@ -68,6 +68,7 @@ export type AssignmentDto = {
   subjectId: string;
   subjectName: string;
   teacherId: string;
+  teacherName?: string;
   deadline: string;
   maxMarks: number;
   status: string;
@@ -194,11 +195,13 @@ export type CreateSubmissionDto = {
   assignmentId: string;
   contentText: string;
   fileUrl?: string;
+  fileName?: string;
 };
 
 export type UpdateSubmissionDto = {
   contentText?: string;
   fileUrl?: string;
+  fileName?: string;
 };
 
 export type GradeSubmissionDto = {
@@ -424,6 +427,48 @@ export async function createSubmission(input: CreateSubmissionDto) {
     method: 'POST',
     body: JSON.stringify(input)
   });
+}
+
+export async function uploadAttachment(ownerType: string, ownerId: string, file: File) {
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const token = typeof window !== 'undefined' ? window.localStorage.getItem('ams-token') : null;
+
+  const formData = new FormData();
+  formData.append('ownerType', ownerType);
+  formData.append('ownerId', ownerId);
+  formData.append('file', file);
+
+  const response = await fetch(`${API_BASE_URL}/api/attachments`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(err || 'Failed to upload attachment');
+  }
+
+  return response.json();
+}
+
+export async function listAttachments(ownerType: string, ownerId: string) {
+  return request<{
+    id: string;
+    ownerType: string;
+    ownerId: string;
+    originalFileName: string;
+    storedFileName: string;
+    contentType: string;
+    sizeBytes: number;
+    uploadedByUserId: string;
+    uploadedAt: string;
+    downloadUrl: string;
+  }[]>(`/api/attachments?ownerType=${encodeURIComponent(ownerType)}&ownerId=${encodeURIComponent(ownerId)}`);
+}
+
+export async function deleteAttachment(id: string) {
+  return request<void>(`/api/attachments/${id}`, { method: 'DELETE' });
 }
 
 export async function updateSubmission(id: string, input: UpdateSubmissionDto) {

@@ -68,7 +68,7 @@ public class AuthController : ControllerBase
 
     [HttpPost("refresh")]
     [AllowAnonymous]
-    public ActionResult<AuthResponseDto> Refresh([FromBody] RefreshTokenRequest request)
+    public async Task<ActionResult<AuthResponseDto>> Refresh([FromBody] RefreshTokenRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.RefreshToken))
             return Unauthorized();

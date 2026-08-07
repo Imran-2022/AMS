@@ -16,7 +16,9 @@ public class FileAppService : IFileAppService
 
     public FileAppService()
     {
-        _uploadDirectory = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+        // Store uploads outside of wwwroot so files are not directly served by static file middleware.
+        // Use App_Data/Uploads under the application root.
+        _uploadDirectory = Path.Combine(Directory.GetCurrentDirectory(), "App_Data", "Uploads");
         if (!Directory.Exists(_uploadDirectory))
         {
             Directory.CreateDirectory(_uploadDirectory);
@@ -49,11 +51,25 @@ public class FileAppService : IFileAppService
             await fileStream.CopyToAsync(destinationStream);
         }
 
+        // Return an API download URL rather than a public static path.
         return new FileUploadResultDto
         {
             FileName = fileName,
-            FileUrl = $"/uploads/{uniqueFileName}",
+            FileUrl = $"/api/files/download/{uniqueFileName}",
             SizeBytes = fileStream.Length
         };
+    }
+
+    public async Task<(Stream Stream, string OriginalFileName)?> OpenFileAsync(string storedFileName)
+    {
+        if (string.IsNullOrEmpty(storedFileName)) return null;
+        var filePath = Path.Combine(_uploadDirectory, storedFileName);
+        if (!File.Exists(filePath)) return null;
+
+        // Derive original file name from stored file name format: {guid}_{originalName}
+        var idx = storedFileName.IndexOf('_');
+        var original = idx >= 0 && idx < storedFileName.Length - 1 ? storedFileName[(idx + 1)..] : storedFileName;
+        var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        return (stream, original);
     }
 }
