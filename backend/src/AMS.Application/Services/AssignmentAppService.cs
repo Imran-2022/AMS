@@ -9,30 +9,42 @@ namespace AMS.Application.Services;
 public class AssignmentAppService : IAssignmentAppService
 {
     private readonly IAssignmentRepository _assignmentRepository;
-    private readonly ITeacherSubjectAssignmentRepository _teacherAssignmentRepository;
+    private readonly ITeacherSubjectAssignmentRepository _teacherSubjectAssignmentRepository;
     private readonly IStudentEnrollmentRepository _studentEnrollmentRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IClassCourseRepository _classCourseRepository;
+    private readonly ISubjectRepository _subjectRepository;
 
     public AssignmentAppService(
         IAssignmentRepository assignmentRepository,
-        ITeacherSubjectAssignmentRepository teacherAssignmentRepository,
+        ITeacherSubjectAssignmentRepository teacherSubjectAssignmentRepository,
         IStudentEnrollmentRepository studentEnrollmentRepository,
-        IUserRepository userRepository)
+        IUserRepository userRepository,
+        IClassCourseRepository classCourseRepository,
+        ISubjectRepository subjectRepository)
     {
         _assignmentRepository = assignmentRepository;
-        _teacherAssignmentRepository = teacherAssignmentRepository;
+        _teacherSubjectAssignmentRepository = teacherSubjectAssignmentRepository;
         _studentEnrollmentRepository = studentEnrollmentRepository;
         _userRepository = userRepository;
+        _classCourseRepository = classCourseRepository;
+        _subjectRepository = subjectRepository;
     }
 
     public async Task<IReadOnlyList<AssignmentDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
     {
         var assignments = await _assignmentRepository.GetAllAsync(cancellationToken);
-        if (currentUserRole == nameof(UserRole.Admin)) return assignments.Select(ToDto).ToList();
-        if (currentUserRole == nameof(UserRole.Teacher)) return assignments.Where(x => x.TeacherId == currentUserId).Select(ToDto).ToList();
+        if (currentUserRole == nameof(UserRole.Admin)) return (await Task.WhenAll(assignments.Select(x => ToDtoAsync(x, cancellationToken))).ConfigureAwait(false)).ToList();
+        if (currentUserRole == nameof(UserRole.Teacher))
+        {
+            assignments = assignments.Where(x => x.TeacherId == currentUserId).ToList();
+            return (await Task.WhenAll(assignments.Select(x => ToDtoAsync(x, cancellationToken))).ConfigureAwait(false)).ToList();
+        }
+
         var enrolledClassIds = await _studentEnrollmentRepository.GetByStudentAsync(currentUserId, cancellationToken);
         var enrolledIds = enrolledClassIds.Select(x => x.ClassCourseId).ToHashSet();
-        return assignments.Where(x => x.Status == AssignmentStatus.Published && enrolledIds.Contains(x.ClassCourseId)).Select(ToDto).ToList();
+        assignments = assignments.Where(x => x.Status == AssignmentStatus.Published && enrolledIds.Contains(x.ClassCourseId)).ToList();
+        return (await Task.WhenAll(assignments.Select(x => ToDtoAsync(x, cancellationToken))).ConfigureAwait(false)).ToList();
     }
 
     public async Task<AssignmentDto?> GetByIdAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
@@ -40,10 +52,13 @@ public class AssignmentAppService : IAssignmentAppService
         var assignment = await _assignmentRepository.GetByIdAsync(id, cancellationToken);
         if (assignment is null) return null;
 
-        if (currentUserRole == nameof(UserRole.Admin)) return ToDto(assignment);
-        if (currentUserRole == nameof(UserRole.Teacher) && assignment.TeacherId == currentUserId) return ToDto(assignment);
+        if (currentUserRole == nameof(UserRole.Admin) || (currentUserRole == nameof(UserRole.Teacher) && assignment.TeacherId == currentUserId))
+        {
+            return await ToDtoAsync(assignment, cancellationToken).ConfigureAwait(false);
+        }
+
         var isEnrolled = await IsEnrolled(currentUserId, assignment.ClassCourseId, cancellationToken);
-        if (assignment.Status == AssignmentStatus.Published && isEnrolled) return ToDto(assignment);
+        if (assignment.Status == AssignmentStatus.Published && isEnrolled) return await ToDtoAsync(assignment, cancellationToken).ConfigureAwait(false);
         throw new ForbiddenException("You cannot access this assignment.");
     }
 
@@ -62,7 +77,7 @@ public class AssignmentAppService : IAssignmentAppService
 
         var assignment = new Assignment(Guid.NewGuid(), input.Title, input.Description, input.ClassCourseId, input.SubjectId, teacherId, input.Deadline, input.MaxMarks, AssignmentStatus.Draft, input.AllowLateSubmission, input.AllowResubmission, DateTime.UtcNow, input.AttachmentUrl, input.AttachmentName);
         await _assignmentRepository.AddAsync(assignment, cancellationToken);
-        return ToDto(assignment);
+        return await ToDtoAsync(assignment, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<AssignmentDto> UpdateAsync(Guid id, UpdateAssignmentDto input, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
@@ -87,7 +102,7 @@ public class AssignmentAppService : IAssignmentAppService
             input.AttachmentName ?? assignment.AttachmentName);
 
         await _assignmentRepository.UpdateAsync(assignment, cancellationToken);
-        return ToDto(assignment);
+        return await ToDtoAsync(assignment, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task DeleteAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
@@ -103,7 +118,7 @@ public class AssignmentAppService : IAssignmentAppService
         EnsureCanManage(assignment, currentUserId, currentUserRole);
         assignment.Publish();
         await _assignmentRepository.UpdateAsync(assignment, cancellationToken);
-        return ToDto(assignment);
+        return await ToDtoAsync(assignment, cancellationToken).ConfigureAwait(false);
     }
 
     private void EnsureCanManage(Assignment assignment, Guid currentUserId, string currentUserRole)
@@ -119,21 +134,30 @@ public class AssignmentAppService : IAssignmentAppService
         return enrollments.Any(x => x.ClassCourseId == classCourseId);
     }
 
-    private static AssignmentDto ToDto(Assignment assignment) => new()
+    private async Task<AssignmentDto> ToDtoAsync(Assignment assignment, CancellationToken cancellationToken = default)
     {
-        Id = assignment.Id,
-        Title = assignment.Title,
-        Description = assignment.Description,
-        AttachmentUrl = assignment.AttachmentUrl,
-        AttachmentName = assignment.AttachmentName,
-        ClassCourseId = assignment.ClassCourseId,
-        SubjectId = assignment.SubjectId,
-        TeacherId = assignment.TeacherId,
-        Deadline = assignment.Deadline,
-        MaxMarks = assignment.MaxMarks,
-        Status = assignment.Status.ToString(),
-        AllowLateSubmission = assignment.AllowLateSubmission,
-        AllowResubmission = assignment.AllowResubmission,
-        CreatedAt = assignment.CreatedAt
-    };
+        var classCourse = await _classCourseRepository.GetByIdAsync(assignment.ClassCourseId, cancellationToken) ?? throw new NotFoundException("Class/course not found.");
+        var subject = await _subjectRepository.GetByIdAsync(assignment.SubjectId, cancellationToken) ?? throw new NotFoundException("Subject not found.");
+
+        return new AssignmentDto
+        {
+            Id = assignment.Id,
+            Title = assignment.Title,
+            Description = assignment.Description,
+            AttachmentUrl = assignment.AttachmentUrl,
+            AttachmentName = assignment.AttachmentName,
+            ClassCourseId = assignment.ClassCourseId,
+            SubjectId = assignment.SubjectId,
+            TeacherId = assignment.TeacherId,
+            Deadline = assignment.Deadline,
+            MaxMarks = assignment.MaxMarks,
+            Status = assignment.Status.ToString(),
+            AllowLateSubmission = assignment.AllowLateSubmission,
+            AllowResubmission = assignment.AllowResubmission,
+            CreatedAt = assignment.CreatedAt,
+            ClassCourseName = classCourse.Name,
+            ClassCourseSection = classCourse.Section,
+            SubjectName = subject.Name
+        };
+    }
 }

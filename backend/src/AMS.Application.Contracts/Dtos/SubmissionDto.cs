@@ -17,6 +17,11 @@ public class SubmissionDto
     public string? Feedback { get; set; }
     public Guid? GradedByTeacherId { get; set; }
     public DateTime? GradedAt { get; set; }
+    public string StudentName { get; set; } = string.Empty;
+    public string StudentInitials { get; set; } = string.Empty;
+    public string AssignmentTitle { get; set; } = string.Empty;
+    public string ClassCourseName { get; set; } = string.Empty;
+    public string ClassCourseSection { get; set; } = string.Empty;
 }
 
 public class CreateSubmissionDto

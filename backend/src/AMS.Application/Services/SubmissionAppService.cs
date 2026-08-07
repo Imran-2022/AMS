@@ -11,15 +11,21 @@ public class SubmissionAppService : ISubmissionAppService
     private readonly ISubmissionRepository _submissionRepository;
     private readonly IAssignmentRepository _assignmentRepository;
     private readonly IStudentEnrollmentRepository _studentEnrollmentRepository;
+    private readonly IUserRepository _userRepository;
+    private readonly IClassCourseRepository _classCourseRepository;
 
     public SubmissionAppService(
         ISubmissionRepository submissionRepository,
         IAssignmentRepository assignmentRepository,
-        IStudentEnrollmentRepository studentEnrollmentRepository)
+        IStudentEnrollmentRepository studentEnrollmentRepository,
+        IUserRepository userRepository,
+        IClassCourseRepository classCourseRepository)
     {
         _submissionRepository = submissionRepository;
         _assignmentRepository = assignmentRepository;
         _studentEnrollmentRepository = studentEnrollmentRepository;
+        _userRepository = userRepository;
+        _classCourseRepository = classCourseRepository;
     }
 
     public async Task<IReadOnlyList<SubmissionDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
@@ -39,7 +45,7 @@ public class SubmissionAppService : ISubmissionAppService
             submissions = await _submissionRepository.GetByStudentAsync(currentUserId, cancellationToken);
         }
 
-        return submissions.Select(ToDto).ToList();
+        return (await Task.WhenAll(submissions.Select(x => ToDtoAsync(x, cancellationToken))).ConfigureAwait(false)).ToList();
     }
 
     public async Task<IReadOnlyList<SubmissionDto>> GetMineAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
@@ -50,14 +56,14 @@ public class SubmissionAppService : ISubmissionAppService
         }
 
         var submissions = await _submissionRepository.GetByStudentAsync(currentUserId, cancellationToken);
-        return submissions.Select(ToDto).ToList();
+        return (await Task.WhenAll(submissions.Select(x => ToDtoAsync(x, cancellationToken))).ConfigureAwait(false)).ToList();
     }
 
     public async Task<SubmissionDto?> GetByIdAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
     {
         var submission = await _submissionRepository.GetByIdAsync(id, cancellationToken);
         if (submission is null) return null;
-        return ToDto(submission);
+        return await ToDtoAsync(submission, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<SubmissionDto> CreateAsync(CreateSubmissionDto input, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
@@ -74,7 +80,7 @@ public class SubmissionAppService : ISubmissionAppService
         var submission = new Submission(Guid.NewGuid(), assignment.Id, currentUserId, input.ContentText, input.FileUrl, DateTime.UtcNow, false, SubmissionStatus.Submitted, input.FileName);
         submission.Submit(DateTime.UtcNow, assignment.Deadline, assignment.AllowLateSubmission, assignment);
         await _submissionRepository.AddAsync(submission, cancellationToken);
-        return ToDto(submission);
+        return await ToDtoAsync(submission, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<SubmissionDto> UpdateAsync(Guid id, UpdateSubmissionDto input, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
@@ -105,7 +111,7 @@ public class SubmissionAppService : ISubmissionAppService
         }
 
         await _submissionRepository.UpdateAsync(submission, cancellationToken);
-        return ToDto(submission);
+        return await ToDtoAsync(submission, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task DeleteAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
@@ -124,7 +130,7 @@ public class SubmissionAppService : ISubmissionAppService
 
         submission.MarkGraded(input.Marks, input.Feedback, currentUserId, assignment);
         await _submissionRepository.UpdateAsync(submission, cancellationToken);
-        return ToDto(submission);
+        return await ToDtoAsync(submission, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<SubmissionDto> UpdateStatusAsync(Guid id, UpdateSubmissionStatusDto input, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
@@ -145,7 +151,7 @@ public class SubmissionAppService : ISubmissionAppService
                 submission = new Submission(submission.Id, submission.AssignmentId, submission.StudentId, submission.ContentText, submission.FileUrl, submission.SubmittedAt, submission.IsLate, parsed, submission.FileName, submission.ResubmittedAt, submission.ResubmissionCount);
             }
             await _submissionRepository.UpdateAsync(submission, cancellationToken);
-            return ToDto(submission);
+            return await ToDtoAsync(submission, cancellationToken).ConfigureAwait(false);
         }
 
         throw new ValidationException("Invalid submission status.");
@@ -157,22 +163,36 @@ public class SubmissionAppService : ISubmissionAppService
         return enrollments.Any(x => x.ClassCourseId == classCourseId);
     }
 
-    private static SubmissionDto ToDto(Submission submission) => new()
+    private async Task<SubmissionDto> ToDtoAsync(Submission submission, CancellationToken cancellationToken = default)
     {
-        Id = submission.Id,
-        AssignmentId = submission.AssignmentId,
-        StudentId = submission.StudentId,
-        ContentText = submission.ContentText,
-        FileUrl = submission.FileUrl,
-        FileName = submission.FileName,
-        SubmittedAt = submission.SubmittedAt,
-        ResubmittedAt = submission.ResubmittedAt,
-        ResubmissionCount = submission.ResubmissionCount,
-        IsLate = submission.IsLate,
-        Status = submission.Status.ToString(),
-        Marks = submission.Marks,
-        Feedback = submission.Feedback,
-        GradedByTeacherId = submission.GradedByTeacherId,
-        GradedAt = submission.GradedAt
-    };
+        var assignment = await _assignmentRepository.GetByIdAsync(submission.AssignmentId, cancellationToken) ?? throw new NotFoundException("Assignment not found.");
+        var student = await _userRepository.GetByIdAsync(submission.StudentId, cancellationToken) ?? throw new NotFoundException("Student not found.");
+        var classCourse = await _classCourseRepository.GetByIdAsync(assignment.ClassCourseId, cancellationToken) ?? throw new NotFoundException("Class/course not found.");
+
+        var initials = string.Concat(student.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => x[0])).ToUpperInvariant();
+
+        return new SubmissionDto
+        {
+            Id = submission.Id,
+            AssignmentId = submission.AssignmentId,
+            StudentId = submission.StudentId,
+            ContentText = submission.ContentText,
+            FileUrl = submission.FileUrl,
+            FileName = submission.FileName,
+            SubmittedAt = submission.SubmittedAt,
+            ResubmittedAt = submission.ResubmittedAt,
+            ResubmissionCount = submission.ResubmissionCount,
+            IsLate = submission.IsLate,
+            Status = submission.Status.ToString(),
+            Marks = submission.Marks,
+            Feedback = submission.Feedback,
+            GradedByTeacherId = submission.GradedByTeacherId,
+            GradedAt = submission.GradedAt,
+            StudentName = student.FullName,
+            StudentInitials = initials,
+            AssignmentTitle = assignment.Title,
+            ClassCourseName = classCourse.Name,
+            ClassCourseSection = classCourse.Section
+        };
+    }
 }

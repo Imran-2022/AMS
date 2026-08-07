@@ -21,7 +21,7 @@ public class ClassesController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<ClassCourseDto>>> GetAll()
     {
         var currentUserId = Guid.Parse(User.Identity?.Name ?? Guid.Empty.ToString());
-        var currentUserRole = User.IsInRole("Admin") ? "Admin" : "Student";
+        var currentUserRole = User.IsInRole("Admin") ? "Admin" : User.IsInRole("Teacher") ? "Teacher" : "Student";
         var classes = await _classCourseAppService.GetAllAsync(currentUserId, currentUserRole);
         return Ok(classes);
     }
@@ -30,7 +30,7 @@ public class ClassesController : ControllerBase
     public async Task<ActionResult<ClassCourseDto>> GetById(Guid id)
     {
         var currentUserId = Guid.Parse(User.Identity?.Name ?? Guid.Empty.ToString());
-        var currentUserRole = User.IsInRole("Admin") ? "Admin" : "Student";
+        var currentUserRole = User.IsInRole("Admin") ? "Admin" : User.IsInRole("Teacher") ? "Teacher" : "Student";
         var classCourse = await _classCourseAppService.GetByIdAsync(id, currentUserId, currentUserRole);
         return classCourse is null ? NotFound() : Ok(classCourse);
     }
@@ -39,7 +39,7 @@ public class ClassesController : ControllerBase
     public async Task<ActionResult<ClassCourseDto>> Create([FromBody] CreateClassCourseDto input)
     {
         var currentUserId = Guid.Parse(User.Identity?.Name ?? Guid.Empty.ToString());
-        var currentUserRole = User.IsInRole("Admin") ? "Admin" : "Student";
+        var currentUserRole = User.IsInRole("Admin") ? "Admin" : User.IsInRole("Teacher") ? "Teacher" : "Student";
         var classCourse = await _classCourseAppService.CreateAsync(input, currentUserId, currentUserRole);
         return CreatedAtAction(nameof(GetById), new { id = classCourse.Id }, classCourse);
     }
@@ -48,7 +48,7 @@ public class ClassesController : ControllerBase
     public async Task<ActionResult<ClassCourseDto>> Update(Guid id, [FromBody] UpdateClassCourseDto input)
     {
         var currentUserId = Guid.Parse(User.Identity?.Name ?? Guid.Empty.ToString());
-        var currentUserRole = User.IsInRole("Admin") ? "Admin" : "Student";
+        var currentUserRole = User.IsInRole("Admin") ? "Admin" : User.IsInRole("Teacher") ? "Teacher" : "Student";
         var classCourse = await _classCourseAppService.UpdateAsync(id, input, currentUserId, currentUserRole);
         return Ok(classCourse);
     }
@@ -57,7 +57,7 @@ public class ClassesController : ControllerBase
     public async Task<ActionResult> Delete(Guid id)
     {
         var currentUserId = Guid.Parse(User.Identity?.Name ?? Guid.Empty.ToString());
-        var currentUserRole = User.IsInRole("Admin") ? "Admin" : "Student";
+        var currentUserRole = User.IsInRole("Admin") ? "Admin" : User.IsInRole("Teacher") ? "Teacher" : "Student";
         await _classCourseAppService.DeleteAsync(id, currentUserId, currentUserRole);
         return NoContent();
     }

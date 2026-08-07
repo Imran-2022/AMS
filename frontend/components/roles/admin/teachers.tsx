@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Modal, AddTeacherModal, type AddTeacherFormData } from '../../ui';
 import { AppShell } from '../../layout/AppShell';
 import { createUser, deleteUser, getUsers, updateUser } from '@/lib/api';
+import { getTeacherAssignments, type TeacherSubjectAssignmentDto } from '@/lib/api/teacherAssignments';
 
 type TeacherRow = {
   id: string;
@@ -67,6 +68,7 @@ export function AdminTeachersPage() {
   const [roleFilter] = useState('All subjects');
   const [search, setSearch] = useState('');
   const [teachers, setTeachers] = useState<TeacherRow[]>([]);
+  const [teacherAssignments, setTeacherAssignments] = useState<TeacherSubjectAssignmentDto[]>([]);
   const [actionMenuFor, setActionMenuFor] = useState<string | null>(null);
   const [pendingDeleteTeacher, setPendingDeleteTeacher] = useState<TeacherRow | null>(null);
   const [isTeacherModalOpen, setIsTeacherModalOpen] = useState(false);
@@ -79,9 +81,26 @@ export function AdminTeachersPage() {
 
   async function loadTeachers() {
     try {
-      const apiUsers = await getUsers();
+      const [apiUsers, apiAssignments] = await Promise.all([getUsers(), getTeacherAssignments()]);
       const teacherUsers = apiUsers.filter((user) => user.role === 'Teacher');
-      setTeachers(teacherUsers.map((user) => mapUserToTeacherRow(user)));
+      setTeacherAssignments(apiAssignments);
+      setTeachers(teacherUsers.map((user) => {
+        const classesForTeacher = new Set(
+          apiAssignments
+            .filter((assignment) => assignment.teacherId === user.id)
+            .map((assignment) => assignment.classCourseId)
+        );
+
+        return {
+          ...mapUserToTeacherRow(user),
+          classesCount: classesForTeacher.size,
+          subjects: Array.from(new Set(
+            apiAssignments
+              .filter((assignment) => assignment.teacherId === user.id)
+              .map((assignment) => assignment.subjectName)
+          )),
+        };
+      }));
       setMode('data');
     } catch (err) {
       console.error(err);

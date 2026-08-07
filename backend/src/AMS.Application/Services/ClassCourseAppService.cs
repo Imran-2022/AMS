@@ -9,24 +9,47 @@ namespace AMS.Application.Services;
 public class ClassCourseAppService : IClassCourseAppService
 {
     private readonly IClassCourseRepository _classCourseRepository;
+    private readonly ITeacherSubjectAssignmentRepository _teacherSubjectAssignmentRepository;
 
-    public ClassCourseAppService(IClassCourseRepository classCourseRepository)
+    public ClassCourseAppService(IClassCourseRepository classCourseRepository, ITeacherSubjectAssignmentRepository teacherSubjectAssignmentRepository)
     {
         _classCourseRepository = classCourseRepository;
+        _teacherSubjectAssignmentRepository = teacherSubjectAssignmentRepository;
     }
 
     public async Task<IReadOnlyList<ClassCourseDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
     {
-        if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can manage classes.");
-        var classes = await _classCourseRepository.GetAllAsync(cancellationToken);
-        return classes.Select(ToDto).ToList();
+        if (currentUserRole == nameof(UserRole.Admin))
+        {
+            var classes = await _classCourseRepository.GetAllAsync(cancellationToken);
+            return classes.Select(ToDto).ToList();
+        }
+
+        if (currentUserRole == nameof(UserRole.Teacher))
+        {
+            var assignments = await _teacherSubjectAssignmentRepository.GetByTeacherAsync(currentUserId, cancellationToken);
+            var classIds = assignments.Select(x => x.ClassCourseId).Distinct().ToHashSet();
+            var classes = await _classCourseRepository.GetAllAsync(cancellationToken);
+            return classes.Where(x => classIds.Contains(x.Id)).Select(ToDto).ToList();
+        }
+
+        throw new ForbiddenException("Only admins and teachers can view classes.");
     }
 
     public async Task<ClassCourseDto?> GetByIdAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
     {
-        if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can manage classes.");
         var entity = await _classCourseRepository.GetByIdAsync(id, cancellationToken);
-        return entity is null ? null : ToDto(entity);
+        if (entity is null) return null;
+
+        if (currentUserRole == nameof(UserRole.Admin)) return ToDto(entity);
+        if (currentUserRole == nameof(UserRole.Teacher))
+        {
+            var assignments = await _teacherSubjectAssignmentRepository.GetByTeacherAsync(currentUserId, cancellationToken);
+            if (!assignments.Any(x => x.ClassCourseId == id)) throw new ForbiddenException("You are not assigned to this class.");
+            return ToDto(entity);
+        }
+
+        throw new ForbiddenException("Only admins and teachers can view classes.");
     }
 
     public async Task<ClassCourseDto> CreateAsync(CreateClassCourseDto input, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)

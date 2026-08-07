@@ -27,14 +27,24 @@ public class TeacherSubjectAssignmentAppService : ITeacherSubjectAssignmentAppSe
 
     public async Task<IReadOnlyList<TeacherSubjectAssignmentDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
     {
-        if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can manage teacher assignments.");
+        var assignments = currentUserRole switch
+        {
+            nameof(UserRole.Admin) => await _assignmentRepository.GetAllAsync(cancellationToken),
+            nameof(UserRole.Teacher) => await _assignmentRepository.GetByTeacherAsync(currentUserId, cancellationToken),
+            _ => throw new ForbiddenException("Only admins and teachers can view teacher assignments.")
+        };
 
-        var assignments = await _assignmentRepository.GetAllAsync(cancellationToken);
         var result = new List<TeacherSubjectAssignmentDto>();
+        var teacherCache = new Dictionary<Guid, AppUser>();
 
         foreach (var assignment in assignments)
         {
-            var teacher = await _userRepository.GetByIdAsync(assignment.TeacherId, cancellationToken) ?? throw new NotFoundException("Teacher not found.");
+            if (!teacherCache.TryGetValue(assignment.TeacherId, out var teacher))
+            {
+                teacher = await _userRepository.GetByIdAsync(assignment.TeacherId, cancellationToken) ?? throw new NotFoundException("Teacher not found.");
+                teacherCache[assignment.TeacherId] = teacher;
+            }
+
             var subject = await _subjectRepository.GetByIdAsync(assignment.SubjectId, cancellationToken) ?? throw new NotFoundException("Subject not found.");
             var classCourse = await _classCourseRepository.GetByIdAsync(assignment.ClassCourseId, cancellationToken) ?? throw new NotFoundException("Class/course not found.");
 

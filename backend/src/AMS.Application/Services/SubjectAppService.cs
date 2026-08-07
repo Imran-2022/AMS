@@ -9,24 +9,47 @@ namespace AMS.Application.Services;
 public class SubjectAppService : ISubjectAppService
 {
     private readonly ISubjectRepository _subjectRepository;
+    private readonly ITeacherSubjectAssignmentRepository _teacherSubjectAssignmentRepository;
 
-    public SubjectAppService(ISubjectRepository subjectRepository)
+    public SubjectAppService(ISubjectRepository subjectRepository, ITeacherSubjectAssignmentRepository teacherSubjectAssignmentRepository)
     {
         _subjectRepository = subjectRepository;
+        _teacherSubjectAssignmentRepository = teacherSubjectAssignmentRepository;
     }
 
     public async Task<IReadOnlyList<SubjectDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
     {
-        if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can manage subjects.");
-        var subjects = await _subjectRepository.GetAllAsync(cancellationToken);
-        return subjects.Select(ToDto).ToList();
+        if (currentUserRole == nameof(UserRole.Admin))
+        {
+            var subjects = await _subjectRepository.GetAllAsync(cancellationToken);
+            return subjects.Select(ToDto).ToList();
+        }
+
+        if (currentUserRole == nameof(UserRole.Teacher))
+        {
+            var assigned = await _teacherSubjectAssignmentRepository.GetByTeacherAsync(currentUserId, cancellationToken);
+            var subjectIds = assigned.Select(x => x.SubjectId).Distinct().ToHashSet();
+            var subjects = await _subjectRepository.GetAllAsync(cancellationToken);
+            return subjects.Where(x => subjectIds.Contains(x.Id)).Select(ToDto).ToList();
+        }
+
+        throw new ForbiddenException("Only admins and teachers can view subjects.");
     }
 
     public async Task<SubjectDto?> GetByIdAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
     {
-        if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can manage subjects.");
         var entity = await _subjectRepository.GetByIdAsync(id, cancellationToken);
-        return entity is null ? null : ToDto(entity);
+        if (entity is null) return null;
+
+        if (currentUserRole == nameof(UserRole.Admin)) return ToDto(entity);
+        if (currentUserRole == nameof(UserRole.Teacher))
+        {
+            var assigned = await _teacherSubjectAssignmentRepository.GetByTeacherAsync(currentUserId, cancellationToken);
+            if (!assigned.Any(x => x.SubjectId == id)) throw new ForbiddenException("You are not assigned to this subject.");
+            return ToDto(entity);
+        }
+
+        throw new ForbiddenException("Only admins and teachers can view subjects.");
     }
 
     public async Task<SubjectDto> CreateAsync(CreateSubjectDto input, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)

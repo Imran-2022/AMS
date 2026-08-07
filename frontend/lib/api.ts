@@ -63,7 +63,10 @@ export type AssignmentDto = {
   attachmentUrl?: string;
   attachmentName?: string;
   classCourseId: string;
+  classCourseName: string;
+  classCourseSection: string;
   subjectId: string;
+  subjectName: string;
   teacherId: string;
   deadline: string;
   maxMarks: number;
@@ -79,6 +82,7 @@ export type SubmissionDto = {
   studentId: string;
   contentText: string;
   fileUrl?: string;
+  fileName?: string;
   submittedAt: string;
   isLate: boolean;
   status: string;
@@ -86,6 +90,11 @@ export type SubmissionDto = {
   feedback?: string;
   gradedByTeacherId?: string;
   gradedAt?: string;
+  studentName: string;
+  studentInitials: string;
+  assignmentTitle: string;
+  classCourseName: string;
+  classCourseSection: string;
 };
 
 export type UserDto = {

@@ -16,6 +16,9 @@ public class AssignmentDto
     public bool AllowLateSubmission { get; set; }
     public bool AllowResubmission { get; set; }
     public DateTime CreatedAt { get; set; }
+    public string ClassCourseName { get; set; } = string.Empty;
+    public string ClassCourseSection { get; set; } = string.Empty;
+    public string SubjectName { get; set; } = string.Empty;
 }
 
 public class CreateAssignmentDto
