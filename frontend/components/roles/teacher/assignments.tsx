@@ -244,7 +244,20 @@ export function TeacherAssignmentsPage() {
       closeModal();
     } catch (error) {
       console.error(error);
-      setLoadError('Unable to save assignment. Please try again.');
+      try {
+        const msg = error instanceof Error ? error.message : String(error);
+        const parsed = (() => {
+          try {
+            const obj = JSON.parse(msg);
+            return obj?.error ?? msg;
+          } catch {
+            return msg;
+          }
+        })();
+        setLoadError(parsed || 'Unable to save assignment. Please try again.');
+      } catch {
+        setLoadError('Unable to save assignment. Please try again.');
+      }
     }
   };
 
@@ -255,7 +268,20 @@ export function TeacherAssignmentsPage() {
       setAssignments((current) => current.map((item) => (item.id === publishedAssignment.id ? publishedAssignment : item)));
     } catch (error) {
       console.error(error);
-      setLoadError('Unable to publish assignment.');
+      try {
+        const msg = error instanceof Error ? error.message : String(error);
+        const parsed = (() => {
+          try {
+            const obj = JSON.parse(msg);
+            return obj?.error ?? msg;
+          } catch {
+            return msg;
+          }
+        })();
+        setLoadError(parsed || 'Unable to publish assignment.');
+      } catch {
+        setLoadError('Unable to publish assignment.');
+      }
     } finally {
       setOpenMenuId(null);
     }
@@ -279,7 +305,20 @@ export function TeacherAssignmentsPage() {
       setAssignments((current) => [duplicateAssignment, ...current]);
     } catch (error) {
       console.error(error);
-      setLoadError('Unable to duplicate assignment.');
+      try {
+        const msg = error instanceof Error ? error.message : String(error);
+        const parsed = (() => {
+          try {
+            const obj = JSON.parse(msg);
+            return obj?.error ?? msg;
+          } catch {
+            return msg;
+          }
+        })();
+        setLoadError(parsed || 'Unable to duplicate assignment.');
+      } catch {
+        setLoadError('Unable to duplicate assignment.');
+      }
     } finally {
       setOpenMenuId(null);
     }

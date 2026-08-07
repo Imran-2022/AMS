@@ -2,6 +2,7 @@ using AMS.Application.Contracts;
 using AMS.Application.Contracts.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using AMS.HttpApi.Extensions;
 
 namespace AMS.HttpApi.Controllers;
 
@@ -20,7 +21,7 @@ public class UsersController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<UserDto>>> GetAll()
     {
-        var currentUserId = Guid.Parse(User.Identity?.Name ?? Guid.Empty.ToString());
+        var currentUserId = this.GetCurrentUserId();
         var currentUserRole = User.IsInRole("Admin") ? "Admin" : "Student";
         var users = await _userAppService.GetAllAsync(currentUserId, currentUserRole);
         return Ok(users);
@@ -29,7 +30,7 @@ public class UsersController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<UserDto>> GetById(Guid id)
     {
-        var currentUserId = Guid.Parse(User.Identity?.Name ?? Guid.Empty.ToString());
+        var currentUserId = this.GetCurrentUserId();
         var currentUserRole = User.IsInRole("Admin") ? "Admin" : "Student";
         var user = await _userAppService.GetByIdAsync(id, currentUserId, currentUserRole);
         return user is null ? NotFound() : Ok(user);
@@ -38,7 +39,7 @@ public class UsersController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<UserDto>> Create([FromBody] CreateUserDto input)
     {
-        var currentUserId = Guid.Parse(User.Identity?.Name ?? Guid.Empty.ToString());
+        var currentUserId = this.GetCurrentUserId();
         var currentUserRole = User.IsInRole("Admin") ? "Admin" : "Student";
         var user = await _userAppService.CreateAsync(input, currentUserId, currentUserRole);
         return CreatedAtAction(nameof(GetById), new { id = user.Id }, user);
@@ -47,7 +48,7 @@ public class UsersController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<UserDto>> Update(Guid id, [FromBody] UpdateUserDto input)
     {
-        var currentUserId = Guid.Parse(User.Identity?.Name ?? Guid.Empty.ToString());
+        var currentUserId = this.GetCurrentUserId();
         var currentUserRole = User.IsInRole("Admin") ? "Admin" : "Student";
         var user = await _userAppService.UpdateAsync(id, input, currentUserId, currentUserRole);
         return Ok(user);
@@ -56,7 +57,7 @@ public class UsersController : ControllerBase
     [HttpPatch("{id:guid}/toggle-status")]
     public async Task<ActionResult<UserDto>> ToggleStatus(Guid id)
     {
-        var currentUserId = Guid.Parse(User.Identity?.Name ?? Guid.Empty.ToString());
+        var currentUserId = this.GetCurrentUserId();
         var currentUserRole = User.IsInRole("Admin") ? "Admin" : "Student";
         var user = await _userAppService.ToggleActiveAsync(id, currentUserId, currentUserRole);
         return Ok(user);
@@ -65,7 +66,7 @@ public class UsersController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<ActionResult> Delete(Guid id)
     {
-        var currentUserId = Guid.Parse(User.Identity?.Name ?? Guid.Empty.ToString());
+        var currentUserId = this.GetCurrentUserId();
         var currentUserRole = User.IsInRole("Admin") ? "Admin" : "Student";
         await _userAppService.DeleteAsync(id, currentUserId, currentUserRole);
         return NoContent();

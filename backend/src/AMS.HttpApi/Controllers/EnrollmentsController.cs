@@ -2,6 +2,7 @@ using AMS.Application.Contracts;
 using AMS.Application.Contracts.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using AMS.HttpApi.Extensions;
 
 namespace AMS.HttpApi.Controllers;
 
@@ -20,7 +21,7 @@ public class EnrollmentsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<StudentEnrollmentDto>>> GetAll()
     {
-        var currentUserId = Guid.Parse(User.Identity?.Name ?? Guid.Empty.ToString());
+        var currentUserId = this.GetCurrentUserId();
         var currentUserRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? string.Empty;
         var items = await _enrollmentAppService.GetAllAsync(currentUserId, currentUserRole);
         return Ok(items);
@@ -29,7 +30,7 @@ public class EnrollmentsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<StudentEnrollmentDto>> Create([FromBody] CreateStudentEnrollmentDto input)
     {
-        var currentUserId = Guid.Parse(User.Identity?.Name ?? Guid.Empty.ToString());
+        var currentUserId = this.GetCurrentUserId();
         var currentUserRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? string.Empty;
         var item = await _enrollmentAppService.CreateAsync(input, currentUserId, currentUserRole);
         return CreatedAtAction(nameof(GetAll), item);
@@ -38,7 +39,7 @@ public class EnrollmentsController : ControllerBase
     [HttpDelete]
     public async Task<ActionResult> Delete([FromQuery] Guid studentId, [FromQuery] Guid classCourseId)
     {
-        var currentUserId = Guid.Parse(User.Identity?.Name ?? Guid.Empty.ToString());
+        var currentUserId = this.GetCurrentUserId();
         var currentUserRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? string.Empty;
         await _enrollmentAppService.DeleteAsync(studentId, classCourseId, currentUserId, currentUserRole);
         return NoContent();

@@ -75,7 +75,16 @@ public class AssignmentAppService : IAssignmentAppService
             teacherId = teacher.Id;
         }
 
-        var assignment = new Assignment(Guid.NewGuid(), input.Title, input.Description, input.ClassCourseId, input.SubjectId, teacherId, input.Deadline, input.MaxMarks, AssignmentStatus.Draft, input.AllowLateSubmission, input.AllowResubmission, DateTime.UtcNow, input.AttachmentUrl, input.AttachmentName);
+        DateTime NormalizeToUtc(DateTime dt)
+        {
+            if (dt.Kind == DateTimeKind.Utc) return dt;
+            if (dt.Kind == DateTimeKind.Unspecified) return DateTime.SpecifyKind(dt, DateTimeKind.Local).ToUniversalTime();
+            return dt.ToUniversalTime();
+        }
+
+        var deadlineUtc = NormalizeToUtc(input.Deadline);
+
+        var assignment = new Assignment(Guid.NewGuid(), input.Title, input.Description, input.ClassCourseId, input.SubjectId, teacherId, deadlineUtc, input.MaxMarks, AssignmentStatus.Draft, input.AllowLateSubmission, input.AllowResubmission, DateTime.UtcNow, input.AttachmentUrl, input.AttachmentName);
         await _assignmentRepository.AddAsync(assignment, cancellationToken);
         return await ToDtoAsync(assignment, cancellationToken).ConfigureAwait(false);
     }
@@ -85,6 +94,17 @@ public class AssignmentAppService : IAssignmentAppService
         var assignment = await _assignmentRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Assignment not found.");
         EnsureCanManage(assignment, currentUserId, currentUserRole);
 
+        DateTime? NormalizeToUtcNullable(DateTime? dt)
+        {
+            if (!dt.HasValue) return null;
+            var v = dt.Value;
+            if (v.Kind == DateTimeKind.Utc) return v;
+            if (v.Kind == DateTimeKind.Unspecified) return DateTime.SpecifyKind(v, DateTimeKind.Local).ToUniversalTime();
+            return v.ToUniversalTime();
+        }
+
+        var newDeadline = NormalizeToUtcNullable(input.Deadline) ?? assignment.Deadline;
+
         assignment = new Assignment(
             assignment.Id,
             input.Title ?? assignment.Title,
@@ -92,7 +112,7 @@ public class AssignmentAppService : IAssignmentAppService
             input.ClassCourseId ?? assignment.ClassCourseId,
             input.SubjectId ?? assignment.SubjectId,
             assignment.TeacherId,
-            input.Deadline ?? assignment.Deadline,
+            newDeadline,
             input.MaxMarks ?? assignment.MaxMarks,
             assignment.Status,
             input.AllowLateSubmission ?? assignment.AllowLateSubmission,
