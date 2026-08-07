@@ -20,6 +20,8 @@ public class AssignmentDto
     public string ClassCourseSection { get; set; } = string.Empty;
     public string SubjectName { get; set; } = string.Empty;
     public string TeacherName { get; set; } = string.Empty;
+    public int SubmittedCount { get; set; }
+    public int TotalStudents { get; set; }
 }
 
 public class CreateAssignmentDto

@@ -10,4 +10,5 @@ public interface IAssignmentAppService
     Task<AssignmentDto> UpdateAsync(Guid id, UpdateAssignmentDto input, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default);
     Task DeleteAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default);
     Task<AssignmentDto> PublishAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default);
+    Task<AssignmentDto> UnpublishAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default);
 }

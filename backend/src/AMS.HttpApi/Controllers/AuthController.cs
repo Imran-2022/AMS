@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
+using System.Collections.Concurrent;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -15,6 +16,8 @@ namespace AMS.HttpApi.Controllers;
 [Route("api/auth")]
 public class AuthController : ControllerBase
 {
+    private static readonly ConcurrentDictionary<string, UserDto> RefreshTokenStore = new();
+
     private readonly IAuthAppService _authAppService;
     private readonly IConfiguration _configuration;
 
@@ -57,6 +60,28 @@ public class AuthController : ControllerBase
             signingCredentials: credentials);
 
         var refreshToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        RefreshTokenStore[refreshToken] = new UserDto
+        {
+            Id = user.Id,
+            Email = user.Email,
+            FullName = user.FullName,
+            Role = user.Role,
+            IsActive = user.IsActive,
+            AvatarUrl = user.AvatarUrl,
+            PhoneNumber = user.PhoneNumber,
+            EmployeeId = user.EmployeeId,
+            SubjectSpecialization = user.SubjectSpecialization,
+            Qualification = user.Qualification,
+            GuardianName = user.GuardianName,
+            GuardianEmail = user.GuardianEmail,
+            Address = user.Address,
+            StudentId = user.StudentId,
+            Gender = user.Gender,
+            DateOfBirth = user.DateOfBirth,
+            AdmissionDate = user.AdmissionDate,
+            JoiningDate = user.JoiningDate,
+            ParentMobile = user.ParentMobile
+        };
 
         return Ok(new AuthResponseDto
         {
@@ -73,6 +98,9 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.RefreshToken))
             return Unauthorized();
 
+        if (!RefreshTokenStore.TryGetValue(request.RefreshToken, out var storedUser))
+            return Unauthorized();
+
         var jwtKey = _configuration["Jwt:Key"];
         var jwtIssuer = _configuration["Jwt:Issuer"];
         var jwtAudience = _configuration["Jwt:Audience"];
@@ -80,9 +108,11 @@ public class AuthController : ControllerBase
 
         var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.Name, "refresh-user"),
-            new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
-            new Claim(ClaimTypes.Role, "User")
+            new Claim(ClaimTypes.Name, storedUser.Id.ToString()),
+            new Claim(ClaimTypes.NameIdentifier, storedUser.Id.ToString()),
+            new Claim(ClaimTypes.Email, storedUser.Email),
+            new Claim(ClaimTypes.Role, storedUser.Role),
+            new Claim("fullName", storedUser.FullName)
         };
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey ?? string.Empty));
@@ -99,7 +129,7 @@ public class AuthController : ControllerBase
         {
             Token = new JwtSecurityTokenHandler().WriteToken(accessToken),
             RefreshToken = request.RefreshToken,
-            User = new UserDto { Id = Guid.NewGuid(), FullName = "Refreshed User", Email = "refresh@ams.local", Role = "User" }
+            User = storedUser
         });
     }
 

@@ -11,6 +11,7 @@ public class AssignmentAppService : IAssignmentAppService
     private readonly IAssignmentRepository _assignmentRepository;
     private readonly ITeacherSubjectAssignmentRepository _teacherSubjectAssignmentRepository;
     private readonly IStudentEnrollmentRepository _studentEnrollmentRepository;
+    private readonly ISubmissionRepository _submissionRepository;
     private readonly IUserRepository _userRepository;
     private readonly IClassCourseRepository _classCourseRepository;
     private readonly ISubjectRepository _subjectRepository;
@@ -19,6 +20,7 @@ public class AssignmentAppService : IAssignmentAppService
         IAssignmentRepository assignmentRepository,
         ITeacherSubjectAssignmentRepository teacherSubjectAssignmentRepository,
         IStudentEnrollmentRepository studentEnrollmentRepository,
+        ISubmissionRepository submissionRepository,
         IUserRepository userRepository,
         IClassCourseRepository classCourseRepository,
         ISubjectRepository subjectRepository)
@@ -26,6 +28,7 @@ public class AssignmentAppService : IAssignmentAppService
         _assignmentRepository = assignmentRepository;
         _teacherSubjectAssignmentRepository = teacherSubjectAssignmentRepository;
         _studentEnrollmentRepository = studentEnrollmentRepository;
+        _submissionRepository = submissionRepository;
         _userRepository = userRepository;
         _classCourseRepository = classCourseRepository;
         _subjectRepository = subjectRepository;
@@ -34,17 +37,36 @@ public class AssignmentAppService : IAssignmentAppService
     public async Task<IReadOnlyList<AssignmentDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
     {
         var assignments = await _assignmentRepository.GetAllAsync(cancellationToken);
-        if (currentUserRole == nameof(UserRole.Admin)) return (await Task.WhenAll(assignments.Select(x => ToDtoAsync(x, cancellationToken))).ConfigureAwait(false)).ToList();
+        if (currentUserRole == nameof(UserRole.Admin))
+        {
+            var results = new List<AssignmentDto>(assignments.Count);
+            foreach (var assignment in assignments)
+            {
+                results.Add(await ToDtoAsync(assignment, cancellationToken).ConfigureAwait(false));
+            }
+            return results;
+        }
+
         if (currentUserRole == nameof(UserRole.Teacher))
         {
             assignments = assignments.Where(x => x.TeacherId == currentUserId).ToList();
-            return (await Task.WhenAll(assignments.Select(x => ToDtoAsync(x, cancellationToken))).ConfigureAwait(false)).ToList();
+            var results = new List<AssignmentDto>(assignments.Count);
+            foreach (var assignment in assignments)
+            {
+                results.Add(await ToDtoAsync(assignment, cancellationToken).ConfigureAwait(false));
+            }
+            return results;
         }
 
         var enrolledClassIds = await _studentEnrollmentRepository.GetByStudentAsync(currentUserId, cancellationToken);
         var enrolledIds = enrolledClassIds.Select(x => x.ClassCourseId).ToHashSet();
         assignments = assignments.Where(x => x.Status == AssignmentStatus.Published && enrolledIds.Contains(x.ClassCourseId)).ToList();
-        return (await Task.WhenAll(assignments.Select(x => ToDtoAsync(x, cancellationToken))).ConfigureAwait(false)).ToList();
+        var studentResults = new List<AssignmentDto>(assignments.Count);
+        foreach (var assignment in assignments)
+        {
+            studentResults.Add(await ToDtoAsync(assignment, cancellationToken).ConfigureAwait(false));
+        }
+        return studentResults;
     }
 
     public async Task<AssignmentDto?> GetByIdAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
@@ -141,6 +163,15 @@ public class AssignmentAppService : IAssignmentAppService
         return await ToDtoAsync(assignment, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<AssignmentDto> UnpublishAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
+    {
+        var assignment = await _assignmentRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Assignment not found.");
+        EnsureCanManage(assignment, currentUserId, currentUserRole);
+        assignment.Unpublish();
+        await _assignmentRepository.UpdateAsync(assignment, cancellationToken);
+        return await ToDtoAsync(assignment, cancellationToken).ConfigureAwait(false);
+    }
+
     private void EnsureCanManage(Assignment assignment, Guid currentUserId, string currentUserRole)
     {
         if (currentUserRole == nameof(UserRole.Admin)) return;
@@ -158,6 +189,9 @@ public class AssignmentAppService : IAssignmentAppService
     {
         var classCourse = await _classCourseRepository.GetByIdAsync(assignment.ClassCourseId, cancellationToken) ?? throw new NotFoundException("Class/course not found.");
         var subject = await _subjectRepository.GetByIdAsync(assignment.SubjectId, cancellationToken) ?? throw new NotFoundException("Subject not found.");
+
+        var submissions = await _submissionRepository.GetByAssignmentAsync(assignment.Id, cancellationToken).ConfigureAwait(false);
+        var enrollments = await _studentEnrollmentRepository.GetByClassCourseAsync(assignment.ClassCourseId, cancellationToken).ConfigureAwait(false);
 
         return new AssignmentDto
         {
@@ -177,7 +211,9 @@ public class AssignmentAppService : IAssignmentAppService
             CreatedAt = assignment.CreatedAt,
             ClassCourseName = classCourse.Name,
             ClassCourseSection = classCourse.Section,
-            SubjectName = subject.Name
+            SubjectName = subject.Name,
+            SubmittedCount = submissions.Count,
+            TotalStudents = enrollments.Count
         };
     }
 }

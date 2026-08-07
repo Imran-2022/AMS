@@ -45,7 +45,12 @@ public class SubmissionAppService : ISubmissionAppService
             submissions = await _submissionRepository.GetByStudentAsync(currentUserId, cancellationToken);
         }
 
-        return (await Task.WhenAll(submissions.Select(x => ToDtoAsync(x, cancellationToken))).ConfigureAwait(false)).ToList();
+        var results = new List<SubmissionDto>(submissions.Count);
+        foreach (var submission in submissions)
+        {
+            results.Add(await ToDtoAsync(submission, cancellationToken).ConfigureAwait(false));
+        }
+        return results;
     }
 
     public async Task<IReadOnlyList<SubmissionDto>> GetMineAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
@@ -56,7 +61,12 @@ public class SubmissionAppService : ISubmissionAppService
         }
 
         var submissions = await _submissionRepository.GetByStudentAsync(currentUserId, cancellationToken);
-        return (await Task.WhenAll(submissions.Select(x => ToDtoAsync(x, cancellationToken))).ConfigureAwait(false)).ToList();
+        var results = new List<SubmissionDto>(submissions.Count);
+        foreach (var submission in submissions)
+        {
+            results.Add(await ToDtoAsync(submission, cancellationToken).ConfigureAwait(false));
+        }
+        return results;
     }
 
     public async Task<SubmissionDto?> GetByIdAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)

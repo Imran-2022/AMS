@@ -93,7 +93,7 @@ export function TeacherClassesPage() {
       <AppShell role="Teacher" breadcrumb="Teacher / My Classes">
         <div className="space-y-6">
           <div>
-            <p className="text-xs font-bold tracking-[0.24em] text-brand-600">TEACHER PORTAL</p>
+            <p className="text-xs font-bold  text-brand-600">TEACHER PORTAL</p>
             <h1 className="mt-0.5 text-3xl font-extrabold text-slate-800">My Classes</h1>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-500">Loading your classes…</div>
@@ -107,7 +107,7 @@ export function TeacherClassesPage() {
       <AppShell role="Teacher" breadcrumb="Teacher / My Classes">
         <div className="space-y-6">
           <div>
-            <p className="text-xs font-bold tracking-[0.24em] text-brand-600">TEACHER PORTAL</p>
+            <p className="text-xs font-bold  text-brand-600">TEACHER PORTAL</p>
             <h1 className="mt-0.5 text-3xl font-extrabold text-slate-800">My Classes</h1>
           </div>
           <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-rose-700">{error}</div>
@@ -120,14 +120,14 @@ export function TeacherClassesPage() {
     <AppShell role="Teacher" breadcrumb="Teacher / My Classes">
       <div className="space-y-6">
         <div>
-          <p className="text-xs font-bold tracking-[0.24em] text-brand-600">TEACHER PORTAL</p>
+          <p className="text-xs font-bold  text-brand-600">TEACHER PORTAL</p>
           <h1 className="mt-0.5 text-3xl font-extrabold text-slate-800">My Classes</h1>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-5">
             <div className="mb-4 flex items-center justify-between">
-              <p className="text-[11px] font-bold tracking-[0.24em] text-slate-400">CLASSES</p>
+              <p className="text-[11px] font-bold  text-slate-400">CLASSES</p>
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
               </div>
@@ -137,7 +137,7 @@ export function TeacherClassesPage() {
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5">
             <div className="mb-4 flex items-center justify-between">
-              <p className="text-[11px] font-bold tracking-[0.24em] text-slate-400">SUBJECTS</p>
+              <p className="text-[11px] font-bold  text-slate-400">SUBJECTS</p>
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-500">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
               </div>
@@ -147,7 +147,7 @@ export function TeacherClassesPage() {
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5">
             <div className="mb-4 flex items-center justify-between">
-              <p className="text-[11px] font-bold tracking-[0.24em] text-slate-400">ACTIVE ASSIGNMENTS</p>
+              <p className="text-[11px] font-bold  text-slate-400">ACTIVE ASSIGNMENTS</p>
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-500">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
               </div>
@@ -157,7 +157,7 @@ export function TeacherClassesPage() {
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5">
             <div className="mb-4 flex items-center justify-between">
-              <p className="text-[11px] font-bold tracking-[0.24em] text-slate-400">DRAFT ASSIGNMENTS</p>
+              <p className="text-[11px] font-bold  text-slate-400">DRAFT ASSIGNMENTS</p>
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-500">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
               </div>
@@ -192,11 +192,11 @@ export function TeacherClassesPage() {
 
                 <div className="mt-6 grid grid-cols-2 gap-3 text-sm text-slate-500">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Class</p>
+                    <p className="text-xs uppercase  text-slate-400">Class</p>
                     <p className="mt-1 text-slate-700">{classCourse.name}</p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Section</p>
+                    <p className="text-xs uppercase  text-slate-400">Section</p>
                     <p className="mt-1 text-slate-700">{classCourse.section}</p>
                   </div>
                 </div>
@@ -225,7 +225,7 @@ export function TeacherClassesPage() {
               <div className="space-y-5 p-7">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="rounded-2xl bg-slate-50 p-5">
-                    <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Subjects</p>
+                    <p className="text-xs uppercase  text-slate-400">Subjects</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {selectedClass.subjects.length ? selectedClass.subjects.map((subject) => (
                         <span key={subject} className="rounded-full bg-white px-3 py-1 text-sm font-medium text-slate-700 shadow-sm">{subject}</span>
@@ -233,7 +233,7 @@ export function TeacherClassesPage() {
                     </div>
                   </div>
                   <div className="rounded-2xl bg-slate-50 p-5">
-                    <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Assignments</p>
+                    <p className="text-xs uppercase  text-slate-400">Assignments</p>
                     <p className="mt-3 text-2xl font-extrabold text-slate-800">{selectedClass.assignmentCount}</p>
                     <p className="text-sm text-slate-500 mt-1">Total assignments for this class</p>
                   </div>

@@ -1,4 +1,4 @@
-import { clearStoredAuth, getStoredRefreshToken, getStoredToken, setStoredRefreshToken, setStoredToken } from './auth';
+import { clearStoredAuth, getStoredRefreshToken, getStoredToken, setStoredRefreshToken, setStoredToken, setStoredUser } from './auth';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -75,6 +75,8 @@ export type AssignmentDto = {
   allowLateSubmission: boolean;
   allowResubmission: boolean;
   createdAt: string;
+  submittedCount?: number;
+  totalStudents?: number;
 };
 
 export type SubmissionDto = {
@@ -299,6 +301,11 @@ async function refreshSession() {
     setStoredRefreshToken(refreshedRefreshToken);
   }
 
+  const refreshedUser = data.user ?? data.User;
+  if (refreshedUser) {
+    setStoredUser(refreshedUser as UserDto);
+  }
+
   return true;
 }
 
@@ -308,6 +315,10 @@ export async function getCurrentUser() {
 
 export async function getAssignments() {
   return request<AssignmentDto[]>(`/api/assignments`);
+}
+
+export async function getAssignment(id: string) {
+  return request<AssignmentDto>(`/api/assignments/${id}`);
 }
 
 export async function getSubmissions() {
@@ -418,6 +429,12 @@ export async function deleteAssignment(id: string) {
 
 export async function publishAssignment(id: string) {
   return request<AssignmentDto>(`/api/assignments/${id}/publish`, {
+    method: 'PATCH'
+  });
+}
+
+export async function unpublishAssignment(id: string) {
+  return request<AssignmentDto>(`/api/assignments/${id}/unpublish`, {
     method: 'PATCH'
   });
 }

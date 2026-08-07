@@ -83,4 +83,13 @@ public class AssignmentsController : ControllerBase
         var assignment = await _assignmentAppService.PublishAsync(id, currentUserId, currentUserRole);
         return Ok(assignment);
     }
+
+    [HttpPatch("{id:guid}/unpublish")]
+    public async Task<ActionResult<AssignmentDto>> Unpublish(Guid id)
+    {
+        var currentUserId = this.GetCurrentUserId();
+        var currentUserRole = User.IsInRole("Admin") ? "Admin" : User.IsInRole("Teacher") ? "Teacher" : "Student";
+        var assignment = await _assignmentAppService.UnpublishAsync(id, currentUserId, currentUserRole);
+        return Ok(assignment);
+    }
 }

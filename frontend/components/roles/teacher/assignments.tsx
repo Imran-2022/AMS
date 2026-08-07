@@ -1,10 +1,11 @@
 "use client";
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BookOpen, ClipboardList, Copy, FileText, Layers, Pencil, Plus, Search, Send, Trash2, Eye } from 'lucide-react';
 import { AppShell } from '../../layout/AppShell';
 import { Button, FileUpload } from '../../ui';
-import { getAssignments, getClassCourses, getSubjects, createAssignment, updateAssignment, deleteAssignment, publishAssignment } from '@/lib/api';
+import { getAssignments, getClassCourses, getSubjects, createAssignment, updateAssignment, deleteAssignment, publishAssignment, unpublishAssignment } from '@/lib/api';
 import type { AssignmentDto, ClassCourseDto, SubjectDto, CreateAssignmentDto, UpdateAssignmentDto } from '@/lib/api';
 
 type AssignmentStatus = 'Published' | 'Draft';
@@ -42,7 +43,7 @@ function StatCard({ label, value, sub, icon }: { label: string; value: string | 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5">
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-[11px] font-bold tracking-[0.24em] text-slate-400">{label}</p>
+        <p className="text-[11px] font-bold  text-slate-400">{label}</p>
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-700">{icon}</div>
       </div>
       <p className="text-2xl font-extrabold text-slate-900">{value}</p>
@@ -287,6 +288,32 @@ export function TeacherAssignmentsPage() {
     }
   };
 
+  const handleUnpublish = async (assignment: AssignmentDto) => {
+    try {
+      setLoadError(null);
+      const unpublishedAssignment = await unpublishAssignment(assignment.id);
+      setAssignments((current) => current.map((item) => (item.id === unpublishedAssignment.id ? unpublishedAssignment : item)));
+    } catch (error) {
+      console.error(error);
+      try {
+        const msg = error instanceof Error ? error.message : String(error);
+        const parsed = (() => {
+          try {
+            const obj = JSON.parse(msg);
+            return obj?.error ?? msg;
+          } catch {
+            return msg;
+          }
+        })();
+        setLoadError(parsed || 'Unable to unpublish assignment.');
+      } catch {
+        setLoadError('Unable to unpublish assignment.');
+      }
+    } finally {
+      setOpenMenuId(null);
+    }
+  };
+
   const handleDuplicate = async (assignment: AssignmentDto) => {
     try {
       setLoadError(null);
@@ -371,7 +398,7 @@ export function TeacherAssignmentsPage() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-brand-600">Teacher portal</p>
+            <p className="text-xs font-bold uppercase  text-brand-600">Teacher portal</p>
             <h1 className="mt-1 text-3xl font-extrabold text-slate-900">My Assignments</h1>
             <p className="mt-1 text-sm text-slate-500">Create, publish, edit, and track every assignment in one place.</p>
           </div>
@@ -454,19 +481,31 @@ export function TeacherAssignmentsPage() {
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                   <div className="flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-base font-bold text-slate-900">{assignment.title}</p>
+                      <Link href={`/roles/teacher/assignments/${assignment.id}`} className="text-base font-bold text-slate-900 hover:text-brand-600 hover:underline">
+                        {assignment.title}
+                      </Link>
                       <span className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[11px] font-bold ${assignment.status === 'Published' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
                         <span className={`h-2 w-2 rounded-full ${assignment.status === 'Published' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                         {assignment.status}
                       </span>
                     </div>
-                    <p className="mt-1 text-xs font-medium uppercase tracking-[0.22em] text-slate-400">{assignment.classCourseName} — {assignment.classCourseSection} · {assignment.subjectName} · Max marks: {assignment.maxMarks}</p>
+                    <p className="mt-1 text-xs font-medium uppercase  text-slate-400">{assignment.classCourseName} — {assignment.classCourseSection} · {assignment.subjectName} · Max marks: {assignment.maxMarks}</p>
                     <p className="mt-3 text-sm text-slate-600">{assignment.description}</p>
                     <div className="mt-4 flex flex-wrap items-center gap-2">
                       <span className="rounded-lg bg-slate-50 px-2.5 py-1 text-[11px] font-mono text-slate-500">Due: {new Date(assignment.deadline).toLocaleString()}</span>
                       {assignment.attachmentName && (
                         <span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">Attachment: {assignment.attachmentName}</span>
                       )}
+                    </div>
+                    <div className="mt-4">
+                      <div className="mb-2 flex items-center justify-between gap-4 text-[11px] uppercase tracking-[0.12em] text-slate-500">
+                        <span>{assignment.submittedCount ?? 0}/{assignment.totalStudents ?? 0} submitted</span>
+                        <span>{Math.round(((assignment.totalStudents ?? 0) > 0 ? ((assignment.submittedCount ?? 0) / (assignment.totalStudents ?? 0)) * 100 : 0))}% complete</span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                        <div className="h-full rounded-full bg-brand-600 transition-all duration-300"
+                          style={{ width: `${Math.round(((assignment.totalStudents ?? 0) > 0 ? ((assignment.submittedCount ?? 0) / (assignment.totalStudents ?? 0)) * 100 : 0))}%` }} />
+                      </div>
                     </div>
                   </div>
 
@@ -485,9 +524,13 @@ export function TeacherAssignmentsPage() {
                         <button type="button" onClick={() => handleDuplicate(assignment)} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
                           <Copy className="h-4 w-4" /> Duplicate
                         </button>
-                        {assignment.status === 'Draft' && (
+                        {assignment.status === 'Draft' ? (
                           <button type="button" onClick={() => handlePublish(assignment)} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
                             <Send className="h-4 w-4" /> Publish now
+                          </button>
+                        ) : (
+                          <button type="button" onClick={() => handleUnpublish(assignment)} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
+                            <Layers className="h-4 w-4" /> Unpublish
                           </button>
                         )}
                         <button type="button" onClick={() => confirmDelete(assignment)} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-rose-600 hover:bg-rose-50">
