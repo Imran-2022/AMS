@@ -34,3 +34,9 @@ pnpm-debug.log*
 # OS files
 .DS_Store
 Thumbs.db
+
+# Ignore uploaded files (prevent committing user uploads)
+# Ignore specific API host uploads folder
+/backend/src/AMS.HttpApi.Host/wwwroot/uploads/
+# Ignore any uploads folder under wwwroot in projects
+**/wwwroot/uploads/
