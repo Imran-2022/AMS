@@ -1,7 +1,14 @@
 export function getStoredUser() {
   if (typeof window === 'undefined') return null;
   const value = window.localStorage.getItem('ams-user');
-  return value ? JSON.parse(value) : null;
+  if (!value) return null;
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    clearStoredAuth();
+    return null;
+  }
 }
 
 export function setStoredUser(user: { id: string; email: string; role: string; fullName: string; isActive?: boolean }) {

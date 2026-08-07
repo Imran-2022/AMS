@@ -240,16 +240,26 @@ export type UpdateSubjectDto = {
 };
 
 export async function login(email: string, password: string) {
-  const response = await request<{ token: string; refreshToken: string; user: UserDto }>(`/api/auth/login`, {
+  const response = await request<any>(`/api/auth/login`, {
     method: 'POST',
     body: JSON.stringify({ email, password })
   });
 
-  if (response.refreshToken) {
-    setStoredRefreshToken(response.refreshToken);
+  const normalizedResponse = {
+    token: response.token ?? response.Token,
+    refreshToken: response.refreshToken ?? response.RefreshToken,
+    user: response.user ?? response.User
+  };
+
+  if (!normalizedResponse.token || !normalizedResponse.user) {
+    throw new Error('Invalid login response');
   }
 
-  return response;
+  if (normalizedResponse.refreshToken) {
+    setStoredRefreshToken(normalizedResponse.refreshToken);
+  }
+
+  return normalizedResponse as { token: string; refreshToken: string; user: UserDto };
 }
 
 async function refreshSession() {
@@ -267,11 +277,21 @@ async function refreshSession() {
   if (!response.ok) return false;
 
   const data = await response.json();
-  setStoredToken(data.token);
-  if (data.refreshToken) {
-    setStoredRefreshToken(data.refreshToken);
+  const token = data.token ?? data.Token;
+  if (!token) return false;
+
+  setStoredToken(token);
+
+  const refreshedRefreshToken = data.refreshToken ?? data.RefreshToken;
+  if (refreshedRefreshToken) {
+    setStoredRefreshToken(refreshedRefreshToken);
   }
+
   return true;
+}
+
+export async function getCurrentUser() {
+  return request<UserDto>(`/api/auth/me`);
 }
 
 export async function getAssignments() {
