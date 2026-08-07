@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { BookOpen, ClipboardList, Copy, FileText, Layers, Pencil, Plus, Search, Send, Sparkles, Trash2, Eye } from 'lucide-react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Bell, BookOpen, ClipboardList, Copy, FileText, Layers, Pencil, Plus, Search, Send, Trash2, Eye } from 'lucide-react';
 import { AppShell } from '../../layout/AppShell';
-import { Button, Card, FileUpload, PageHeader, StatusBadge } from '../../ui';
+import { Button, FileUpload } from '../../ui';
 import { ASSIGNMENTS, SUBMISSIONS } from '../../data';
 
 type AssignmentStatus = 'Published' | 'Draft';
@@ -14,6 +14,7 @@ type AssignmentRecord = {
   title: string;
   subject: string;
   cls: string;
+  section: string;
   teacher: string;
   deadline: string;
   maxMarks: number;
@@ -29,6 +30,7 @@ type AssignmentFormValues = {
   title: string;
   description: string;
   className: string;
+  section: string;
   subject: string;
   deadline: string;
   maxMarks: string;
@@ -40,6 +42,7 @@ const createEmptyForm = (): AssignmentFormValues => ({
   title: '',
   description: '',
   className: 'Class 9 - A',
+  section: 'A',
   subject: 'Mathematics',
   deadline: '',
   maxMarks: '20',
@@ -60,6 +63,7 @@ const teacherAssignmentsSeed: AssignmentRecord[] = (ASSIGNMENTS.filter((assignme
   total: number;
 }>).map((assignment) => ({
   ...assignment,
+  section: assignment.cls.includes(' - ') ? assignment.cls.split(' - ')[1] : 'A',
   description:
     assignment.title === 'Algebraic Expressions — Set 4'
       ? 'Solve the attached worksheet covering factoring and expansion of algebraic expressions.'
@@ -68,9 +72,9 @@ const teacherAssignmentsSeed: AssignmentRecord[] = (ASSIGNMENTS.filter((assignme
         : 'Draft assignment details will appear here once the teacher adds them.',
 }));
 
-function StatCard({ label, value, sub, icon }: { label: string; value: string | number; sub: string; icon: React.ReactNode }) {
+function StatCard({ label, value, sub, icon }: { label: string; value: string | number; sub: string; icon: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white p-5">
       <div className="mb-4 flex items-center justify-between">
         <p className="text-[11px] font-bold tracking-[0.24em] text-slate-400">{label}</p>
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-700">{icon}</div>
@@ -85,6 +89,8 @@ export function TeacherAssignmentsPage() {
   const [assignments, setAssignments] = useState<AssignmentRecord[]>(teacherAssignmentsSeed);
   const [filter, setFilter] = useState<FilterState>('all');
   const [classFilter, setClassFilter] = useState('All classes');
+  const [sectionFilter, setSectionFilter] = useState('All sections');
+  const [subjectFilter, setSubjectFilter] = useState('All subjects');
   const [searchTerm, setSearchTerm] = useState('');
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -104,14 +110,16 @@ export function TeacherAssignmentsPage() {
       const matchesFilter =
         filter === 'all' || (filter === 'published' && assignment.status === 'Published') || (filter === 'drafts' && assignment.status === 'Draft');
       const matchesClass = classFilter === 'All classes' || assignment.cls === classFilter;
+      const matchesSection = sectionFilter === 'All sections' || assignment.section === sectionFilter;
+      const matchesSubject = subjectFilter === 'All subjects' || assignment.subject === subjectFilter;
       const matchesSearch = [assignment.title, assignment.subject, assignment.cls]
         .join(' ')
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
 
-      return matchesFilter && matchesClass && matchesSearch;
+      return matchesFilter && matchesClass && matchesSection && matchesSubject && matchesSearch;
     });
-  }, [assignments, classFilter, filter, searchTerm]);
+  }, [assignments, classFilter, filter, searchTerm, sectionFilter, subjectFilter]);
 
   const stats = useMemo(() => {
     const published = assignments.filter((assignment) => assignment.status === 'Published').length;
@@ -127,6 +135,8 @@ export function TeacherAssignmentsPage() {
   }, [assignments]);
 
   const availableClasses = useMemo(() => ['All classes', ...Array.from(new Set(assignments.map((assignment) => assignment.cls)))], [assignments]);
+  const availableSections = useMemo(() => ['All sections', ...Array.from(new Set(assignments.map((assignment) => assignment.section)))], [assignments]);
+  const availableSubjects = useMemo(() => ['All subjects', ...Array.from(new Set(assignments.map((assignment) => assignment.subject)))], [assignments]);
 
   const openCreateModal = (assignment?: AssignmentRecord) => {
     if (assignment) {
@@ -135,6 +145,7 @@ export function TeacherAssignmentsPage() {
         title: assignment.title,
         description: assignment.description,
         className: assignment.cls,
+        section: assignment.section,
         subject: assignment.subject,
         deadline: assignment.deadline,
         maxMarks: String(assignment.maxMarks),
@@ -164,6 +175,7 @@ export function TeacherAssignmentsPage() {
       title: form.title.trim(),
       subject: form.subject,
       cls: form.className,
+      section: form.section,
       teacher: 'Rafiul Islam',
       deadline: form.deadline,
       maxMarks: Number(form.maxMarks || 20),
@@ -217,10 +229,20 @@ export function TeacherAssignmentsPage() {
     setPendingDelete(null);
   };
 
+  const handleClassChange = (nextClass: string) => {
+    const nextSection = nextClass === 'Class 10 - B' ? 'B' : 'A';
+    setForm((current) => ({
+      ...current,
+      className: nextClass,
+      section: nextSection,
+      subject: nextClass === 'Class 10 - B' ? 'Mathematics' : current.subject,
+    }));
+  };
+
   return (
     <AppShell role="Teacher" breadcrumb="Teacher / My Assignments">
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-brand-600">Teacher portal</p>
             <h1 className="mt-1 text-3xl font-extrabold text-slate-900">My Assignments</h1>
@@ -239,7 +261,7 @@ export function TeacherAssignmentsPage() {
           <StatCard label="Needs grading" value={stats.pendingReviews} sub="Submissions awaiting marks" icon={<Layers className="h-4 w-4" />} />
         </div>
 
-        <Card className="p-4">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex flex-wrap items-center gap-2">
               <button type="button" onClick={() => setFilter('all')} className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${filter === 'all' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
@@ -260,35 +282,52 @@ export function TeacherAssignmentsPage() {
                   </option>
                 ))}
               </select>
+              <select value={sectionFilter} onChange={(event) => setSectionFilter(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 outline-none focus:border-brand-500">
+                {availableSections.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+              <select value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 outline-none focus:border-brand-500">
+                {availableSubjects.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
               <div className="relative min-w-[240px]">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} type="text" placeholder="Search assignments…" className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-600 outline-none focus:border-brand-500" />
               </div>
             </div>
           </div>
-        </Card>
+        </div>
 
         {visibleAssignments.length === 0 ? (
-          <Card className="flex flex-col items-center justify-center px-8 py-20 text-center">
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-8 py-20 text-center">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-500">
               <ClipboardList className="h-7 w-7" />
             </div>
             <p className="text-base font-bold text-slate-800">No assignments yet</p>
-            <p className="mt-2 max-w-md text-sm text-slate-500">Create your first assignment for Class 9-A. You can save it as a draft and publish when ready.</p>
+            <p className="mt-2 max-w-md text-sm text-slate-500">Create your first assignment for one of your classes. You can save it as a draft and publish when ready.</p>
             <Button onClick={() => openCreateModal()} className="mt-5">
               <Plus className="h-4 w-4" />
               Create assignment
             </Button>
-          </Card>
+          </div>
         ) : (
           <div className="space-y-4">
             {visibleAssignments.map((assignment) => (
-              <Card key={assignment.id} className="border border-slate-200/80 p-5">
+              <div key={assignment.id} className="rounded-2xl border border-slate-200 bg-white p-5">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                   <div className="flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-base font-bold text-slate-900">{assignment.title}</p>
-                      <StatusBadge status={assignment.status} />
+                      <span className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[11px] font-bold ${assignment.status === 'Published' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                        <span className={`h-2 w-2 rounded-full ${assignment.status === 'Published' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                        {assignment.status}
+                      </span>
                     </div>
                     <p className="mt-1 text-xs font-medium uppercase tracking-[0.22em] text-slate-400">{assignment.cls} · {assignment.subject} · Max marks: {assignment.maxMarks}</p>
                     <p className="mt-3 text-sm text-slate-600">{assignment.description}</p>
@@ -331,7 +370,7 @@ export function TeacherAssignmentsPage() {
                     )}
                   </div>
                 </div>
-              </Card>
+              </div>
             ))}
           </div>
         )}
@@ -360,20 +399,32 @@ export function TeacherAssignmentsPage() {
                   <textarea value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} rows={4} placeholder="Instructions for students…" className="w-full resize-none rounded-2xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100" />
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-3">
                   <div>
                     <label className="mb-2 block text-[13px] font-semibold text-slate-800">Class <span className="text-rose-500">*</span></label>
-                    <select value={form.className} onChange={(event) => setForm((current) => ({ ...current, className: event.target.value }))} className="w-full rounded-2xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100">
+                    <select value={form.className} onChange={(event) => handleClassChange(event.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100">
                       <option>Class 9 - A</option>
                       <option>Class 10 - B</option>
                     </select>
                   </div>
                   <div>
+                    <label className="mb-2 block text-[13px] font-semibold text-slate-800">Section <span className="text-rose-500">*</span></label>
+                    <select value={form.section} onChange={(event) => setForm((current) => ({ ...current, section: event.target.value }))} className="w-full rounded-2xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100">
+                      {form.className === 'Class 10 - B' ? <option value="B">B</option> : <option value="A">A</option>}
+                    </select>
+                  </div>
+                  <div>
                     <label className="mb-2 block text-[13px] font-semibold text-slate-800">Subject <span className="text-rose-500">*</span></label>
                     <select value={form.subject} onChange={(event) => setForm((current) => ({ ...current, subject: event.target.value }))} className="w-full rounded-2xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100">
-                      <option>Mathematics</option>
-                      <option>Physics</option>
-                      <option>English</option>
+                      {form.className === 'Class 10 - B' ? (
+                        <option>Mathematics</option>
+                      ) : (
+                        <>
+                          <option>Mathematics</option>
+                          <option>Physics</option>
+                          <option>English</option>
+                        </>
+                      )}
                     </select>
                   </div>
                 </div>

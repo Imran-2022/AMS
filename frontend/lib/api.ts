@@ -1,3 +1,5 @@
+import { clearStoredAuth, getStoredRefreshToken, getStoredToken, setStoredRefreshToken, setStoredToken } from './auth';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 type ApiResponse<T> = T;
@@ -9,7 +11,7 @@ function getAuthToken() {
 export function logout(redirect = true) {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.removeItem('ams-token');
+    clearStoredAuth();
   } catch {
     /* ignore */
   }
@@ -30,10 +32,19 @@ export async function request<T>(path: string, init?: RequestInit): Promise<ApiR
   });
 
   if (!response.ok) {
-    // If the token is invalid or expired, sign the user out and redirect to login.
     if (response.status === 401) {
+      const refreshToken = getStoredRefreshToken();
+      if (refreshToken) {
+        try {
+          const refreshed = await refreshSession();
+          if (refreshed) {
+            return request<T>(path, init);
+          }
+        } catch {
+          // ignore and fall through to logout
+        }
+      }
       logout(true);
-      // Throw so callers get a rejected promise; UI will redirect.
       throw new Error('Unauthorized');
     }
 
@@ -229,10 +240,38 @@ export type UpdateSubjectDto = {
 };
 
 export async function login(email: string, password: string) {
-  return request<{ token: string; user: UserDto }>(`/api/auth/login`, {
+  const response = await request<{ token: string; refreshToken: string; user: UserDto }>(`/api/auth/login`, {
     method: 'POST',
     body: JSON.stringify({ email, password })
   });
+
+  if (response.refreshToken) {
+    setStoredRefreshToken(response.refreshToken);
+  }
+
+  return response;
+}
+
+async function refreshSession() {
+  const refreshToken = getStoredRefreshToken();
+  if (!refreshToken) return false;
+
+  const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ refreshToken })
+  });
+
+  if (!response.ok) return false;
+
+  const data = await response.json();
+  setStoredToken(data.token);
+  if (data.refreshToken) {
+    setStoredRefreshToken(data.refreshToken);
+  }
+  return true;
 }
 
 export async function getAssignments() {

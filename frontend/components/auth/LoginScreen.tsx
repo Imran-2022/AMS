@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { setStoredUser, setStoredToken } from '@/lib/auth';
+import { setStoredUser, setStoredToken, setStoredRefreshToken } from '@/lib/auth';
 import { login } from '@/lib/api';
 import { Button } from '../ui';
 
@@ -34,6 +34,7 @@ export default function LoginScreen() {
       const response = await login(userEmail, userPassword);
       setStoredUser(response.user);
       setStoredToken(response.token);
+      setStoredRefreshToken(response.refreshToken);
       router.push(`/roles/${response.user.role.toLowerCase()}/dashboard`);
     } catch (err) {
       console.error(err);

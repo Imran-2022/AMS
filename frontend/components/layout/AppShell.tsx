@@ -17,6 +17,9 @@ import {
   User,
   UserCheck,
   UserPlus,
+  GraduationCap,
+  Files,
+  Users,
 } from 'lucide-react';
 import { clearStoredAuth, getStoredUser } from '@/lib/auth';
 import { ROLE, RoleType } from '../data';
@@ -40,8 +43,11 @@ const NAV: Record<RoleType, NavItem[]> = {
   ],
   Teacher: [
     { href: '/roles/teacher/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
+    { href: '/roles/teacher/classes', label: 'My Classes', Icon: GraduationCap },
     { href: '/roles/teacher/assignments', label: 'Assignments', Icon: ClipboardList },
     { href: '/roles/teacher/submissions', label: 'Submissions', Icon: Inbox },
+    { href: '/roles/teacher/students', label: 'Students', Icon: Users },
+    { href: '/roles/teacher/settings', label: 'Settings', Icon: Settings },
   ],
   Student: [
     { href: '/roles/student/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
@@ -53,6 +59,7 @@ const NAV: Record<RoleType, NavItem[]> = {
 function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, userName }: { role: RoleType; collapsed: boolean; mobileOpen: boolean; onToggle: () => void; onNavigate: () => void; onLogout: () => void; userName?: string }) {
   const pathname = usePathname();
   const router = useRouter();
+  const isTeacher = role === 'Teacher';
 
   const widthClass = mobileOpen ? 'w-64' : collapsed ? 'w-[76px]' : 'w-64';
   return (
@@ -97,13 +104,13 @@ function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, 
       <div className="border-t border-[#ECECEF] p-3">
         <div className="relative group">
           <div className="w-full nav-item relative flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-[#F5F5F7] text-left cursor-pointer">
-            <div className="w-9 h-9 rounded-full bg-[#1F2430] text-white flex items-center justify-center shrink-0">
+            <div className={`w-9 h-9 rounded-full ${isTeacher ? 'bg-brand-600' : 'bg-[#1F2430]'} text-white flex items-center justify-center shrink-0`}>
               <User className="h-5 w-5" />
             </div>
             {!collapsed ? (
               <div className="profile-text label min-w-0 transition-all duration-200 opacity-100">
-                <p className="text-[13px] font-semibold leading-tight truncate">{userName ?? 'System Admin'}</p>
-                <p className="text-[11px] text-[#8A8F98] leading-tight truncate">Admin Account</p>
+                <p className="text-[13px] font-semibold leading-tight truncate">{userName ?? 'Teacher User'}</p>
+                <p className="text-[11px] text-[#8A8F98] leading-tight truncate">{isTeacher ? 'Teacher Account' : 'Admin Account'}</p>
               </div>
             ) : null}
           </div>
@@ -115,7 +122,7 @@ function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, 
                 onClick={() => router.push('/roles/admin/settings')}
                 className="w-full inline-flex items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] font-medium text-[#1F2430]/80 transition-colors hover:bg-[#F5F5F7]">
                 <Settings className="h-5 w-5" />
-                {!collapsed ? <span>Account Settings</span> : null}
+                {!collapsed ? <span>{isTeacher ? 'Teacher Settings' : 'Account Settings'}</span> : null}
               </button>
 
               <button

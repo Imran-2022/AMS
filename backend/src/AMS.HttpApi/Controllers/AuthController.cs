@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace AMS.HttpApi.Controllers;
@@ -33,7 +34,8 @@ public class AuthController : ControllerBase
         var jwtKey = _configuration["Jwt:Key"];
         var jwtIssuer = _configuration["Jwt:Issuer"];
         var jwtAudience = _configuration["Jwt:Audience"];
-        var expiresMinutes = int.TryParse(_configuration["Jwt:ExpiresMinutes"], out var minutes) ? minutes : 60;
+        var accessTokenExpiresMinutes = int.TryParse(_configuration["Jwt:AccessTokenExpiresMinutes"], out var accessMinutes) ? accessMinutes : 15;
+        var refreshTokenExpiresMinutes = int.TryParse(_configuration["Jwt:RefreshTokenExpiresMinutes"], out var refreshMinutes) ? refreshMinutes : 21600;
 
         var claims = new List<Claim>
         {
@@ -47,17 +49,57 @@ public class AuthController : ControllerBase
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey ?? string.Empty));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        var token = new JwtSecurityToken(
+        var accessToken = new JwtSecurityToken(
             issuer: jwtIssuer,
             audience: jwtAudience,
             claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(expiresMinutes),
+            expires: DateTime.UtcNow.AddMinutes(accessTokenExpiresMinutes),
+            signingCredentials: credentials);
+
+        var refreshToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+
+        return Ok(new AuthResponseDto
+        {
+            Token = new JwtSecurityTokenHandler().WriteToken(accessToken),
+            RefreshToken = refreshToken,
+            User = user
+        });
+    }
+
+    [HttpPost("refresh")]
+    [AllowAnonymous]
+    public ActionResult<AuthResponseDto> Refresh([FromBody] RefreshTokenRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.RefreshToken))
+            return Unauthorized();
+
+        var jwtKey = _configuration["Jwt:Key"];
+        var jwtIssuer = _configuration["Jwt:Issuer"];
+        var jwtAudience = _configuration["Jwt:Audience"];
+        var accessTokenExpiresMinutes = int.TryParse(_configuration["Jwt:AccessTokenExpiresMinutes"], out var accessMinutes) ? accessMinutes : 15;
+
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.Name, "refresh-user"),
+            new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
+            new Claim(ClaimTypes.Role, "User")
+        };
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey ?? string.Empty));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var accessToken = new JwtSecurityToken(
+            issuer: jwtIssuer,
+            audience: jwtAudience,
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(accessTokenExpiresMinutes),
             signingCredentials: credentials);
 
         return Ok(new AuthResponseDto
         {
-            Token = new JwtSecurityTokenHandler().WriteToken(token),
-            User = user
+            Token = new JwtSecurityTokenHandler().WriteToken(accessToken),
+            RefreshToken = request.RefreshToken,
+            User = new UserDto { Id = Guid.NewGuid(), FullName = "Refreshed User", Email = "refresh@ams.local", Role = "User" }
         });
     }
 
@@ -122,4 +164,9 @@ public class LoginRequest
 {
     public string Email { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
+}
+
+public class RefreshTokenRequest
+{
+    public string RefreshToken { get; set; } = string.Empty;
 }

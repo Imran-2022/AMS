@@ -19,8 +19,19 @@ export function setStoredToken(token: string) {
   window.localStorage.setItem('ams-token', token);
 }
 
+export function getStoredRefreshToken() {
+  if (typeof window === 'undefined') return null;
+  return window.localStorage.getItem('ams-refresh-token');
+}
+
+export function setStoredRefreshToken(token: string) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem('ams-refresh-token', token);
+}
+
 export function clearStoredAuth() {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem('ams-user');
   window.localStorage.removeItem('ams-token');
+  window.localStorage.removeItem('ams-refresh-token');
 }
