@@ -23,6 +23,8 @@ var builder = Host.CreateDefaultBuilder(args)
         services.AddDbContext<AmsDbContext>(options => options.UseNpgsql(connectionString));
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IClassCourseRepository, ClassCourseRepository>();
+        services.AddScoped<IClassDefinitionRepository, ClassDefinitionRepository>();
+        services.AddScoped<IGroupRepository, GroupRepository>();
         services.AddScoped<ISubjectRepository, SubjectRepository>();
         services.AddScoped<IAssignmentRepository, AssignmentRepository>();
         services.AddScoped<ISubmissionRepository, SubmissionRepository>();
@@ -37,6 +39,8 @@ await dbContext.Database.MigrateAsync();
 
 var userRepo = scope.ServiceProvider.GetRequiredService<IUserRepository>();
 var classRepo = scope.ServiceProvider.GetRequiredService<IClassCourseRepository>();
+var classDefRepo = scope.ServiceProvider.GetRequiredService<IClassDefinitionRepository>();
+var groupRepo = scope.ServiceProvider.GetRequiredService<IGroupRepository>();
 var subjectRepo = scope.ServiceProvider.GetRequiredService<ISubjectRepository>();
 var assignmentRepo = scope.ServiceProvider.GetRequiredService<IAssignmentRepository>();
 var submissionRepo = scope.ServiceProvider.GetRequiredService<ISubmissionRepository>();
@@ -67,8 +71,41 @@ if (studentExists is null)
 var classCourse = await classRepo.GetAllAsync(CancellationToken.None);
 if (classCourse.Count == 0)
 {
-    var grade10 = new ClassCourse(Guid.NewGuid(), "Grade 10", "A", "2026-2027");
-    var grade11 = new ClassCourse(Guid.NewGuid(), "Grade 11", "B", "2026-2027");
+    // Seed ClassDefinitions
+    var classDefinitions = await classDefRepo.GetAllAsync(CancellationToken.None);
+    Guid? grade10DefId = null;
+    Guid? grade11DefId = null;
+    Guid? scienceGroupId = null;
+
+    if (classDefinitions.Count == 0)
+    {
+        var grade10Def = new ClassDefinition(Guid.NewGuid(), "Grade 10");
+        var grade11Def = new ClassDefinition(Guid.NewGuid(), "Grade 11");
+        
+        await classDefRepo.AddAsync(grade10Def, CancellationToken.None);
+        await classDefRepo.AddAsync(grade11Def, CancellationToken.None);
+
+        grade10DefId = grade10Def.Id;
+        grade11DefId = grade11Def.Id;
+
+        // Seed a Group for Grade 11
+        var scienceGroup = new Group(Guid.NewGuid(), grade11Def.Id, "Science");
+        await groupRepo.AddAsync(scienceGroup, CancellationToken.None);
+        scienceGroupId = scienceGroup.Id;
+    }
+    else
+    {
+        grade10DefId = classDefinitions.FirstOrDefault(c => c.Name == "Grade 10")?.Id;
+        grade11DefId = classDefinitions.FirstOrDefault(c => c.Name == "Grade 11")?.Id;
+        if (grade11DefId.HasValue)
+        {
+            var groups = await groupRepo.GetByClassDefinitionAsync(grade11DefId.Value, CancellationToken.None);
+            scienceGroupId = groups.FirstOrDefault(g => g.Name == "Science")?.Id;
+        }
+    }
+
+    var grade10 = new ClassCourse(Guid.NewGuid(), "Grade 10", "A", "2026-2027", grade10DefId, null);
+    var grade11 = new ClassCourse(Guid.NewGuid(), "Grade 11", "B", "2026-2027", grade11DefId, scienceGroupId);
 
     await classRepo.AddAsync(grade10, CancellationToken.None);
     await classRepo.AddAsync(grade11, CancellationToken.None);
