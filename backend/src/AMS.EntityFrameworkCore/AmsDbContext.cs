@@ -11,6 +11,8 @@ public class AmsDbContext : DbContext
 
     public DbSet<AppUser> AppUsers => Set<AppUser>();
     public DbSet<ClassCourse> ClassCourses => Set<ClassCourse>();
+    public DbSet<ClassDefinition> ClassDefinitions => Set<ClassDefinition>();
+    public DbSet<Group> Groups => Set<Group>();
     public DbSet<Subject> Subjects => Set<Subject>();
     public DbSet<TeacherSubjectAssignment> TeacherSubjectAssignments => Set<TeacherSubjectAssignment>();
     public DbSet<StudentEnrollment> StudentEnrollments => Set<StudentEnrollment>();

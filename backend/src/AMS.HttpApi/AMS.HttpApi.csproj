@@ -9,5 +9,6 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.22.0" />
     <ProjectReference Include="..\AMS.Application\AMS.Application.csproj" />
     <ProjectReference Include="..\AMS.Application.Contracts\AMS.Application.Contracts.csproj" />
+    <ProjectReference Include="..\AMS.EntityFrameworkCore\AMS.EntityFrameworkCore.csproj" />
   </ItemGroup>
 </Project>

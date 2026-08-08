@@ -69,6 +69,7 @@ if (classCourse.Count == 0)
 {
     var grade10 = new ClassCourse(Guid.NewGuid(), "Grade 10", "A", "2026-2027");
     var grade11 = new ClassCourse(Guid.NewGuid(), "Grade 11", "B", "2026-2027");
+
     await classRepo.AddAsync(grade10, CancellationToken.None);
     await classRepo.AddAsync(grade11, CancellationToken.None);
 

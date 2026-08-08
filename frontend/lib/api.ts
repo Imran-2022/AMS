@@ -234,15 +234,21 @@ export type ClassCourseDto = {
   name: string;
   section: string;
   academicYear: string;
+  classDefinitionId?: string | null;
+  groupId?: string | null;
 };
 
 export type CreateClassCourseDto = {
+  classDefinitionId?: string;
+  groupId?: string | null;
   name: string;
   section: string;
   academicYear: string;
 };
 
 export type UpdateClassCourseDto = {
+  classDefinitionId?: string;
+  groupId?: string | null;
   name?: string;
   section?: string;
   academicYear?: string;
@@ -386,6 +392,14 @@ export async function toggleUserStatus(id: string) {
 
 export async function getClassCourses() {
   return request<ClassCourseDto[]>(`/api/classes`);
+}
+
+export async function getClassDefinitions() {
+  return request<{ id: string; name: string }[]>(`/api/class-definitions`);
+}
+
+export async function getGroupsForClass(classDefinitionId: string) {
+  return request<{ id: string; name: string }[]>(`/api/class-definitions/${classDefinitionId}/groups`);
 }
 
 export async function getSubjects() {

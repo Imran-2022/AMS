@@ -12,6 +12,8 @@ import {
   getClassCourses,
   getSubjects,
   getUsers,
+  getClassDefinitions,
+  getGroupsForClass,
 } from '@/lib/api';
 import { getEnrollments } from '@/lib/api/enrollments';
 import { createTeacherAssignment, deleteTeacherAssignment, getTeacherAssignments } from '@/lib/api/teacherAssignments';
@@ -27,7 +29,9 @@ export function AdminClassesPage() {
   const [search, setSearch] = useState('');
   const [activeModal, setActiveModal] = useState<'class' | 'subject' | 'assign' | 'delete' | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; type: 'class' | 'subject'; label: string } | null>(null);
-  const [classForm, setClassForm] = useState({ name: '', section: '', year: '2026 – 2027' });
+  const [classForm, setClassForm] = useState({ classDefinitionId: '', groupId: '', name: '', section: '', year: '2026 – 2027' });
+  const [classDefinitions, setClassDefinitions] = useState<{ id: string; name: string }[]>([]);
+  const [availableGroups, setAvailableGroups] = useState<{ id: string; name: string }[]>([]);
   const [editingClass, setEditingClass] = useState<ClassCourseDto | null>(null);
   const [subjectForm, setSubjectForm] = useState({ name: '', code: '', classCourseId: '', teacherId: '' });
   const [editingSubject, setEditingSubject] = useState<SubjectDto | null>(null);
@@ -38,7 +42,44 @@ export function AdminClassesPage() {
 
   useEffect(() => {
     void loadData();
+    void loadClassDefinitions();
   }, []);
+
+  useEffect(() => {
+    async function loadGroups() {
+      if (!classForm.classDefinitionId) {
+        setAvailableGroups([]);
+        setClassForm((c) => ({ ...c, groupId: '' }));
+        return;
+      }
+
+      try {
+        const groups = await getGroupsForClass(classForm.classDefinitionId);
+        setAvailableGroups(groups);
+        if (!groups.some((g) => g.id === classForm.groupId)) {
+          setClassForm((c) => ({ ...c, groupId: '' }));
+        }
+      } catch (err) {
+        console.error('Failed to load groups', err);
+        setAvailableGroups([]);
+        setClassForm((c) => ({ ...c, groupId: '' }));
+      }
+    }
+
+    void loadGroups();
+  }, [classForm.classDefinitionId]);
+
+  async function loadClassDefinitions() {
+    try {
+      const defs = await getClassDefinitions();
+      setClassDefinitions(defs);
+      if (defs.length && !classForm.classDefinitionId) {
+        setClassForm((c) => ({ ...c, classDefinitionId: defs[0].id }));
+      }
+    } catch (err) {
+      console.error('Failed to load class definitions', err);
+    }
+  }
 
   useEffect(() => {
     if (classes.length && !subjectForm.classCourseId) {
@@ -108,7 +149,7 @@ export function AdminClassesPage() {
   function openModal(modal: 'class' | 'subject' | 'assign') {
     if (modal === 'class') {
       setEditingClass(null);
-      setClassForm({ name: '', section: '', year: '2026 – 2027' });
+      setClassForm({ classDefinitionId: classDefinitions[0]?.id ?? '', groupId: '', name: '', section: '', year: '2026 – 2027' });
     }
 
     if (modal === 'subject') {
@@ -128,7 +169,7 @@ export function AdminClassesPage() {
     setEditingSubject(null);
     setSubjectForm({ name: '', code: '', classCourseId: classes[0]?.id ?? '', teacherId: '' });
     setEditingClass(null);
-    setClassForm({ name: '', section: '', year: '2026 – 2027' });
+    setClassForm({ classDefinitionId: classDefinitions[0]?.id ?? '', groupId: '', name: '', section: '', year: '2026 – 2027' });
   }
 
   function handleDelete(type: 'class' | 'subject', id: string, label: string) {
@@ -160,19 +201,25 @@ export function AdminClassesPage() {
 
     try {
       if (editingClass) {
+        const nameToSend = classForm.name || classDefinitions.find((c) => c.id === classForm.classDefinitionId)?.name || '';
         await updateClassCourse(editingClass.id, {
-          name: classForm.name,
+          classDefinitionId: classForm.classDefinitionId || undefined,
+          groupId: classForm.groupId || undefined,
+          name: nameToSend,
           section: classForm.section,
           academicYear: classForm.year,
         });
       } else {
+        const nameToSend = classForm.name || classDefinitions.find((c) => c.id === classForm.classDefinitionId)?.name || '';
         await createClassCourse({
-          name: classForm.name,
+          classDefinitionId: classForm.classDefinitionId || undefined,
+          groupId: classForm.groupId || undefined,
+          name: nameToSend,
           section: classForm.section,
           academicYear: classForm.year,
         });
       }
-      setClassForm({ name: '', section: '', year: classForm.year });
+      setClassForm({ classDefinitionId: classDefinitions[0]?.id ?? '', groupId: '', name: '', section: '', year: classForm.year });
       setEditingClass(null);
       await loadData();
       closeModal();
@@ -184,7 +231,7 @@ export function AdminClassesPage() {
 
   function openEditClass(cls: ClassCourseDto) {
     setEditingClass(cls);
-    setClassForm({ name: cls.name, section: cls.section, year: cls.academicYear });
+    setClassForm({ classDefinitionId: cls.classDefinitionId ?? '', groupId: cls.groupId ?? '', name: cls.name, section: cls.section, year: cls.academicYear });
     setActiveModal('class');
   }
 
@@ -583,17 +630,51 @@ export function AdminClassesPage() {
             </button>
           </div>
           <form onSubmit={handleCreateClass} className="px-7 py-6 space-y-5">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div>
-                <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Class name <span className="text-rose-500">*</span></label>
-                <input
-                  value={classForm.name}
-                  onChange={(event) => setClassForm({ ...classForm, name: event.target.value })}
-                  placeholder="e.g. Class 9"
+                <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Academic year <span className="text-rose-500">*</span></label>
+                <select
+                  value={classForm.year}
+                  onChange={(event) => setClassForm({ ...classForm, year: event.target.value })}
                   required
                   className="w-full rounded-2xl border border-slate-300 px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                />
+                >
+                  <option>2026 – 2027</option>
+                  <option>2025 – 2026</option>
+                </select>
               </div>
+
+              <div>
+                <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Class <span className="text-rose-500">*</span></label>
+                <select
+                  value={classForm.classDefinitionId}
+                  onChange={(event) => setClassForm({ ...classForm, classDefinitionId: event.target.value })}
+                  required
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                >
+                  <option value="">Select class</option>
+                  {classDefinitions.map((cd) => (
+                    <option key={cd.id} value={cd.id}>{cd.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {availableGroups.length > 0 ? (
+                <div>
+                  <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Group</label>
+                  <select
+                    value={classForm.groupId}
+                    onChange={(event) => setClassForm({ ...classForm, groupId: event.target.value })}
+                    className="w-full rounded-2xl border border-slate-300 px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                  >
+                    <option value="">Unassigned</option>
+                    {availableGroups.map((g) => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+
               <div>
                 <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Section <span className="text-rose-500">*</span></label>
                 <input
@@ -604,17 +685,6 @@ export function AdminClassesPage() {
                   className="w-full rounded-2xl border border-slate-300 px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                 />
               </div>
-            </div>
-            <div>
-              <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Academic year</label>
-              <select
-                value={classForm.year}
-                onChange={(event) => setClassForm({ ...classForm, year: event.target.value })}
-                className="w-full rounded-2xl border border-slate-300 px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-              >
-                <option>2026 – 2027</option>
-                <option>2025 – 2026</option>
-              </select>
             </div>
             <div className="flex items-center justify-end gap-3 px-7 py-5 border-t border-slate-100 bg-slate-50/60 rounded-b-3xl">
               <button type="button" onClick={closeModal} className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-semibold hover:bg-slate-50">Cancel</button>

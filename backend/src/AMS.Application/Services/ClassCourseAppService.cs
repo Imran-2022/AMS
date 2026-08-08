@@ -55,7 +55,17 @@ public class ClassCourseAppService : IClassCourseAppService
     public async Task<ClassCourseDto> CreateAsync(CreateClassCourseDto input, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
     {
         if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can manage classes.");
-        var entity = new ClassCourse(Guid.NewGuid(), input.Name, input.Section, input.AcademicYear);
+        // Prevent duplicates within the same academic year
+        var existing = await _classCourseRepository.GetAllAsync(cancellationToken);
+        var duplicate = existing.Any(x => string.Equals(x.AcademicYear, input.AcademicYear, StringComparison.OrdinalIgnoreCase)
+            && x.Section == input.Section
+            && ((input.ClassDefinitionId != null && x.ClassDefinitionId == input.ClassDefinitionId) || (input.ClassDefinitionId == null && x.Name == input.Name))
+            && ((input.GroupId == null && x.GroupId == null) || (input.GroupId != null && x.GroupId == input.GroupId)));
+
+        if (duplicate) throw new DomainException("A class with the same academic year, class, group and section already exists.");
+
+        var nameToUse = input.Name;
+        var entity = new ClassCourse(Guid.NewGuid(), nameToUse, input.Section, input.AcademicYear, input.ClassDefinitionId, input.GroupId);
         await _classCourseRepository.AddAsync(entity, cancellationToken);
         return ToDto(entity);
     }
@@ -64,7 +74,15 @@ public class ClassCourseAppService : IClassCourseAppService
     {
         if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can manage classes.");
         var entity = await _classCourseRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Class not found.");
-        var updated = new ClassCourse(entity.Id, input.Name ?? entity.Name, input.Section ?? entity.Section, input.AcademicYear ?? entity.AcademicYear);
+        var updated = new ClassCourse(entity.Id, input.Name ?? entity.Name, input.Section ?? entity.Section, input.AcademicYear ?? entity.AcademicYear, input.ClassDefinitionId ?? entity.ClassDefinitionId, input.GroupId ?? entity.GroupId);
+        // Prevent duplicates
+        var all = await _classCourseRepository.GetAllAsync(cancellationToken);
+        var duplicate = all.Any(x => x.Id != entity.Id && string.Equals(x.AcademicYear, updated.AcademicYear, StringComparison.OrdinalIgnoreCase)
+            && x.Section == updated.Section
+            && x.ClassDefinitionId == updated.ClassDefinitionId
+            && x.GroupId == updated.GroupId);
+        if (duplicate) throw new DomainException("A class with the same academic year, class, group and section already exists.");
+
         await _classCourseRepository.UpdateAsync(updated, cancellationToken);
         return ToDto(updated);
     }
@@ -80,6 +98,8 @@ public class ClassCourseAppService : IClassCourseAppService
         Id = entity.Id,
         Name = entity.Name,
         Section = entity.Section,
-        AcademicYear = entity.AcademicYear
+        AcademicYear = entity.AcademicYear,
+        ClassDefinitionId = entity.ClassDefinitionId,
+        GroupId = entity.GroupId
     };
 }
