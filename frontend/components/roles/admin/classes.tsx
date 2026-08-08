@@ -386,27 +386,9 @@ export function AdminClassesPage() {
             </button>
           </div>
 
-          {classes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white py-20 px-6 text-center">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-500">
-                <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <line x1="19" y1="8" x2="19" y2="14" />
-                  <line x1="16" y1="11" x2="22" y2="11" />
-                </svg>
-              </div>
-              <p className="text-base font-bold text-slate-800">No classes yet</p>
-              <p className="text-sm text-slate-500 mt-1 max-w-md">Create your first class to start publishing assignments and enrolling students.</p>
-              <div className="mt-5 flex items-center gap-3">
-                <button onClick={() => openModal('class')} className="px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700">Add class</button>
-                <button onClick={() => {}} className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-semibold hover:bg-slate-50">Import classes</button>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {classes.map((cls) => (
-                <div key={cls.id} className="bg-white rounded-2xl border border-slate-200 p-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {classes.map((cls) => (
+              <div key={cls.id} className="bg-white rounded-2xl border border-slate-200 p-5">
                   <div className="flex items-start justify-between">
                   <div>
                     <p className="text-base font-bold text-slate-800">{cls.name} — {cls.section}</p>
@@ -507,26 +489,8 @@ export function AdminClassesPage() {
             </div>
           </div>
 
-          {filteredSubjects.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white py-20 px-6 text-center">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-500">
-                <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <line x1="19" y1="8" x2="19" y2="14" />
-                  <line x1="16" y1="11" x2="22" y2="11" />
-                </svg>
-              </div>
-              <p className="text-base font-bold text-slate-800">No subjects yet</p>
-              <p className="text-sm text-slate-500 mt-1 max-w-md">Add subjects to classes so teachers can create assignments and record submissions.</p>
-              <div className="mt-5 flex items-center gap-3">
-                <button onClick={() => openModal('subject')} className="px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700">Add subject</button>
-                <button onClick={() => openModal('assign')} className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-semibold hover:bg-slate-50">Assign teacher</button>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-white rounded-2xl border border-slate-200 overflow-visible">
-              <table className="w-full text-sm">
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-visible">
+            <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 text-left">
                   <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">SUBJECT</th>
