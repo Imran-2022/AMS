@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from 'react';
+import { AmsPagination } from '../../ui';
 import { AppShell } from '../../layout/AppShell';
 import { ASSIGNMENTS, CLASSES } from '../../data';
 
@@ -110,6 +111,15 @@ export function AdminSubmissionsPage() {
       return matchesTab && matchesClass && matchesAssignment && matchesSearch;
     });
   }, [activeTab, selectedClass, selectedAssignment, search]);
+
+  const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
+  const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
+  const [pageIndex, setPageIndex] = useState(0);
+
+  const pagedSubmissions = useMemo(() => {
+    const start = pageIndex * pageSize;
+    return visibleSubmissions.slice(start, start + pageSize);
+  }, [visibleSubmissions, pageIndex, pageSize]);
 
   return (
     <AppShell role="Admin" breadcrumb="Admin / Submissions">
@@ -238,7 +248,7 @@ export function AdminSubmissionsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {visibleSubmissions.map((submission) => (
+                  {pagedSubmissions.map((submission) => (
                     <tr key={submission.id}>
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
@@ -272,20 +282,16 @@ export function AdminSubmissionsPage() {
                 </tbody>
                   </table>
 
-              <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100">
-                <p className="text-xs text-slate-400">Showing <span className="font-semibold text-slate-600">1–{visibleSubmissions.length}</span> of <span className="font-semibold text-slate-600">{totals.total}</span> submissions</p>
-                <div className="flex items-center gap-2">
-                  <button type="button" className="w-8 h-8 rounded-lg border border-slate-200 text-slate-300 flex items-center justify-center" disabled>
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6" /></svg>
-                  </button>
-                  <span className="w-8 h-8 rounded-lg bg-brand-600 text-white text-xs font-semibold flex items-center justify-center">1</span>
-                  <button type="button" className="w-8 h-8 rounded-lg text-slate-500 text-xs font-semibold flex items-center justify-center hover:bg-slate-50">2</button>
-                  <button type="button" className="w-8 h-8 rounded-lg text-slate-500 text-xs font-semibold flex items-center justify-center hover:bg-slate-50">3</button>
-                  <button type="button" className="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 flex items-center justify-center hover:bg-slate-50">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6" /></svg>
-                  </button>
-                </div>
-              </div>
+              <AmsPagination
+                currentPage={pageIndex}
+                pageSize={pageSize}
+                totalItems={visibleSubmissions.length}
+                pageSizeOptions={PAGE_SIZE_OPTIONS}
+                onPageChange={setPageIndex}
+                onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
+                label="Showing"
+                itemLabel="submissions"
+              />
         </div>
       </div>
     </AppShell>

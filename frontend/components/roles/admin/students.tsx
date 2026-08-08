@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AppShell } from '../../layout/AppShell';
-import { Button, Card, Pill, Th, Td, AddStudentModal, Modal, type AddStudentFormData } from '../../ui';
+import { AmsPagination, Button, Card, Pill, Th, Td, AddStudentModal, Modal, type AddStudentFormData } from '../../ui';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
 import { createUser, deleteUser, getClassCourses, getUsers, updateUser } from '@/lib/api';
 import { createEnrollment, deleteEnrollment, getEnrollments } from '@/lib/api/enrollments';
@@ -498,41 +498,16 @@ export function AdminStudentsPage() {
                 </table>
               </div>
 
-              <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs text-slate-400">
-                  Showing <span className="font-semibold text-slate-900">{paginatedStudents.length ? pageIndex * pageSize + 1 : 0}</span>–<span className="font-semibold text-slate-900">{pageIndex * pageSize + paginatedStudents.length}</span> of <span className="font-semibold text-slate-900">{filteredStudents.length}</span> students
-                </p>
-                <div className="flex items-center gap-2">
-                  <select
-                    value={pageSize}
-                    onChange={(event) => setPageSize(Number(event.target.value) as typeof PAGE_SIZE_OPTIONS[number])}
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500 outline-none"
-                  >
-                    {PAGE_SIZE_OPTIONS.map((size) => (
-                      <option key={size} value={size}>
-                        {size} / page
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    disabled={pageIndex === 0}
-                    onClick={() => setPageIndex((current) => Math.max(0, current - 1))}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
-                  </button>
-                  <span className="inline-flex h-8 min-w-[32px] items-center justify-center rounded-lg bg-indigo-600 px-3 text-xs font-semibold text-white">{pageIndex + 1}</span>
-                  <button
-                    type="button"
-                    disabled={pageIndex >= pageCount - 1}
-                    onClick={() => setPageIndex((current) => Math.min(pageCount - 1, current + 1))}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
-                  </button>
-                </div>
-              </div>
+              <AmsPagination
+                currentPage={pageIndex}
+                pageSize={pageSize}
+                totalItems={filteredStudents.length}
+                pageSizeOptions={PAGE_SIZE_OPTIONS}
+                onPageChange={setPageIndex}
+                onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
+                label="Showing"
+                itemLabel="students"
+              />
             </Card>
           </>
         )}

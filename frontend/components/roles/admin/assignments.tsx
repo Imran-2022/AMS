@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '../../layout/AppShell';
+import { AmsPagination } from '../../ui';
 import { ASSIGNMENTS, CLASSES, SUBJECTS, USERS } from '../../data';
 
 const ALL_CLASSES = ['All classes', ...CLASSES.map((item) => `${item.name} - ${item.section}`)];
@@ -9,6 +10,7 @@ const ALL_TEACHERS = [
   'All teachers',
   ...USERS.filter((user) => user.role === 'Teacher').map((teacher) => teacher.name),
 ];
+const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 
 export function AdminAssignmentsPage() {
   const [activeTab, setActiveTab] = useState<'All' | 'Published' | 'Drafts' | 'Overdue'>('All');
@@ -81,6 +83,15 @@ export function AdminAssignmentsPage() {
   }
 
   const rowCount = assignments.length;
+  const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
+  const [pageIndex, setPageIndex] = useState(0);
+
+  const pagedAssignments = useMemo(() => {
+    const start = pageIndex * pageSize;
+    return assignments.slice(start, start + pageSize);
+  }, [assignments, pageIndex, pageSize]);
+
+  const pageCount = Math.max(1, Math.ceil(assignments.length / pageSize));
 
   return (
     <AppShell role="Admin" breadcrumb="Admin / Assignments">
@@ -215,7 +226,7 @@ export function AdminAssignmentsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {assignments.map((assignment) => {
+                  {pagedAssignments.map((assignment) => {
                     const initials = assignment.teacher
                       .split(' ')
                       .map((part) => part[0])
@@ -273,24 +284,16 @@ export function AdminAssignmentsPage() {
                   })}
                 </tbody>
               </table>
-              <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100">
-                <p className="text-xs text-slate-400">Showing <span className="font-semibold text-slate-600">1–{rowCount}</span> of <span className="font-semibold text-slate-600">{totals.total}</span> assignments</p>
-                <div className="flex items-center gap-2">
-                  <button type="button" className="w-8 h-8 rounded-lg border border-slate-200 text-slate-300 flex items-center justify-center" disabled>
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="m15 18-6-6 6-6" />
-                    </svg>
-                  </button>
-                  <span className="w-8 h-8 rounded-lg bg-brand-600 text-white text-xs font-semibold flex items-center justify-center">1</span>
-                  <button type="button" className="w-8 h-8 rounded-lg text-slate-500 text-xs font-semibold flex items-center justify-center hover:bg-slate-50">2</button>
-                  <button type="button" className="w-8 h-8 rounded-lg text-slate-500 text-xs font-semibold flex items-center justify-center hover:bg-slate-50">3</button>
-                  <button type="button" className="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 flex items-center justify-center hover:bg-slate-50">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="m9 18 6-6-6-6" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
+              <AmsPagination
+                currentPage={pageIndex}
+                pageSize={pageSize}
+                totalItems={assignments.length}
+                pageSizeOptions={PAGE_SIZE_OPTIONS}
+                onPageChange={setPageIndex}
+                onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
+                label="Showing"
+                itemLabel="assignments"
+              />
         </div>
       </div>
 

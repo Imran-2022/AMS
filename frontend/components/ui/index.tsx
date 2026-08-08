@@ -90,6 +90,8 @@ export function Td({ children, className = '' }: { children: React.ReactNode; cl
   return <td className={`py-4 border-b border-slate-100 text-sm text-slate-700 font-medium ${className}`}>{children}</td>;
 }
 
+export { AmsPagination } from './AmsPagination';
+
 export function PageHeader({ eyebrow, title, action }: { eyebrow?: string; title: string; action?: React.ReactNode }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">

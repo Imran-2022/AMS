@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from 'react';
+import { AmsPagination } from '../ui';
 import { AppShell } from '../layout/AppShell';
 import { STUDENT_SUBMISSIONS } from '../data';
 
@@ -42,6 +43,14 @@ export function StudentSubmissionsPage() {
   }, [currentTab, subjectFilter, searchTerm]);
 
   const subjectOptions = useMemo(() => Array.from(new Set(STUDENT_SUBMISSIONS.map((item) => item.subject))), []);
+  const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
+  const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
+  const [pageIndex, setPageIndex] = useState(0);
+
+  const pagedSubmissions = useMemo(() => {
+    const start = pageIndex * pageSize;
+    return filteredSubmissions.slice(start, start + pageSize);
+  }, [filteredSubmissions, pageIndex, pageSize]);
 
   const openView = (submission: typeof STUDENT_SUBMISSIONS[number]) => {
     setSelectedSubmission(submission);
@@ -171,7 +180,7 @@ export function StudentSubmissionsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {filteredSubmissions.map((submission) => (
+              {pagedSubmissions.map((submission) => (
                 <tr key={submission.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-5 py-3.5 font-semibold text-slate-700">{submission.title}</td>
                   <td className="px-2 py-3.5 text-slate-500">{submission.subject}</td>
@@ -196,9 +205,16 @@ export function StudentSubmissionsPage() {
               ))}
             </tbody>
           </table>
-          <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100">
-            <p className="text-xs text-slate-400">Showing <span className="font-semibold text-slate-600">1–{filteredSubmissions.length}</span> of <span className="font-semibold text-slate-600">{statusCounts.all}</span> submissions</p>
-          </div>
+          <AmsPagination
+            currentPage={pageIndex}
+            pageSize={pageSize}
+            totalItems={filteredSubmissions.length}
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
+            onPageChange={setPageIndex}
+            onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
+            label="Showing"
+            itemLabel="submissions"
+          />
         </div>
 
         {modalOpen && selectedSubmission ? (
