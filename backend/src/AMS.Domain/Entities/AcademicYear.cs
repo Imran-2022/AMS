@@ -20,8 +20,8 @@ public class AcademicYear
 
         Id = id;
         Name = name;
-        StartDate = startDate;
-        EndDate = endDate;
+        StartDate = startDate.Kind == DateTimeKind.Utc ? startDate : DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+        EndDate = endDate.Kind == DateTimeKind.Utc ? endDate : DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
         IsActive = isActive;
         CreatedAt = DateTime.UtcNow;
     }

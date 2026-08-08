@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AppShell } from '../../layout/AppShell';
+import { Modal } from '../../ui';
 import { getAcademicYears, activateAcademicYear, createAcademicYear } from '@/lib/api';
 
 type SettingsTab = 'general' | 'academic' | 'notifications' | 'security' | 'activity' | 'danger';
@@ -17,11 +18,15 @@ export function AdminSettingsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
+  const currentYear = new Date().getFullYear();
+  const defaultAcademicYearStart = `${currentYear}-01-01`;
+  const defaultAcademicYearEnd = `${currentYear + 1}-01-01`;
   const [newYearName, setNewYearName] = useState('');
-  const [newYearStart, setNewYearStart] = useState('2026-09-01');
-  const [newYearEnd, setNewYearEnd] = useState('2027-08-31');
+  const [newYearStart, setNewYearStart] = useState(defaultAcademicYearStart);
+  const [newYearEnd, setNewYearEnd] = useState(defaultAcademicYearEnd);
   const [newYearIsActive, setNewYearIsActive] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [gradingEnabled, setGradingEnabled] = useState(true);
   const [termStart, setTermStart] = useState('2026-08-01');
   const [termEnd, setTermEnd] = useState('2027-05-31');
@@ -81,18 +86,19 @@ export function AdminSettingsPage() {
       setCreateLoading(true);
       await createAcademicYear({
         name: newYearName,
-        startDate: newYearStart,
-        endDate: newYearEnd,
+        startDate: `${newYearStart}T00:00:00Z`,
+        endDate: `${newYearEnd}T00:00:00Z`,
         isActive: newYearIsActive
       });
       setNewYearName('');
-      setNewYearStart('2026-09-01');
-      setNewYearEnd('2027-08-31');
+      setNewYearStart(defaultAcademicYearStart);
+      setNewYearEnd(defaultAcademicYearEnd);
       setNewYearIsActive(false);
+      setShowCreateModal(false);
       await loadAcademicYears();
     } catch (err) {
       console.error('Failed to create academic year', err);
-      setCreateError('Failed to create academic year');
+      setCreateError(err instanceof Error ? err.message : String(err));
     } finally {
       setCreateLoading(false);
     }
@@ -255,16 +261,43 @@ export function AdminSettingsPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={handleCreateYear}
-                    disabled={createLoading}
-                    className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => {
+                      setCreateError(null);
+                      setShowCreateModal(true);
+                    }}
+                    className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
                   >
-                    {createLoading ? 'Creating…' : 'Create academic year'}
+                    Create academic year
                   </button>
                 </div>
-
-                <div className="grid gap-4 mt-4 md:grid-cols-4">
-                  <div>
+              </div>
+              <Modal
+                open={showCreateModal}
+                onClose={() => setShowCreateModal(false)}
+                title="Create academic year"
+                description="Add a new academic session and optionally set it active."
+                footer={
+                  <div className="flex flex-col gap-3 sm:flex-row sm:justify-end sm:gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateModal(false)}
+                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCreateYear}
+                      disabled={createLoading}
+                      className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {createLoading ? 'Creating…' : 'Create academic year'}
+                    </button>
+                  </div>
+                }
+              >
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="md:col-span-2">
                     <label className="block text-[13px] font-semibold text-slate-700 mb-1">Year name</label>
                     <input
                       type="text"
@@ -292,7 +325,7 @@ export function AdminSettingsPage() {
                       className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                     />
                   </div>
-                  <div className="flex flex-col justify-end">
+                  <div className="flex items-end">
                     <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
                       <input
                         type="checkbox"
@@ -304,13 +337,12 @@ export function AdminSettingsPage() {
                     </label>
                   </div>
                 </div>
-
                 {createError && (
                   <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 mt-4">
                     {createError}
                   </div>
                 )}
-              </div>
+              </Modal>
 
               {loading ? (
                 <div className="text-center py-8 text-slate-500">Loading academic years...</div>
