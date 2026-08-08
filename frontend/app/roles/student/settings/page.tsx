@@ -5,6 +5,7 @@ import { AppShell } from '@/components/layout/AppShell'
 import { changePassword, getCurrentUser, getUserById, updateUser, type UserDto } from '@/lib/api'
 import { uploadFile } from '@/lib/api/files'
 import { setStoredUser } from '@/lib/auth'
+import { emitToast } from '@/components/ui'
 
 const accountTabs = [
   { key: 'security', label: 'Change password' },
@@ -32,9 +33,10 @@ export default function Page() {
   async function loadUser() {
     try {
       const current = await getCurrentUser()
-      const detailedUser = await getUserById(current.id)
-      setUser(detailedUser)
-      setProfileImage(detailedUser.avatarUrl ?? null)
+      setUser(current)
+      const base = process.env.NEXT_PUBLIC_API_URL ?? ''
+      const avatar = current.avatarUrl ? (current.avatarUrl.startsWith('http') ? current.avatarUrl : `${base}${current.avatarUrl}`) : null
+      setProfileImage(avatar)
     } catch (err) {
       console.error(err)
     }
@@ -52,9 +54,12 @@ export default function Page() {
       setLoading(true)
       const uploadResult = await uploadFile(file)
       const updated = await updateUser(user.id, { avatarUrl: uploadResult.fileUrl })
-      setUser(updated)
-      setProfileImage(updated.avatarUrl ?? null)
+        setUser(updated)
+        const base = process.env.NEXT_PUBLIC_API_URL ?? ''
+        const avatar = updated.avatarUrl ? (updated.avatarUrl.startsWith('http') ? updated.avatarUrl : `${base}${updated.avatarUrl}`) : null
+        setProfileImage(avatar)
       setStoredUser(updated)
+        emitToast('Profile photo updated', 'success')
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('ams-user-changed'))
       }
@@ -83,6 +88,7 @@ export default function Page() {
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
+      emitToast('Password updated successfully.', 'success')
     } catch (err: any) {
       setError(err?.message || 'Password update failed.')
     } finally {
@@ -116,12 +122,7 @@ export default function Page() {
                 <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z" /><circle cx="12" cy="13" r="4" /></svg>
                 <span>CHANGE PHOTO</span>
               </div>
-
-              {/* the standard React approach and avoid the browser's built-in filename hover behavior entirely. */}
-
-              <label htmlFor="profile-upload" className="avatar-wrap cursor-pointer">
-              </label>
-
+              <label htmlFor="profile-upload" className="absolute inset-0 cursor-pointer" />
               <input
                 id="profile-upload"
                 type="file"
@@ -148,6 +149,8 @@ export default function Page() {
               <p className="text-[10.5px] font-bold mb-1">ACCOUNT INFORMATION</p>
               <div className="info-row"><span className="k">Student ID</span><span className="v">{user?.studentId || '—'}</span></div>
               <div className="info-row"><span className="k">Gender</span><span className="v">{user?.gender || '—'}</span></div>
+              <div className="info-row"><span className="k">Date of birth</span><span className="v">{user?.dateOfBirth || '—'}</span></div>
+              <div className="info-row"><span className="k">Admission date</span><span className="v">{user?.admissionDate || '—'}</span></div>
               <div className="info-row"><span className="k">Status</span><span className="v inline-flex items-center gap-1.5"><span className={`w-1.5 h-1.5 rounded-full ${user?.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />{user?.isActive ? 'Active' : 'Inactive'}</span></div>
             </div>
             <div className="pt-4 border-t border-slate-100 text-left">
@@ -203,19 +206,52 @@ export default function Page() {
               <div className={`${activeTab === 'security' ? 'block' : 'hidden'} space-y-2`}>
                 <div>
                   <label className="field-label">Current password</label>
-                  <input type="password" placeholder="••••••••" className="field-input max-w-sm" />
+                  <input
+                    type="password"
+                    value={currentPassword}
+                    onChange={(event) => setCurrentPassword(event.target.value)}
+                    placeholder="••••••••"
+                    className="field-input max-w-sm"
+                  />
                 </div>
                 <div>
                   <label className="field-label">New password</label>
-                  <input type="password" placeholder="At least 8 characters" className="field-input max-w-sm" />
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(event) => setNewPassword(event.target.value)}
+                    placeholder="At least 8 characters"
+                    className="field-input max-w-sm"
+                  />
                 </div>
                 <div>
                   <label className="field-label">Confirm new password</label>
-                  <input type="password" placeholder="Re-enter new password" className="field-input max-w-sm" />
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    placeholder="Re-enter new password"
+                    className="field-input max-w-sm"
+                  />
                 </div>
 
+                {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+
                 <div className="pt-5 flex">
-                  <button className="rounded bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">Save changes</button>
+                  <button
+                    type="button"
+                    onClick={handleSavePassword}
+                    disabled={loading}
+                    className="rounded bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50 inline-flex items-center gap-2"
+                  >
+                    {loading ? (
+                      <svg className="h-4 w-4 animate-spin text-white" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-20" />
+                        <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+                      </svg>
+                    ) : null}
+                    <span>{loading ? 'Saving…' : 'Save changes'}</span>
+                  </button>
                 </div>
               </div>
             </div>

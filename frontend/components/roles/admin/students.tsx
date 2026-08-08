@@ -79,6 +79,11 @@ export function AdminStudentsPage() {
             classCourseName: classCourse?.name ?? '',
             section: classCourse?.section ?? '',
             studentId: user.studentId,
+            gender: user.gender,
+            guardianName: user.guardianName,
+            guardianEmail: user.guardianEmail,
+            dateOfBirth: user.dateOfBirth ?? '',
+            admissionDate: user.admissionDate ?? '',
           } as StudentUserRecord;
         });
 
@@ -143,6 +148,11 @@ export function AdminStudentsPage() {
           isActive: values.status === 'Active',
           parentMobile: values.parentMobile,
           studentId: values.studentId || undefined,
+          gender: values.gender || undefined,
+          guardianName: values.guardianName || undefined,
+          guardianEmail: values.guardianEmail || undefined,
+          dateOfBirth: values.dateOfBirth || undefined,
+          admissionDate: values.admissionDate || undefined,
         });
 
         if (editingStudent.classCourseId !== classCourse?.id) {
@@ -164,6 +174,11 @@ export function AdminStudentsPage() {
           isActive: values.status === 'Active',
           parentMobile: values.parentMobile ?? '',
           studentId: values.studentId,
+          gender: values.gender,
+          guardianName: values.guardianName,
+          guardianEmail: values.guardianEmail,
+          dateOfBirth: values.dateOfBirth || undefined,
+          admissionDate: values.admissionDate || undefined,
         });
 
         if (classCourse) {
@@ -548,9 +563,12 @@ export function AdminStudentsPage() {
           studentId: editingStudent.studentId ?? '',
           className: editingStudent.classCourseName ?? classCourses[0]?.name ?? '',
           section: editingStudent.section ?? classCourses[0]?.section ?? '',
-          guardianName: '',
+          guardianName: editingStudent.guardianName ?? '',
           parentMobile: editingStudent.parentMobile,
-          guardianEmail: '',
+          guardianEmail: editingStudent.guardianEmail ?? '',
+          gender: editingStudent.gender ?? '',
+          dateOfBirth: editingStudent.dateOfBirth ?? '',
+          admissionDate: editingStudent.admissionDate ?? '',
         } : {
           fullName: '',
           email: '',

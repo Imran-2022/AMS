@@ -9,10 +9,11 @@ namespace AMS.Application.Services;
 public class UserAppService : IUserAppService
 {
     private readonly IUserRepository _userRepository;
-
-    public UserAppService(IUserRepository userRepository)
+    private readonly IFileAppService _fileAppService;
+    public UserAppService(IUserRepository userRepository, IFileAppService fileAppService)
     {
         _userRepository = userRepository;
+        _fileAppService = fileAppService;
     }
 
     private static DateTime? NormalizeDateTimeUtc(DateTime? value)
@@ -34,7 +35,7 @@ public class UserAppService : IUserAppService
 
     public async Task<UserDto?> GetByIdAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
     {
-        if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can manage users.");
+        if (currentUserRole != nameof(UserRole.Admin) && id != currentUserId) throw new ForbiddenException("Only admins can manage users.");
         var user = await _userRepository.GetByIdAsync(id, cancellationToken);
         return user is null ? null : ToDto(user);
     }
@@ -88,6 +89,20 @@ public class UserAppService : IUserAppService
     {
         if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can manage users.");
         var user = await _userRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException("User not found.");
+        // remember previous avatar stored file name so we can delete it after a successful update
+        string? previousAvatarStoredFile = null;
+        if (!string.IsNullOrWhiteSpace(user.AvatarUrl))
+        {
+            try
+            {
+                var parts = user.AvatarUrl.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                previousAvatarStoredFile = parts.Length > 0 ? parts[^1] : null;
+            }
+            catch
+            {
+                previousAvatarStoredFile = null;
+            }
+        }
         if (input.FullName is not null) user = new AppUser(user.Id, input.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
         if (input.Email is not null) user = new AppUser(user.Id, user.FullName, input.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
         if (input.Role is not null && Enum.TryParse<UserRole>(input.Role, true, out var role)) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, user.IsActive);
@@ -113,6 +128,25 @@ public class UserAppService : IUserAppService
         if (input.ParentMobile is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, input.ParentMobile, user.IsActive);
         if (input.IsActive is not null) user = new AppUser(user.Id, user.FullName, user.Email, user.PasswordHash, user.Role, user.AvatarUrl, user.PhoneNumber, user.EmployeeId, user.SubjectSpecialization, user.Qualification, user.GuardianName, user.GuardianEmail, user.Address, user.StudentId, user.Gender, user.DateOfBirth, user.AdmissionDate, user.JoiningDate, user.ParentMobile, input.IsActive.Value);
         await _userRepository.UpdateAsync(user, cancellationToken);
+
+        // If avatar was changed, delete previous stored file to avoid orphaned uploads
+        if (!string.IsNullOrWhiteSpace(previousAvatarStoredFile) && input.AvatarUrl is not null)
+        {
+            try
+            {
+                var newParts = input.AvatarUrl.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                var newStored = newParts.Length > 0 ? newParts[^1] : null;
+                if (!string.IsNullOrWhiteSpace(newStored) && !string.Equals(newStored, previousAvatarStoredFile, StringComparison.OrdinalIgnoreCase))
+                {
+                    await _fileAppService.DeleteFileAsync(previousAvatarStoredFile);
+                }
+            }
+            catch
+            {
+                // ignore deletion errors
+            }
+        }
+
         return ToDto(user);
     }
 

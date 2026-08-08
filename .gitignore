@@ -40,3 +40,13 @@ Thumbs.db
 /backend/src/AMS.HttpApi.Host/wwwroot/uploads/
 # Ignore any uploads folder under wwwroot in projects
 **/wwwroot/uploads/
+
+# Ignore App_Data uploads folder contents (keep folder if you want by adding a .gitkeep)
+# Ignore all files under any App_Data/Uploads directory
+App_Data/Uploads/
+**/App_Data/Uploads/
+# If you prefer to keep the empty folder tracked, use a .gitkeep and un-ignore it:
+# App_Data/Uploads/*
+# !App_Data/Uploads/.gitkeep
+# **/App_Data/Uploads/*
+# !**/App_Data/Uploads/.gitkeep

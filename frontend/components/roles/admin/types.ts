@@ -8,6 +8,11 @@ export type StudentUserRecord = {
   classCourseName?: string;
   section?: string;
   studentId?: string;
+  gender?: string;
+  guardianName?: string;
+  guardianEmail?: string;
+  dateOfBirth?: string;
+  admissionDate?: string;
 };
 
 export type ClassCourseRecord = {

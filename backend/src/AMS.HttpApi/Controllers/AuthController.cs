@@ -19,11 +19,13 @@ public class AuthController : ControllerBase
     private static readonly ConcurrentDictionary<string, UserDto> RefreshTokenStore = new();
 
     private readonly IAuthAppService _authAppService;
+    private readonly IUserAppService _userAppService;
     private readonly IConfiguration _configuration;
 
-    public AuthController(IAuthAppService authAppService, IConfiguration configuration)
+    public AuthController(IAuthAppService authAppService, IUserAppService userAppService, IConfiguration configuration)
     {
         _authAppService = authAppService;
+        _userAppService = userAppService;
         _configuration = configuration;
     }
 
@@ -135,24 +137,19 @@ public class AuthController : ControllerBase
 
     [HttpGet("me")]
     [Authorize]
-    public ActionResult<UserDto> Me()
+    public async Task<ActionResult<UserDto>> Me()
     {
         if (!User.Identity?.IsAuthenticated ?? true)
             return Unauthorized();
 
         var id = Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : Guid.Empty;
-        var email = User.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
-        var role = User.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
-        var fullName = User.FindFirstValue("fullName") ?? string.Empty;
+        var currentUserRole = User.IsInRole("Admin") ? "Admin" : "Student";
 
-        return Ok(new UserDto
-        {
-            Id = id,
-            Email = email,
-            Role = role,
-            FullName = fullName,
-            IsActive = true
-        });
+        var user = await _userAppService.GetByIdAsync(id, id, currentUserRole);
+        if (user is null)
+            return NotFound();
+
+        return Ok(user);
     }
 
     [HttpPut("profile")]

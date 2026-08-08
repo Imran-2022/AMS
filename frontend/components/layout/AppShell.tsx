@@ -22,6 +22,7 @@ import {
   Users,
 } from 'lucide-react';
 import { clearStoredAuth, getStoredUser } from '@/lib/auth';
+import { ToastContainer } from '../ui';
 import { ROLE, RoleType } from '../data';
 
 interface NavItem {
@@ -255,6 +256,7 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
         <main className="layout-main flex-1 min-h-0 w-full overflow-y-auto">
           <div className="px-6 py-6">{children}</div>
         </main>
+        <ToastContainer />
       </div>
     </div>
   );

@@ -72,4 +72,21 @@ public class FileAppService : IFileAppService
         var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
         return (stream, original);
     }
+
+    public async Task<bool> DeleteFileAsync(string storedFileName)
+    {
+        if (string.IsNullOrEmpty(storedFileName)) return false;
+        var filePath = Path.Combine(_uploadDirectory, storedFileName);
+        if (!File.Exists(filePath)) return false;
+
+        try
+        {
+            File.Delete(filePath);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }

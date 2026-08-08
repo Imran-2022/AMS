@@ -9,6 +9,7 @@ type AmsDeleteComfiramtionModalProps = {
   onClose: () => void;
   onConfirm: () => void;
   confirmLabel?: string;
+  confirmVariant?: 'danger' | 'primary';
   cancelLabel?: string;
   children?: React.ReactNode;
 };
@@ -20,6 +21,7 @@ export function AmsDeleteComfiramtionModal({
   onClose,
   onConfirm,
   confirmLabel = 'Delete',
+  confirmVariant = 'danger',
   cancelLabel = 'Cancel',
   children,
 }: AmsDeleteComfiramtionModalProps) {
@@ -49,7 +51,9 @@ export function AmsDeleteComfiramtionModal({
           <button
             type="button"
             onClick={onConfirm}
-            className="flex-1 px-4 py-2.5 rounded bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700"
+            className={`flex-1 px-4 py-2.5 rounded text-white text-sm font-semibold ${
+              confirmVariant === 'primary' ? 'bg-brand-600 hover:bg-brand-700' : 'bg-rose-600 hover:bg-rose-700'
+            }`}
           >
             {confirmLabel}
           </button>

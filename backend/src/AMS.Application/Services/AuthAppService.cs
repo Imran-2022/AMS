@@ -28,6 +28,19 @@ public class AuthAppService : IAuthAppService
             Email = user.Email,
             Role = user.Role.ToString(),
             IsActive = user.IsActive,
+            AvatarUrl = user.AvatarUrl,
+            PhoneNumber = user.PhoneNumber,
+            EmployeeId = user.EmployeeId,
+            SubjectSpecialization = user.SubjectSpecialization,
+            Qualification = user.Qualification,
+            GuardianName = user.GuardianName,
+            GuardianEmail = user.GuardianEmail,
+            Address = user.Address,
+            StudentId = user.StudentId,
+            Gender = user.Gender,
+            DateOfBirth = user.DateOfBirth,
+            AdmissionDate = user.AdmissionDate,
+            JoiningDate = user.JoiningDate,
             ParentMobile = user.ParentMobile
         };
     }
@@ -47,6 +60,19 @@ public class AuthAppService : IAuthAppService
             Email = user.Email,
             Role = user.Role.ToString(),
             IsActive = user.IsActive,
+            AvatarUrl = user.AvatarUrl,
+            PhoneNumber = user.PhoneNumber,
+            EmployeeId = user.EmployeeId,
+            SubjectSpecialization = user.SubjectSpecialization,
+            Qualification = user.Qualification,
+            GuardianName = user.GuardianName,
+            GuardianEmail = user.GuardianEmail,
+            Address = user.Address,
+            StudentId = user.StudentId,
+            Gender = user.Gender,
+            DateOfBirth = user.DateOfBirth,
+            AdmissionDate = user.AdmissionDate,
+            JoiningDate = user.JoiningDate,
             ParentMobile = user.ParentMobile
         };
     }
