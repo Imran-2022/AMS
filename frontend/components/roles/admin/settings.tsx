@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AppShell } from '../../layout/AppShell';
+import { getAcademicYears, activateAcademicYear, createAcademicYear } from '@/lib/api';
 
 type SettingsTab = 'general' | 'academic' | 'notifications' | 'security' | 'activity' | 'danger';
 
@@ -12,7 +13,15 @@ export function AdminSettingsPage() {
   const [contactEmail, setContactEmail] = useState('office@ams.edu');
   const [contactPhone, setContactPhone] = useState('');
   const [domain, setDomain] = useState('ams.edu');
-  const [academicYear, setAcademicYear] = useState('2026 – 2027');
+  const [academicYears, setAcademicYears] = useState<{ id: string; name: string; startDate: string; endDate: string; isActive: boolean }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [newYearName, setNewYearName] = useState('');
+  const [newYearStart, setNewYearStart] = useState('2026-09-01');
+  const [newYearEnd, setNewYearEnd] = useState('2027-08-31');
+  const [newYearIsActive, setNewYearIsActive] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
   const [gradingEnabled, setGradingEnabled] = useState(true);
   const [termStart, setTermStart] = useState('2026-08-01');
   const [termEnd, setTermEnd] = useState('2027-05-31');
@@ -23,6 +32,71 @@ export function AdminSettingsPage() {
   const [require2FAAdmins, setRequire2FAAdmins] = useState(true);
   const [autoSignOut, setAutoSignOut] = useState('30 minutes');
   const [passwordLength, setPasswordLength] = useState(8);
+
+  useEffect(() => {
+    void loadAcademicYears();
+  }, []);
+
+  async function loadAcademicYears() {
+    try {
+      setLoading(true);
+      setError(null);
+      const years = await getAcademicYears();
+      setAcademicYears(years);
+    } catch (err) {
+      console.error('Failed to load academic years', err);
+      setError('Failed to load academic years');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleActivateYear(yearId: string) {
+    try {
+      setError(null);
+      await activateAcademicYear(yearId);
+      await loadAcademicYears();
+    } catch (err) {
+      console.error('Failed to activate academic year', err);
+      setError('Failed to activate academic year');
+    }
+  }
+
+  async function handleCreateYear() {
+    if (!newYearName.trim()) {
+      setCreateError('Academic year name is required.');
+      return;
+    }
+    if (!newYearStart || !newYearEnd) {
+      setCreateError('Start and end dates are required.');
+      return;
+    }
+    if (new Date(newYearStart) >= new Date(newYearEnd)) {
+      setCreateError('Start date must be before end date.');
+      return;
+    }
+
+    try {
+      setCreateError(null);
+      setCreateLoading(true);
+      await createAcademicYear({
+        name: newYearName,
+        startDate: newYearStart,
+        endDate: newYearEnd,
+        isActive: newYearIsActive
+      });
+      setNewYearName('');
+      setNewYearStart('2026-09-01');
+      setNewYearEnd('2027-08-31');
+      setNewYearIsActive(false);
+      await loadAcademicYears();
+    } catch (err) {
+      console.error('Failed to create academic year', err);
+      setCreateError('Failed to create academic year');
+    } finally {
+      setCreateLoading(false);
+    }
+  }
 
   const tabButton = (label: string, value: SettingsTab) => (
     <button
@@ -163,58 +237,141 @@ export function AdminSettingsPage() {
               } bg-white rounded-2xl border border-slate-200 p-6 space-y-6`}
             >
               <div>
-                <p className="text-sm font-bold text-slate-700">Academic configuration</p>
-                <p className="text-xs text-slate-400 mt-0.5">Controls what students and teachers see as the active term.</p>
+                <p className="text-sm font-bold text-slate-700">Academic years</p>
+                <p className="text-xs text-slate-400 mt-0.5">Manage active academic years. Only one year can be active at a time.</p>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <label className="block text-[13px] font-semibold text-slate-700 mb-1">Current academic year</label>
-                  <select
-                    value={academicYear}
-                    onChange={(event) => setAcademicYear(event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+              {error && (
+                <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+                  {error}
+                </div>
+              )}
+
+              <div className="rounded-2xl border border-slate-200 p-6 mb-6">
+                <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-slate-700">Create an academic year</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Add a new academic session and optionally set it active.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCreateYear}
+                    disabled={createLoading}
+                    className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <option>2026 – 2027</option>
-                    <option>2025 – 2026</option>
-                  </select>
+                    {createLoading ? 'Creating…' : 'Create academic year'}
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-[13px] font-semibold text-slate-700 mb-1">Grading scale</label>
-                  <select
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                  >
-                    <option>Percentage (0–100)</option>
-                    <option>Letter grade (A–F)</option>
-                    <option>GPA (0–5.0)</option>
-                  </select>
+
+                <div className="grid gap-4 mt-4 md:grid-cols-4">
+                  <div>
+                    <label className="block text-[13px] font-semibold text-slate-700 mb-1">Year name</label>
+                    <input
+                      type="text"
+                      value={newYearName}
+                      onChange={(event) => setNewYearName(event.target.value)}
+                      placeholder="2027-2028"
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[13px] font-semibold text-slate-700 mb-1">Start date</label>
+                    <input
+                      type="date"
+                      value={newYearStart}
+                      onChange={(event) => setNewYearStart(event.target.value)}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[13px] font-semibold text-slate-700 mb-1">End date</label>
+                    <input
+                      type="date"
+                      value={newYearEnd}
+                      onChange={(event) => setNewYearEnd(event.target.value)}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                    />
+                  </div>
+                  <div className="flex flex-col justify-end">
+                    <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={newYearIsActive}
+                        onChange={() => setNewYearIsActive((value) => !value)}
+                        className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                      />
+                      Set active
+                    </label>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-[13px] font-semibold text-slate-700 mb-1">Term start date</label>
-                  <input
-                    type="date"
-                    value={termStart}
-                    onChange={(event) => setTermStart(event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[13px] font-semibold text-slate-700 mb-1">Term end date</label>
-                  <input
-                    type="date"
-                    value={termEnd}
-                    onChange={(event) => setTermEnd(event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                  />
-                </div>
+
+                {createError && (
+                  <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 mt-4">
+                    {createError}
+                  </div>
+                )}
               </div>
 
-              <div className="pt-2 border-t border-slate-100 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-slate-700">Enable grading workflow for new assignments</p>
-                  <p className="text-xs text-slate-400 mt-0.5">New assignments require marks entry before being marked "graded."</p>
+              {loading ? (
+                <div className="text-center py-8 text-slate-500">Loading academic years...</div>
+              ) : academicYears.length === 0 ? (
+                <div className="text-center py-8 text-slate-500">No academic years found</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-100">
+                        <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400">YEAR</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400">START DATE</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400">END DATE</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400">STATUS</th>
+                        <th className="px-4 py-3 text-right text-[11px] font-bold text-slate-400">ACTION</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {academicYears.map((year) => (
+                        <tr key={year.id}>
+                          <td className="px-4 py-3 font-semibold text-slate-700">{year.name}</td>
+                          <td className="px-4 py-3 text-slate-600">{new Date(year.startDate).toLocaleDateString()}</td>
+                          <td className="px-4 py-3 text-slate-600">{new Date(year.endDate).toLocaleDateString()}</td>
+                          <td className="px-4 py-3">
+                            {year.isActive ? (
+                              <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-[11.5px] font-bold text-emerald-600">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                Active
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1 text-[11.5px] font-bold text-slate-600">
+                                <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                                Inactive
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            {!year.isActive && (
+                              <button
+                                onClick={() => handleActivateYear(year.id)}
+                                className="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700"
+                              >
+                                Activate
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                {toggleButton(gradingEnabled, () => setGradingEnabled((value) => !value))}
+              )}
+
+              <div className="pt-2 border-t border-slate-100">
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-700">Enable grading workflow for new assignments</p>
+                    <p className="text-xs text-slate-400 mt-0.5">New assignments require marks entry before being marked "graded."</p>
+                  </div>
+                  {toggleButton(gradingEnabled, () => setGradingEnabled((value) => !value))}
+                </div>
               </div>
 
               <div className="pt-2 flex justify-end">

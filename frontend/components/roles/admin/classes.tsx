@@ -14,6 +14,8 @@ import {
   getUsers,
   getClassDefinitions,
   getGroupsForClass,
+  getAcademicYears,
+  getActiveAcademicYear,
 } from '@/lib/api';
 import { getEnrollments } from '@/lib/api/enrollments';
 import { createTeacherAssignment, deleteTeacherAssignment, getTeacherAssignments } from '@/lib/api/teacherAssignments';
@@ -29,8 +31,9 @@ export function AdminClassesPage() {
   const [search, setSearch] = useState('');
   const [activeModal, setActiveModal] = useState<'class' | 'subject' | 'assign' | 'delete' | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; type: 'class' | 'subject'; label: string } | null>(null);
-  const [classForm, setClassForm] = useState({ classDefinitionId: '', groupId: '', name: '', section: '', year: '2026 – 2027' });
+  const [classForm, setClassForm] = useState({ classDefinitionId: '', groupId: '', name: '', section: '', year: '' });
   const [classDefinitions, setClassDefinitions] = useState<{ id: string; name: string }[]>([]);
+  const [academicYears, setAcademicYears] = useState<{ id: string; name: string; isActive: boolean }[]>([]);
   const [availableGroups, setAvailableGroups] = useState<{ id: string; name: string }[]>([]);
   const [editingClass, setEditingClass] = useState<ClassCourseDto | null>(null);
   const [subjectForm, setSubjectForm] = useState({ name: '', code: '', classCourseId: '', teacherId: '' });
@@ -43,7 +46,23 @@ export function AdminClassesPage() {
   useEffect(() => {
     void loadData();
     void loadClassDefinitions();
+    void loadAcademicYears();
   }, []);
+
+  async function loadAcademicYears() {
+    try {
+      const years = await getAcademicYears();
+      setAcademicYears(years);
+      
+      // Set active year as default
+      const activeYear = years.find(y => y.isActive);
+      if (activeYear && !classForm.year) {
+        setClassForm(c => ({ ...c, year: activeYear.id }));
+      }
+    } catch (err) {
+      console.error('Failed to load academic years', err);
+    }
+  }
 
   useEffect(() => {
     async function loadGroups() {
@@ -149,7 +168,8 @@ export function AdminClassesPage() {
   function openModal(modal: 'class' | 'subject' | 'assign') {
     if (modal === 'class') {
       setEditingClass(null);
-      setClassForm({ classDefinitionId: classDefinitions[0]?.id ?? '', groupId: '', name: '', section: '', year: '2026 – 2027' });
+      const activeYear = academicYears.find(y => y.isActive)?.id ?? academicYears[0]?.id ?? '';
+      setClassForm({ classDefinitionId: classDefinitions[0]?.id ?? '', groupId: '', name: '', section: '', year: activeYear });
     }
 
     if (modal === 'subject') {
@@ -169,7 +189,8 @@ export function AdminClassesPage() {
     setEditingSubject(null);
     setSubjectForm({ name: '', code: '', classCourseId: classes[0]?.id ?? '', teacherId: '' });
     setEditingClass(null);
-    setClassForm({ classDefinitionId: classDefinitions[0]?.id ?? '', groupId: '', name: '', section: '', year: '2026 – 2027' });
+    const activeYear = academicYears.find(y => y.isActive)?.id ?? academicYears[0]?.id ?? '';
+    setClassForm({ classDefinitionId: classDefinitions[0]?.id ?? '', groupId: '', name: '', section: '', year: activeYear });
   }
 
   function handleDelete(type: 'class' | 'subject', id: string, label: string) {
@@ -200,6 +221,7 @@ export function AdminClassesPage() {
     event.preventDefault();
 
     try {
+      const yearName = academicYears.find(y => y.id === classForm.year)?.name || '';
       if (editingClass) {
         const nameToSend = classForm.name || classDefinitions.find((c) => c.id === classForm.classDefinitionId)?.name || '';
         await updateClassCourse(editingClass.id, {
@@ -207,7 +229,7 @@ export function AdminClassesPage() {
           groupId: classForm.groupId || undefined,
           name: nameToSend,
           section: classForm.section,
-          academicYear: classForm.year,
+          academicYear: yearName,
         });
       } else {
         const nameToSend = classForm.name || classDefinitions.find((c) => c.id === classForm.classDefinitionId)?.name || '';
@@ -216,10 +238,11 @@ export function AdminClassesPage() {
           groupId: classForm.groupId || undefined,
           name: nameToSend,
           section: classForm.section,
-          academicYear: classForm.year,
+          academicYear: yearName,
         });
       }
-      setClassForm({ classDefinitionId: classDefinitions[0]?.id ?? '', groupId: '', name: '', section: '', year: classForm.year });
+      const activeYear = academicYears.find(y => y.isActive)?.id ?? academicYears[0]?.id ?? '';
+      setClassForm({ classDefinitionId: classDefinitions[0]?.id ?? '', groupId: '', name: '', section: '', year: activeYear });
       setEditingClass(null);
       await loadData();
       closeModal();
@@ -231,7 +254,8 @@ export function AdminClassesPage() {
 
   function openEditClass(cls: ClassCourseDto) {
     setEditingClass(cls);
-    setClassForm({ classDefinitionId: cls.classDefinitionId ?? '', groupId: cls.groupId ?? '', name: cls.name, section: cls.section, year: cls.academicYear });
+    const yearId = academicYears.find(y => y.name === cls.academicYear)?.id ?? '';
+    setClassForm({ classDefinitionId: cls.classDefinitionId ?? '', groupId: cls.groupId ?? '', name: cls.name, section: cls.section, year: yearId });
     setActiveModal('class');
   }
 
@@ -639,8 +663,12 @@ export function AdminClassesPage() {
                   required
                   className="w-full rounded-2xl border border-slate-300 px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                 >
-                  <option>2026 – 2027</option>
-                  <option>2025 – 2026</option>
+                  <option value="">Select academic year</option>
+                  {academicYears.map((year) => (
+                    <option key={year.id} value={year.id}>
+                      {year.name} {year.isActive ? '(Active)' : ''}
+                    </option>
+                  ))}
                 </select>
               </div>
 

@@ -27,7 +27,7 @@ export function logout(redirect = true) {
   }
 }
 
-export async function request<T>(path: string, init?: RequestInit): Promise<ApiResponse<T>> {
+export async function request<T>(path: string, init?: RequestInit, retry = false): Promise<ApiResponse<T>> {
   const token = getAuthToken();
 
   let response: Response;
@@ -48,11 +48,11 @@ export async function request<T>(path: string, init?: RequestInit): Promise<ApiR
   if (!response.ok) {
     if (response.status === 401) {
       const refreshToken = getStoredRefreshToken();
-      if (refreshToken) {
+      if (refreshToken && !retry) {
         try {
           const refreshed = await refreshSession();
           if (refreshed) {
-            return request<T>(path, init);
+            return request<T>(path, init, true);
           }
         } catch {
           // ignore and fall through to logout
@@ -392,6 +392,27 @@ export async function toggleUserStatus(id: string) {
 
 export async function getClassCourses() {
   return request<ClassCourseDto[]>(`/api/classes`);
+}
+
+export async function getAcademicYears() {
+  return request<{ id: string; name: string; startDate: string; endDate: string; isActive: boolean }[]>(`/api/academic-years`);
+}
+
+export async function getActiveAcademicYear() {
+  return request<{ id: string; name: string; startDate: string; endDate: string; isActive: boolean }>(`/api/academic-years/active`);
+}
+
+export async function activateAcademicYear(yearId: string) {
+  return request<{ id: string; name: string; startDate: string; endDate: string; isActive: boolean }>(`/api/academic-years/${yearId}/activate`, {
+    method: 'POST'
+  });
+}
+
+export async function createAcademicYear(input: { name: string; startDate: string; endDate: string; isActive: boolean }) {
+  return request<{ id: string; name: string; startDate: string; endDate: string; isActive: boolean }>(`/api/academic-years`, {
+    method: 'POST',
+    body: JSON.stringify(input)
+  });
 }
 
 export async function getClassDefinitions() {

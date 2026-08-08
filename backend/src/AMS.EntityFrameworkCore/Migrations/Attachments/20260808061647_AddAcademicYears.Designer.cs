@@ -3,17 +3,20 @@ using System;
 using AMS.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace AMS.EntityFrameworkCore.Migrations
+namespace AMS.EntityFrameworkCore.Migrations.Attachments
 {
     [DbContext(typeof(AmsDbContext))]
-    partial class AmsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260808061647_AddAcademicYears")]
+    partial class AddAcademicYears
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

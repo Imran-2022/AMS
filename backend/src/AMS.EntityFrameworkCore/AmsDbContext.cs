@@ -9,6 +9,7 @@ public class AmsDbContext : DbContext
     {
     }
 
+    public DbSet<AcademicYear> AcademicYears => Set<AcademicYear>();
     public DbSet<AppUser> AppUsers => Set<AppUser>();
     public DbSet<ClassCourse> ClassCourses => Set<ClassCourse>();
     public DbSet<ClassDefinition> ClassDefinitions => Set<ClassDefinition>();

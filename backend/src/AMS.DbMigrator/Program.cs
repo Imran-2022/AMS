@@ -21,6 +21,7 @@ var builder = Host.CreateDefaultBuilder(args)
             ?? "Host=localhost;Port=5432;Database=amsdb;Username=postgres;Password=root";
 
         services.AddDbContext<AmsDbContext>(options => options.UseNpgsql(connectionString));
+        services.AddScoped<IAcademicYearRepository, AcademicYearRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IClassCourseRepository, ClassCourseRepository>();
         services.AddScoped<IClassDefinitionRepository, ClassDefinitionRepository>();
@@ -37,6 +38,7 @@ using var scope = host.Services.CreateScope();
 var dbContext = scope.ServiceProvider.GetRequiredService<AmsDbContext>();
 await dbContext.Database.MigrateAsync();
 
+var academicYearRepo = scope.ServiceProvider.GetRequiredService<IAcademicYearRepository>();
 var userRepo = scope.ServiceProvider.GetRequiredService<IUserRepository>();
 var classRepo = scope.ServiceProvider.GetRequiredService<IClassCourseRepository>();
 var classDefRepo = scope.ServiceProvider.GetRequiredService<IClassDefinitionRepository>();
@@ -46,6 +48,17 @@ var assignmentRepo = scope.ServiceProvider.GetRequiredService<IAssignmentReposit
 var submissionRepo = scope.ServiceProvider.GetRequiredService<ISubmissionRepository>();
 var teacherAssignmentRepo = scope.ServiceProvider.GetRequiredService<ITeacherSubjectAssignmentRepository>();
 var enrollmentRepo = scope.ServiceProvider.GetRequiredService<IStudentEnrollmentRepository>();
+
+// Seed Academic Years
+var academicYears = await academicYearRepo.GetAllAsync(CancellationToken.None);
+if (academicYears.Count == 0)
+{
+    var fy2027 = new AcademicYear(Guid.NewGuid(), "2026-2027", new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(2027, 8, 31, 23, 59, 59, DateTimeKind.Utc), isActive: true);
+    var fy2028 = new AcademicYear(Guid.NewGuid(), "2025-2026", new DateTime(2025, 9, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 8, 31, 23, 59, 59, DateTimeKind.Utc), isActive: false);
+
+    await academicYearRepo.AddAsync(fy2027, CancellationToken.None);
+    await academicYearRepo.AddAsync(fy2028, CancellationToken.None);
+}
 
 var adminExists = await userRepo.GetByEmailAsync("admin@ams.local", CancellationToken.None);
 if (adminExists is null)

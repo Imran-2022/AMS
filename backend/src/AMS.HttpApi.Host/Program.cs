@@ -43,8 +43,11 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<AmsDbContext>(options =>
     options.UseNpgsql(connectionString));
 
+builder.Services.AddScoped<IAcademicYearRepository, AcademicYearRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IClassCourseRepository, ClassCourseRepository>();
+builder.Services.AddScoped<IClassDefinitionRepository, ClassDefinitionRepository>();
+builder.Services.AddScoped<IGroupRepository, GroupRepository>();
 builder.Services.AddScoped<ISubjectRepository, SubjectRepository>();
 builder.Services.AddScoped<IAssignmentRepository, AssignmentRepository>();
 builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
@@ -52,6 +55,7 @@ builder.Services.AddScoped<ITeacherSubjectAssignmentRepository, TeacherSubjectAs
 builder.Services.AddScoped<IStudentEnrollmentRepository, StudentEnrollmentRepository>();
 builder.Services.AddScoped<IAttachmentRepository, AttachmentRepository>();
 
+builder.Services.AddScoped<IAcademicYearAppService, AcademicYearAppService>();
 builder.Services.AddScoped<IAuthAppService, AuthAppService>();
 builder.Services.AddScoped<IUserAppService, UserAppService>();
 builder.Services.AddScoped<IClassCourseAppService, ClassCourseAppService>();
