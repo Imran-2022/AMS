@@ -1,7 +1,8 @@
 "use client";
 
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { STUDENT_ROLES } from '@/lib/roles';
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
-  return <ProtectedRoute allowedRoles={['Student', 'Admin']}>{children}</ProtectedRoute>;
+  return <ProtectedRoute allowedRoles={STUDENT_ROLES}>{children}</ProtectedRoute>;
 }

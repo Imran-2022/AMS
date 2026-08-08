@@ -4,6 +4,13 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 type ApiResponse<T> = T;
 
+export class UnauthorizedError extends Error {
+  constructor(message = 'Unauthorized') {
+    super(message);
+    this.name = 'UnauthorizedError';
+  }
+}
+
 function getAuthToken() {
   if (typeof window === 'undefined') return null;
   return window.localStorage.getItem('ams-token');
@@ -22,14 +29,21 @@ export function logout(redirect = true) {
 
 export async function request<T>(path: string, init?: RequestInit): Promise<ApiResponse<T>> {
   const token = getAuthToken();
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(init?.headers || {})
-    },
-    ...init
-  });
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(init?.headers || {})
+      },
+      ...init
+    });
+  } catch (networkErr) {
+    // Network/CORS/dev-server errors should bubble up so callers can decide what to do.
+    throw networkErr instanceof Error ? networkErr : new Error('Network request failed');
+  }
 
   if (!response.ok) {
     if (response.status === 401) {
@@ -45,7 +59,7 @@ export async function request<T>(path: string, init?: RequestInit): Promise<ApiR
         }
       }
       logout(true);
-      throw new Error('Unauthorized');
+      throw new UnauthorizedError();
     }
 
     const errorText = await response.text();

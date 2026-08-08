@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { clearStoredAuth, getStoredToken, getStoredUser } from '@/lib/auth';
-import { getCurrentUser, type UserDto } from '@/lib/api';
+import { getCurrentUser, UnauthorizedError, type UserDto } from '@/lib/api';
 
 const roleDashboardMap: Record<string, string> = {
   Admin: '/roles/admin/dashboard',
@@ -31,25 +31,45 @@ export default function ProtectedRoute({ children, allowedRoles }: { children: R
       return;
     }
 
+    function delay(ms: number) {
+      return new Promise((res) => setTimeout(res, ms));
+    }
+
+    const attemptGetCurrentUser = async (): Promise<UserDto> => {
+      try {
+        return await getCurrentUser();
+      } catch (err) {
+        if (err instanceof UnauthorizedError) throw err;
+        // transient error: wait briefly and retry once
+        await delay(600);
+        return await getCurrentUser();
+      }
+    };
+
     const validateAuth = async () => {
       try {
-        const currentUser: UserDto = await getCurrentUser();
+        const currentUser: UserDto = await attemptGetCurrentUser();
         if (!currentUser || currentUser.role !== user.role) {
           clearStoredAuth();
           router.replace('/login');
           return;
         }
         setAuthorized(true);
-      } catch {
-        clearStoredAuth();
-        router.replace('/login');
+      } catch (err) {
+        if (err instanceof UnauthorizedError) {
+          clearStoredAuth();
+          router.replace('/login');
+        } else {
+          console.error('Auth check failed (non-auth error), trusting local session:', err);
+          setAuthorized(true);
+        }
       } finally {
         setCheckedAuth(true);
       }
     };
 
     validateAuth();
-  }, [allowedRoles, router]);
+  }, [allowedRoles.join(','), router]);
 
   if (!checkedAuth) {
     return (
