@@ -34,6 +34,12 @@ const labelClass = 'mb-2 block text-[13px] font-semibold text-slate-800';
 const hintClass = 'mt-1 text-[11.5px] text-slate-500';
 const sectionTitleClass = 'text-[11px] font-semibold uppercase tracking-[0.06em] text-brand-600';
 
+function normalizeDate(value?: string) {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
+}
+
 export function AddTeacherModal({
   open,
   onClose,
@@ -67,7 +73,7 @@ export function AddTeacherModal({
       phone: initialValues?.phone ?? '',
       gender: initialValues?.gender ?? '',
       qualification: initialValues?.qualification ?? '',
-      joiningDate: initialValues?.joiningDate ?? '',
+      joiningDate: normalizeDate(initialValues?.joiningDate),
       subjectSpecialization: initialValues?.subjectSpecialization ?? '',
       avatarUrl: initialValues?.avatarUrl ?? '',
     });
@@ -167,12 +173,12 @@ export function AddTeacherModal({
             </div>
             <div>
               <label className={labelClass}>
-                Password <span className="text-rose-500">*</span>
+                Password{requirePassword ? ' ' : ' (optional)'}{requirePassword ? <span className="text-rose-500">*</span> : null}
               </label>
               <input
                 value={values.password}
                 onChange={(event) => handleChange('password', event.target.value)}
-                placeholder="Create a password"
+                placeholder={requirePassword ? 'Create a password' : 'Leave blank to keep current password'}
                 className={inputClass}
                 type="password"
                 required={requirePassword}

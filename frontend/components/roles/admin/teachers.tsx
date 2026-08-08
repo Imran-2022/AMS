@@ -355,9 +355,15 @@ export function AdminTeachersPage() {
                         </td>
                         <td className="px-2 py-3.5 text-slate-500">{t.email}</td>
                         <td className="px-2 py-3.5">
-                          <div className="flex flex-wrap gap-1">{t.subjects.map((s) => <span key={s} className="chip">{s}</span>)}</div>
+                          {t.subjects.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">{t.subjects.map((s) => <span key={s} className="chip">{s}</span>)}</div>
+                          ) : (
+                            <span className="text-slate-500">Not assigned</span>
+                          )}
                         </td>
-                        <td className="px-2 py-3.5 text-slate-500">{t.classesCount} classes</td>
+                        <td className="px-2 py-3.5 text-slate-500">
+                          {t.classesCount > 0 ? `${t.classesCount} ${t.classesCount === 1 ? 'class' : 'classes'}` : 'Not assigned'}
+                        </td>
                         <td className="px-2 py-3.5">
                           <span className={`badge ${t.tone === 'emerald' ? 'bg-emerald-50 text-emerald-600' : t.tone === 'slate' ? 'bg-slate-100 text-slate-700' : 'bg-amber-50 text-amber-600'}`}>
                             <span className={`badge-dot ${t.tone === 'emerald' ? 'bg-emerald-500' : t.tone === 'slate' ? 'bg-slate-500' : 'bg-amber-500'}`}></span>

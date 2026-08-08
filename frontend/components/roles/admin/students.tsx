@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AppShell } from '../../layout/AppShell';
 import { AmsDeleteComfiramtionModal, AmsPagination, Button, Card, Pill, Th, Td, AddStudentModal, type AddStudentFormData } from '../../ui';
+import { API_BASE_URL } from '@/lib/api';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
 import { createUser, deleteUser, getClassCourses, getUsers, updateUser } from '@/lib/api';
 import { createEnrollment, deleteEnrollment, getEnrollments } from '@/lib/api/enrollments';
@@ -84,6 +85,7 @@ export function AdminStudentsPage() {
             guardianEmail: user.guardianEmail,
             dateOfBirth: user.dateOfBirth ?? '',
             admissionDate: user.admissionDate ?? '',
+            avatarUrl: user.avatarUrl,
           } as StudentUserRecord;
         });
 
@@ -440,14 +442,24 @@ export function AdminStudentsPage() {
                       <tr key={student.id} className="hover:bg-slate-50 transition-colors duration-150">
                         <Td className="px-2 py-3.5">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-semibold">
-                              {student.fullName
-                                .split(' ')
-                                .map((part) => part[0])
-                                .join('')
-                                .slice(0, 2)
-                                .toUpperCase()}
-                            </div>
+                            {student.avatarUrl ? (
+                              <div className="relative h-8 w-8 overflow-hidden rounded-full bg-indigo-100">
+                                <img
+                                  src={student.avatarUrl.startsWith('http') ? student.avatarUrl : `${API_BASE_URL}${student.avatarUrl}`}
+                                  alt={student.fullName}
+                                  className="h-full w-full object-cover"
+                                />
+                              </div>
+                            ) : (
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-semibold">
+                                {student.fullName
+                                  .split(' ')
+                                  .map((part) => part[0])
+                                  .join('')
+                                  .slice(0, 2)
+                                  .toUpperCase()}
+                              </div>
+                            )}
                             <span className="font-semibold text-slate-700">{student.fullName}</span>
                           </div>
                         </Td>
@@ -584,7 +596,6 @@ export function AdminStudentsPage() {
         isSubmitting={studentModalSubmitting}
         requirePassword={!editingStudent}
         studentIdReadOnly
-        hidePasswordField={Boolean(editingStudent)}
         onSubmit={handleSaveStudent}
       />
 

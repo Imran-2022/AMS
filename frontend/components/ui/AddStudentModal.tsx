@@ -212,21 +212,19 @@ export function AddStudentModal({
                 <option value="Female">Female</option>
               </select>
             </div>
-            {!hidePasswordField && (
-              <div>
-                <label className={labelClass}>
-                  Password <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  value={values.password}
-                  onChange={(event) => handleChange('password', event.target.value)}
-                  placeholder="Create a password"
-                  className={inputClass}
-                  type="password"
-                  required={requirePassword}
-                />
-              </div>
-            )}
+            <div>
+              <label className={labelClass}>
+                Password{requirePassword ? '' : ' (optional)'}{requirePassword ? <span className="text-rose-500">*</span> : null}
+              </label>
+              <input
+                value={values.password}
+                onChange={(event) => handleChange('password', event.target.value)}
+                placeholder={requirePassword ? 'Create a password' : 'Leave blank to keep current password'}
+                className={inputClass}
+                type="password"
+                required={requirePassword}
+              />
+            </div>
             <div>
               <label className={labelClass}>Status</label>
               <select

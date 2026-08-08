@@ -13,6 +13,7 @@ export type StudentUserRecord = {
   guardianEmail?: string;
   dateOfBirth?: string;
   admissionDate?: string;
+  avatarUrl?: string;
 };
 
 export type ClassCourseRecord = {
