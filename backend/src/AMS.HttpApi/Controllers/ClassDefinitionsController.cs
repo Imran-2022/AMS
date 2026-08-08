@@ -21,7 +21,11 @@ public class ClassDefinitionsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult> GetAll()
     {
-        var list = await _db.ClassDefinitions.OrderBy(x => x.Name).Select(x => new { id = x.Id, name = x.Name }).ToListAsync();
+        var list = await _db.ClassDefinitions
+            .OrderBy(x => x.SortOrder)
+            .ThenBy(x => x.Name)
+            .Select(x => new { id = x.Id, name = x.Name })
+            .ToListAsync();
         return Ok(list);
     }
 

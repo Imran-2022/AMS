@@ -11,5 +11,6 @@ public class ClassDefinitionConfiguration : IEntityTypeConfiguration<ClassDefini
         builder.ToTable("class_definitions");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Name).HasColumnName("name").HasMaxLength(200).IsRequired();
+        builder.Property(x => x.SortOrder).HasColumnName("sort_order").IsRequired().HasDefaultValue(0);
     }
 }

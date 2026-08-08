@@ -30,7 +30,10 @@ public class ClassDefinitionRepository : IClassDefinitionRepository
 
     public async Task<IReadOnlyList<ClassDefinition>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        return await _context.ClassDefinitions.ToListAsync(cancellationToken);
+        return await _context.ClassDefinitions
+            .OrderBy(x => x.SortOrder)
+            .ThenBy(x => x.Name)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<ClassDefinition?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)

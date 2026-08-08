@@ -81,70 +81,92 @@ if (studentExists is null)
     await userRepo.AddAsync(new AppUser(Guid.NewGuid(), "Omar Student", "student3@ams.local", BCrypt.Net.BCrypt.HashPassword("Student123!"), UserRole.Student));
 }
 
+var classDefinitions = await classDefRepo.GetAllAsync(CancellationToken.None);
+var classNames = new[] { "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve" };
+var missingClassNames = classNames.Except(classDefinitions.Select(cd => cd.Name)).ToList();
+
+if (missingClassNames.Any())
+{
+    var definitionsToAdd = missingClassNames
+        .Select(name => new ClassDefinition(Guid.NewGuid(), name, Array.IndexOf(classNames, name) + 1))
+        .ToList();
+
+    foreach (var classDef in definitionsToAdd)
+    {
+        await classDefRepo.AddAsync(classDef, CancellationToken.None);
+    }
+
+    classDefinitions = await classDefRepo.GetAllAsync(CancellationToken.None);
+}
+
 var classCourse = await classRepo.GetAllAsync(CancellationToken.None);
 if (classCourse.Count == 0)
 {
-    // Seed ClassDefinitions
-    var classDefinitions = await classDefRepo.GetAllAsync(CancellationToken.None);
-    Guid? grade10DefId = null;
-    Guid? grade11DefId = null;
+    var seededDefinitions = classDefinitions.Where(cd => classNames.Contains(cd.Name)).ToList();
     Guid? scienceGroupId = null;
 
-    if (classDefinitions.Count == 0)
+    var elevenDef = seededDefinitions.FirstOrDefault(c => c.Name == "Eleven");
+    if (elevenDef is not null)
     {
-        var grade10Def = new ClassDefinition(Guid.NewGuid(), "Grade 10");
-        var grade11Def = new ClassDefinition(Guid.NewGuid(), "Grade 11");
-        
-        await classDefRepo.AddAsync(grade10Def, CancellationToken.None);
-        await classDefRepo.AddAsync(grade11Def, CancellationToken.None);
+        var groups = await groupRepo.GetByClassDefinitionAsync(elevenDef.Id, CancellationToken.None);
+        scienceGroupId = groups.FirstOrDefault(g => g.Name == "Science")?.Id;
 
-        grade10DefId = grade10Def.Id;
-        grade11DefId = grade11Def.Id;
-
-        // Seed a Group for Grade 11
-        var scienceGroup = new Group(Guid.NewGuid(), grade11Def.Id, "Science");
-        await groupRepo.AddAsync(scienceGroup, CancellationToken.None);
-        scienceGroupId = scienceGroup.Id;
-    }
-    else
-    {
-        grade10DefId = classDefinitions.FirstOrDefault(c => c.Name == "Grade 10")?.Id;
-        grade11DefId = classDefinitions.FirstOrDefault(c => c.Name == "Grade 11")?.Id;
-        if (grade11DefId.HasValue)
+        if (scienceGroupId is null)
         {
-            var groups = await groupRepo.GetByClassDefinitionAsync(grade11DefId.Value, CancellationToken.None);
-            scienceGroupId = groups.FirstOrDefault(g => g.Name == "Science")?.Id;
+            var scienceGroup = new Group(Guid.NewGuid(), elevenDef.Id, "Science");
+            await groupRepo.AddAsync(scienceGroup, CancellationToken.None);
+            scienceGroupId = scienceGroup.Id;
         }
     }
 
-    var grade10 = new ClassCourse(Guid.NewGuid(), "Grade 10", "A", "2026-2027", grade10DefId, null);
-    var grade11 = new ClassCourse(Guid.NewGuid(), "Grade 11", "B", "2026-2027", grade11DefId, scienceGroupId);
+    var orderedDefinitions = classNames
+        .Select(name => seededDefinitions.FirstOrDefault(cd => cd.Name == name))
+        .Where(cd => cd is not null)
+        .Cast<ClassDefinition>()
+        .ToList();
 
-    await classRepo.AddAsync(grade10, CancellationToken.None);
-    await classRepo.AddAsync(grade11, CancellationToken.None);
+    var seededCourses = orderedDefinitions
+        .Select((classDef, index) => new ClassCourse(
+            Guid.NewGuid(),
+            classDef.Name,
+            index % 2 == 0 ? "A" : "B",
+            "2026-2027",
+            classDef.Id,
+            classDef.Name == "Eleven" ? scienceGroupId : null))
+        .ToList();
 
-    var math = new Subject(Guid.NewGuid(), "Mathematics", "MATH101", grade10.Id);
-    var science = new Subject(Guid.NewGuid(), "Science", "SCI101", grade11.Id);
-    await subjectRepo.AddAsync(math, CancellationToken.None);
-    await subjectRepo.AddAsync(science, CancellationToken.None);
-
-    var teacher = await userRepo.GetByEmailAsync("teacher@ams.local", CancellationToken.None);
-    if (teacher is not null)
+    foreach (var course in seededCourses)
     {
-        await teacherAssignmentRepo.AddAsync(new TeacherSubjectAssignment(teacher.Id, math.Id, grade10.Id), CancellationToken.None);
+        await classRepo.AddAsync(course, CancellationToken.None);
     }
 
-    var student = await userRepo.GetByEmailAsync("student@ams.local", CancellationToken.None);
-    if (student is not null)
+    var oneCourse = seededCourses.FirstOrDefault(c => c.Name == "One");
+    if (oneCourse is not null)
     {
-        await enrollmentRepo.AddAsync(new StudentEnrollment(student.Id, grade10.Id), CancellationToken.None);
+        var math = new Subject(Guid.NewGuid(), "Mathematics", "MATH101", oneCourse.Id);
+        await subjectRepo.AddAsync(math, CancellationToken.None);
+
+        var teacher = await userRepo.GetByEmailAsync("teacher@ams.local", CancellationToken.None);
+        if (teacher is not null)
+        {
+            await teacherAssignmentRepo.AddAsync(new TeacherSubjectAssignment(teacher.Id, math.Id, oneCourse.Id), CancellationToken.None);
+        }
+
+        var student = await userRepo.GetByEmailAsync("student@ams.local", CancellationToken.None);
+        if (student is not null)
+        {
+            await enrollmentRepo.AddAsync(new StudentEnrollment(student.Id, oneCourse.Id), CancellationToken.None);
+        }
+
+        if (teacher is not null && student is not null)
+        {
+            var assignment = new Assignment(Guid.NewGuid(), "Algebra Basics", "Complete the algebra worksheet.", oneCourse.Id, math.Id, teacher.Id, DateTime.UtcNow.AddDays(7), 100, AssignmentStatus.Published, true, false, DateTime.UtcNow);
+            await assignmentRepo.AddAsync(assignment, CancellationToken.None);
+
+            var submission = new Submission(Guid.NewGuid(), assignment.Id, student.Id, "Completed worksheet.", null, DateTime.UtcNow, false, SubmissionStatus.Submitted);
+            await submissionRepo.AddAsync(submission, CancellationToken.None);
+        }
     }
-
-    var assignment = new Assignment(Guid.NewGuid(), "Algebra Basics", "Complete the algebra worksheet.", grade10.Id, math.Id, teacher!.Id, DateTime.UtcNow.AddDays(7), 100, AssignmentStatus.Published, true, false, DateTime.UtcNow);
-    await assignmentRepo.AddAsync(assignment, CancellationToken.None);
-
-    var submission = new Submission(Guid.NewGuid(), assignment.Id, student!.Id, "Completed worksheet.", null, DateTime.UtcNow, false, SubmissionStatus.Submitted);
-    await submissionRepo.AddAsync(submission, CancellationToken.None);
 }
 
 Console.WriteLine("Seeding completed.");
