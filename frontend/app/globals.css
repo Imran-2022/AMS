@@ -380,34 +380,13 @@ main.layout-main {
 }
 
 .info-row .k {
-  color: gray;
+  color: #94A3B8;
   font-weight: 600;
 }
 
 .info-row .v {
-  color: gray;
+  color: #334155;
   font-weight: 600;
-}
-
-.status-value {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.status-dot {
-  display: inline-block;
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 9999px;
-}
-
-.status-dot-active {
-  background: #34D399;
-}
-
-.status-dot-inactive {
-  background: #94A3B8;
 }
 
 .section-row {

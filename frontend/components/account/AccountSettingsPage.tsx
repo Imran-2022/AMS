@@ -214,9 +214,9 @@ export function AccountSettingsPage({
                   return (
                     <div key={field.key} className="info-row">
                       <span className="k">{field.label}</span>
-                      <span className={`v ${isStatus ? 'status-value' : ''}`}>
+                      <span className={isStatus ? 'v inline-flex items-center gap-1.5' : 'v'}>
                         {isStatus && value !== '—' ? (
-                          <span className={`status-dot ${value === 'Active' ? 'status-dot-active' : 'status-dot-inactive'}`} />
+                          <span className={`w-1.5 h-1.5 rounded-full ${value === 'Active' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                         ) : null}
                         {value}
                       </span>
