@@ -55,15 +55,18 @@ export function AdminAssignmentsPage() {
   }, []);
 
   useEffect(() => {
-    const handleClick = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setActiveRowMenu(null);
-      }
-    };
+    function handleDocumentClick(event: MouseEvent) {
+      if (!activeRowMenu) return;
+      const target = event.target as Node;
+      const menuEl = document.querySelector(`[data-action-menu="assignment-${activeRowMenu}"]`);
+      const btnEl = document.querySelector(`[data-action-button="assignment-${activeRowMenu}"]`);
+      if (menuEl?.contains(target) || btnEl?.contains(target)) return;
+      setActiveRowMenu(null);
+    }
 
-    document.addEventListener('click', handleClick);
-    return () => document.removeEventListener('click', handleClick);
-  }, []);
+    document.addEventListener('click', handleDocumentClick);
+    return () => document.removeEventListener('click', handleDocumentClick);
+  }, [activeRowMenu]);
 
   function toggleMenu(id: number) {
     setActiveRowMenu((current) => (current === id ? null : id));
@@ -248,6 +251,7 @@ export function AdminAssignmentsPage() {
                           <div className="relative inline-block">
                             <button
                               type="button"
+                              data-action-button={`assignment-${assignment.id}`}
                               onClick={() => toggleMenu(assignment.id)}
                               className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-400 inline-flex items-center justify-center">
                               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
@@ -256,10 +260,11 @@ export function AdminAssignmentsPage() {
                                 <circle cx="19" cy="12" r="2" />
                               </svg>
                             </button>
-                            <div className={`row-menu absolute right-0 mt-1 w-44 bg-white border border-slate-200 rounded-xl shadow-lg z-10 py-1.5 ${activeRowMenu === assignment.id ? '' : 'hidden'}`}>
+                            <div
+                              data-action-menu={`assignment-${assignment.id}`}
+                              onClick={(ev) => ev.stopPropagation()}
+                              className={`row-menu absolute right-0 mt-1 w-44 bg-white border border-slate-200 rounded-xl shadow-lg z-10 py-1.5 ${activeRowMenu === assignment.id ? '' : 'hidden'}`}>
                               <button type="button" className="block w-full text-left px-3.5 py-2 text-sm text-slate-600 hover:bg-slate-50">View details</button>
-                              <button type="button" className="block w-full text-left px-3.5 py-2 text-sm text-slate-600 hover:bg-slate-50">Extend deadline</button>
-                              <button type="button" onClick={() => openArchive(assignment.title)} className="block w-full text-left px-3.5 py-2 text-sm text-rose-600 hover:bg-rose-50">Archive</button>
                             </div>
                           </div>
                         </td>
@@ -291,7 +296,7 @@ export function AdminAssignmentsPage() {
 
       {archiveTarget ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
-          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl p-7 text-center">
+          <div className="bg-white rounded w-full max-w-sm shadow-2xl p-7 text-center">
             <div className="w-14 h-14 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center mx-auto mb-4">
               <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="21 8 21 21 3 21 3 8" />
