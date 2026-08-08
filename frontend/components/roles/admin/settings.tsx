@@ -21,7 +21,8 @@ export function AdminSettingsPage() {
   const currentYear = new Date().getFullYear();
   const defaultAcademicYearStart = `${currentYear}-01-01`;
   const defaultAcademicYearEnd = `${currentYear + 1}-01-01`;
-  const [newYearName, setNewYearName] = useState('');
+  const defaultAcademicYearName = `${currentYear}-${currentYear + 1}`;
+  const [newYearName, setNewYearName] = useState(defaultAcademicYearName);
   const [newYearStart, setNewYearStart] = useState(defaultAcademicYearStart);
   const [newYearEnd, setNewYearEnd] = useState(defaultAcademicYearEnd);
   const [newYearIsActive, setNewYearIsActive] = useState(false);
@@ -90,7 +91,7 @@ export function AdminSettingsPage() {
         endDate: `${newYearEnd}T00:00:00Z`,
         isActive: newYearIsActive
       });
-      setNewYearName('');
+      setNewYearName(defaultAcademicYearName);
       setNewYearStart(defaultAcademicYearStart);
       setNewYearEnd(defaultAcademicYearEnd);
       setNewYearIsActive(false);

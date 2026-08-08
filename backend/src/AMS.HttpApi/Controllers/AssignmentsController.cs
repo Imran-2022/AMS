@@ -44,7 +44,13 @@ public class AssignmentsController : ControllerBase
     {
         var currentUserId = this.GetCurrentUserId();
         var currentUserRole = User.IsInRole("Admin") ? "Admin" : User.IsInRole("Teacher") ? "Teacher" : "Student";
-        _logger.LogInformation("Create assignment request by user {UserId} role {Role} input class {ClassCourseId} subject {SubjectId}", currentUserId, currentUserRole, input?.ClassCourseId, input?.SubjectId);
+        if (input is null)
+        {
+            _logger.LogWarning("Create assignment request missing body for user {UserId}", currentUserId);
+            return BadRequest("Assignment data is required.");
+        }
+
+        _logger.LogInformation("Create assignment request by user {UserId} role {Role} input class {ClassCourseId} subject {SubjectId}", currentUserId, currentUserRole, input.ClassCourseId, input.SubjectId);
         try
         {
             var assignment = await _assignmentAppService.CreateAsync(input, currentUserId, currentUserRole);
