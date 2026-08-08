@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState, createContext } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
@@ -30,6 +30,56 @@ interface NavItem {
   href: string;
   label: string;
   Icon: LucideIcon;
+}
+
+const AppShellContext = createContext(false);
+const AppShellProvider = AppShellContext.Provider;
+
+function getBreadcrumb(pathname: string, role: RoleType | undefined) {
+  const segments = pathname.split('/').filter(Boolean);
+  if (segments[0] !== 'roles' || !segments[1]) {
+    return 'Dashboard';
+  }
+
+  const currentRole = segments[1];
+  const page = segments[2] ?? 'dashboard';
+  const roleTitle = currentRole.charAt(0).toUpperCase() + currentRole.slice(1);
+
+  const roleMap: Record<string, Record<string, string>> = {
+    admin: {
+      dashboard: 'Dashboard',
+      students: 'Students',
+      teachers: 'Teachers',
+      administrators: 'Administrators',
+      classes: 'Classes & subjects',
+      assignments: 'Assignments',
+      submissions: 'Submissions',
+      settings: 'Settings',
+      enrollments: 'Enrollments',
+      'teacher-assignments': 'Teacher assignments',
+      users: 'Users',
+    },
+    teacher: {
+      dashboard: 'Dashboard',
+      classes: 'My Classes',
+      assignments: 'My Assignments',
+      submissions: 'Submissions',
+      settings: 'Settings',
+    },
+    student: {
+      dashboard: 'Dashboard',
+      assignments: 'Assignments',
+      submissions: 'Submissions',
+      settings: 'Account',
+    },
+  };
+
+  let label = roleMap[currentRole]?.[page] ?? page.replace(/-/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase());
+  if (currentRole === 'teacher' && page === 'assignments' && segments[3]) {
+    label = 'Assignment';
+  }
+
+  return `${roleTitle} / ${label}`;
 }
 
 const NAV: Record<RoleType, NavItem[]> = {
@@ -166,13 +216,18 @@ function Topbar({ breadcrumb }: { breadcrumb: string }) {
   );
 }
 
-export function AppShell({ role, breadcrumb, children }: { role: RoleType; breadcrumb: string; children: React.ReactNode }) {
+export function AppShell({ role, breadcrumb, children }: { role: RoleType; breadcrumb?: string; children: React.ReactNode }) {
+  const isNested = useContext(AppShellContext);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [userName, setUserName] = useState<string | undefined>(undefined);
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
   const router = useRouter();
+
+  if (isNested) {
+    return <>{children}</>;
+  }
 
   useEffect(() => {
     const stored = window.localStorage.getItem('ams-sidebar-collapsed');
@@ -235,34 +290,38 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
     router.push('/login');
   }
 
+  const computedBreadcrumb = breadcrumb ?? getBreadcrumb(usePathname(), role);
+
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F7F7F9] text-[#1F2430]">
-      {mobileOpen && (
-        <div className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden" onClick={() => setMobileOpen(false)} aria-hidden="true" />
-      )}
-      <Sidebar
-        role={role}
-        collapsed={isCollapsed}
-        mobileOpen={mobileOpen}
-        onToggle={() => {
-          if (isMobile) {
-            setMobileOpen((value) => !value);
-          } else {
-            setIsCollapsed((value) => !value);
-          }
-        }}
-        onNavigate={() => setMobileOpen(false)}
-        onLogout={handleLogout}
-        userName={userName}
-        avatarUrl={avatarUrl}
-      />
-      <div className={`flex-1 flex flex-col min-h-0 transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed ? 'lg:ml-[76px]' : 'lg:ml-64'}`}>
-        <Topbar breadcrumb={breadcrumb} />
-        <main className="layout-main flex-1 min-h-0 w-full overflow-y-auto">
-          <div className="px-6 py-6">{children}</div>
-        </main>
-        <ToastContainer />
+    <AppShellProvider value={true}>
+      <div className="flex h-screen overflow-hidden bg-[#F7F7F9] text-[#1F2430]">
+        {mobileOpen && (
+          <div className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden" onClick={() => setMobileOpen(false)} aria-hidden="true" />
+        )}
+        <Sidebar
+          role={role}
+          collapsed={isCollapsed}
+          mobileOpen={mobileOpen}
+          onToggle={() => {
+            if (isMobile) {
+              setMobileOpen((value) => !value);
+            } else {
+              setIsCollapsed((value) => !value);
+            }
+          }}
+          onNavigate={() => setMobileOpen(false)}
+          onLogout={handleLogout}
+          userName={userName}
+          avatarUrl={avatarUrl}
+        />
+        <div className={`flex-1 flex flex-col min-h-0 transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed ? 'lg:ml-[76px]' : 'lg:ml-64'}`}>
+          <Topbar breadcrumb={computedBreadcrumb} />
+          <main className="layout-main flex-1 min-h-0 w-full overflow-y-auto">
+            <div className="px-6 py-6">{children}</div>
+          </main>
+          <ToastContainer />
+        </div>
       </div>
-    </div>
+    </AppShellProvider>
   );
 }
