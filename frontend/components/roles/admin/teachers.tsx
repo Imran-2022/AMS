@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
-import { AmsPagination, Modal, AddTeacherModal, type AddTeacherFormData } from '../../ui';
+import { AmsDeleteComfiramtionModal, AmsPagination, AddTeacherModal, type AddTeacherFormData } from '../../ui';
 import { AppShell } from '../../layout/AppShell';
 import { createUser, deleteUser, getUsers, updateUser } from '@/lib/api';
 import { getTeacherAssignments, type TeacherSubjectAssignmentDto } from '@/lib/api/teacherAssignments';
@@ -419,29 +419,15 @@ export function AdminTeachersPage() {
         </div>
       </div>
 
-      <Modal
+      <AmsDeleteComfiramtionModal
         open={Boolean(pendingDeleteTeacher)}
         onClose={() => setPendingDeleteTeacher(null)}
         title="Delete teacher?"
         description={pendingDeleteTeacher ? `${pendingDeleteTeacher.name} will be removed. This action cannot be undone.` : undefined}
-        footer={
-          <div className="flex flex-wrap items-center justify-end gap-3">
-            <button type="button" className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50" onClick={() => setPendingDeleteTeacher(null)}>Cancel</button>
-            <button type="button" className="px-4 py-2.5 rounded-xl bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700" onClick={confirmDeleteTeacher}>Delete</button>
-          </div>
-        }
+        onConfirm={confirmDeleteTeacher}
+        confirmVariant="danger"
       >
-        <div className="flex flex-col items-center justify-center gap-4 py-6">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-rose-50 text-rose-500">
-            <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-              <line x1="12" y1="9" x2="12" y2="13" />
-              <line x1="12" y1="17" x2="12.01" y2="17" />
-            </svg>
-          </div>
-          <p className="text-sm text-slate-500">This action will permanently delete the teacher record.</p>
-        </div>
-      </Modal>
+      </AmsDeleteComfiramtionModal>
       <AddTeacherModal
         open={isTeacherModalOpen}
         onClose={() => {

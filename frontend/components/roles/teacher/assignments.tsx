@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BookOpen, ClipboardList, Copy, FileText, Layers, Pencil, Plus, Search, Send, Trash2, Eye } from 'lucide-react';
 import { AppShell } from '../../layout/AppShell';
-import { Button, FileUpload } from '../../ui';
+import { AmsDeleteComfiramtionModal, Button, FileUpload } from '../../ui';
 import { getAssignments, getClassCourses, getSubjects, createAssignment, updateAssignment, deleteAssignment, publishAssignment, unpublishAssignment } from '@/lib/api';
 import type { AssignmentDto, ClassCourseDto, SubjectDto, CreateAssignmentDto, UpdateAssignmentDto } from '@/lib/api';
 
@@ -624,21 +624,15 @@ export function TeacherAssignmentsPage() {
           </div>
         )}
 
-        {deleteModalOpen && pendingDelete && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-7 text-center shadow-2xl">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 text-rose-500">
-                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
-              </div>
-              <h3 className="text-lg font-extrabold text-slate-900">Delete this assignment?</h3>
-              <p className="mt-2 text-sm text-slate-500">{pendingDelete.title} will be permanently deleted. This can’t be undone.</p>
-              <div className="mt-6 flex items-center gap-3">
-                <Button type="button" variant="secondary" className="flex-1" onClick={() => { setDeleteModalOpen(false); setPendingDelete(null); }}>Cancel</Button>
-                <Button type="button" variant="danger" className="flex-1" onClick={handleDelete}>Delete</Button>
-              </div>
-            </div>
-          </div>
-        )}
+        <AmsDeleteComfiramtionModal
+          open={deleteModalOpen && Boolean(pendingDelete)}
+          onClose={() => { setDeleteModalOpen(false); setPendingDelete(null); }}
+          title="Delete this assignment?"
+          description={pendingDelete ? `${pendingDelete.title} will be permanently deleted. This can’t be undone.` : undefined}
+          onConfirm={handleDelete}
+          confirmVariant="danger"
+        >
+        </AmsDeleteComfiramtionModal>
       </div>
     </AppShell>
   );

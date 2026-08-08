@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { AppShell } from '../../layout/AppShell';
-import { Button, Card, Metric, PageHeader, Pill, RoleBadge, Th, Td, UserFormModal } from '../../ui';
+import { AmsDeleteComfiramtionModal, Button, Card, Metric, PageHeader, Pill, RoleBadge, Th, Td, UserFormModal } from '../../ui';
 import { ASSIGNMENTS, USERS as INITIAL_USERS, CLASSES as INITIAL_CLASSES, SUBJECTS as INITIAL_SUBJECTS, SUBMISSIONS } from '../../data';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
 import { getAssignments, getSubmissions, getUsers as apiGetUsers, getClassCourses as apiGetClassCourses } from '@/lib/api';
@@ -18,6 +18,7 @@ export function AdminUsersPage() {
   const [search, setSearch] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserRecord | null>(null);
+  const [pendingDeleteUser, setPendingDeleteUser] = useState<UserRecord | null>(null);
   const [formData, setFormData] = useState<UserRecord>({ id: Date.now().toString(), name: '', email: '', role: 'Student', status: 'Active' });
 
   useEffect(() => {
@@ -88,7 +89,6 @@ export function AdminUsersPage() {
   }
 
   async function handleDeleteUser(id: string) {
-    if (!window.confirm('Delete user? This cannot be undone.')) return;
     try {
       await deleteUser(id);
       await loadUsers();
@@ -100,6 +100,10 @@ export function AdminUsersPage() {
       console.error(err);
       alert('Unable to delete user.');
     }
+  }
+
+  function confirmDeleteUser(user: UserRecord) {
+    setPendingDeleteUser(user);
   }
 
   return (
@@ -217,7 +221,7 @@ export function AdminUsersPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleDeleteUser(user.id)}
+                        onClick={() => confirmDeleteUser(user)}
                         className="rounded-full border border-rose-200 bg-white px-3 py-1 text-sm text-rose-600 transition hover:bg-rose-50">
                         Delete
                       </button>
@@ -229,6 +233,16 @@ export function AdminUsersPage() {
           </table>
         </div>
       </Card>
+
+      <AmsDeleteComfiramtionModal
+        open={Boolean(pendingDeleteUser)}
+        onClose={() => setPendingDeleteUser(null)}
+        title="Delete user?"
+        description={pendingDeleteUser ? `${pendingDeleteUser.name} will be removed. This action cannot be undone.` : undefined}
+        onConfirm={() => pendingDeleteUser && void handleDeleteUser(pendingDeleteUser.id)}
+        confirmVariant="danger"
+      >
+      </AmsDeleteComfiramtionModal>
     </AppShell>
   );
 }

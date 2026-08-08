@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AppShell } from '../../layout/AppShell';
-import { AmsPagination, Button, Card, Pill, Th, Td, AddStudentModal, Modal, type AddStudentFormData } from '../../ui';
+import { AmsDeleteComfiramtionModal, AmsPagination, Button, Card, Pill, Th, Td, AddStudentModal, type AddStudentFormData } from '../../ui';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
 import { createUser, deleteUser, getClassCourses, getUsers, updateUser } from '@/lib/api';
 import { createEnrollment, deleteEnrollment, getEnrollments } from '@/lib/api/enrollments';
@@ -570,33 +570,15 @@ export function AdminStudentsPage() {
         onSubmit={handleSaveStudent}
       />
 
-      <Modal
+      <AmsDeleteComfiramtionModal
         open={Boolean(pendingDeleteStudent)}
         onClose={() => setPendingDeleteStudent(null)}
         title="Delete student?"
         description={pendingDeleteStudent ? `${pendingDeleteStudent.fullName} will be removed. This action cannot be undone.` : undefined}
-        footer={
-          <div className="flex flex-wrap items-center justify-end gap-3">
-            <Button type="button" variant="secondary" onClick={() => setPendingDeleteStudent(null)}>
-              Cancel
-            </Button>
-            <Button type="button" variant="danger" onClick={confirmDeleteStudent}>
-              Delete
-            </Button>
-          </div>
-        }
+        onConfirm={confirmDeleteStudent}
+        confirmVariant="danger"
       >
-        <div className="flex flex-col items-center justify-center gap-4 py-6">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-rose-50 text-rose-500">
-            <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-              <line x1="12" y1="9" x2="12" y2="13" />
-              <line x1="12" y1="17" x2="12.01" y2="17" />
-            </svg>
-          </div>
-          <p className="text-sm text-slate-500">This action will permanently delete the student record.</p>
-        </div>
-      </Modal>
+      </AmsDeleteComfiramtionModal>
     </AppShell>
   );
 }
