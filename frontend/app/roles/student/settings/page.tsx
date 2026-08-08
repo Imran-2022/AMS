@@ -1,7 +1,10 @@
 "use client"
 
-import { useState, type ChangeEvent } from 'react'
+import { useEffect, useState, type ChangeEvent } from 'react'
 import { AppShell } from '@/components/layout/AppShell'
+import { changePassword, getCurrentUser, getUserById, updateUser, type UserDto } from '@/lib/api'
+import { uploadFile } from '@/lib/api/files'
+import { setStoredUser } from '@/lib/auth'
 
 const accountTabs = [
   { key: 'security', label: 'Change password' },
@@ -18,12 +21,73 @@ const notificationItems = [
 export default function Page() {
   const [activeTab, setActiveTab] = useState<'notifications' | 'security'>('security')
   const [profileImage, setProfileImage] = useState<string | null>(null)
+  const [user, setUser] = useState<UserDto | null>(null)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [toggles, setToggles] = useState(() => notificationItems.reduce((acc, item) => ({ ...acc, [item.title]: item.checked }), {} as Record<string, boolean>))
 
-  function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
+  async function loadUser() {
+    try {
+      const current = await getCurrentUser()
+      const detailedUser = await getUserById(current.id)
+      setUser(detailedUser)
+      setProfileImage(detailedUser.avatarUrl ?? null)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  useEffect(() => {
+    loadUser()
+  }, [])
+
+  async function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
-    if (!file) return
-    setProfileImage(URL.createObjectURL(file))
+    if (!file || !user) return
+
+    try {
+      setLoading(true)
+      const uploadResult = await uploadFile(file)
+      const updated = await updateUser(user.id, { avatarUrl: uploadResult.fileUrl })
+      setUser(updated)
+      setProfileImage(updated.avatarUrl ?? null)
+      setStoredUser(updated)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('ams-user-changed'))
+      }
+    } catch (uploadError) {
+      console.error(uploadError)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleSavePassword() {
+    if (!user) return
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setError('Please fill in all password fields.')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setError('New password and confirmation do not match.')
+      return
+    }
+
+    try {
+      setLoading(true)
+      setError(null)
+      await changePassword(currentPassword, newPassword)
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (err: any) {
+      setError(err?.message || 'Password update failed.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -69,28 +133,28 @@ export default function Page() {
             <p className="avatar-help text-center">PNG or JPG, square, up to 2MB</p>
 
             <div className="text-center">
-              <p className="text-base font-bold text-slate-800">Ayesha Rahman</p>
-              <span className="chip bg-brand-50 text-brand-700 mt-1.5 inline-flex">Student</span>
+              <p className="text-base font-bold text-slate-800">{user?.fullName ?? 'Student Name'}</p>
+              <span className="chip bg-brand-50 text-brand-700 mt-1.5 inline-flex">{user?.role ?? 'Student'}</span>
             </div>
 
             <div className="pt-4 border-t border-slate-100 text-left space-y-3">
               <div className="flex items-center gap-2 text-slate-500 text-xs">
                 <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-                <span className="font-bold text-slate-700">ayesha.r@ams.edu</span>
+                <span className="font-bold text-slate-700">{user?.email ?? 'loading...'}</span>
               </div>
             </div>
 
             <div className="pt-4 border-t border-slate-100 text-left">
               <p className="text-[10.5px] font-bold mb-1">ACCOUNT INFORMATION</p>
-              <div className="info-row"><span className="k">Student ID</span><span className="v">STU-0142</span></div>
-              <div className="info-row"><span className="k">Class</span><span className="v">Class Nine - A</span></div>
-              <div className="info-row"><span className="k">Enrolled since</span><span className="v">Jan 2025</span></div>
-              <div className="info-row"><span className="k">Status</span><span className="v inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Active</span></div>
+              <div className="info-row"><span className="k">Student ID</span><span className="v">{user?.studentId || '—'}</span></div>
+              <div className="info-row"><span className="k">Gender</span><span className="v">{user?.gender || '—'}</span></div>
+              <div className="info-row"><span className="k">Status</span><span className="v inline-flex items-center gap-1.5"><span className={`w-1.5 h-1.5 rounded-full ${user?.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />{user?.isActive ? 'Active' : 'Inactive'}</span></div>
             </div>
             <div className="pt-4 border-t border-slate-100 text-left">
               <p className="text-[10.5px] font-bold mb-1 uppercase">Guardian on file</p>
-              <div className="info-row"><span className="k">Name</span><span className="v">Mrs. Rahman</span></div>
-              <div className="info-row"><span className="k">Mobile No</span><span className="v">+880 1711-223344</span></div>
+              <div className="info-row"><span className="k">Name</span><span className="v">{user?.guardianName || '—'}</span></div>
+              <div className="info-row"><span className="k">Email</span><span className="v">{user?.guardianEmail || '—'}</span></div>
+              <div className="info-row"><span className="k">Mobile No</span><span className="v">{user?.parentMobile || '—'}</span></div>
             </div>
           </aside>
 

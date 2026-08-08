@@ -78,6 +78,7 @@ export function AdminStudentsPage() {
             classCourseId,
             classCourseName: classCourse?.name ?? '',
             section: classCourse?.section ?? '',
+            studentId: user.studentId,
           } as StudentUserRecord;
         });
 
@@ -114,6 +115,21 @@ export function AdminStudentsPage() {
     setActionMenuFor(null);
   }
 
+  function parseStudentId(id?: string) {
+    if (!id) return 0;
+    const match = id.match(/(\d+)$/);
+    return match ? Number(match[1]) : 0;
+  }
+
+  function generateNextStudentId(existing: StudentUserRecord[]) {
+    const maxValue = existing.reduce((max, student) => {
+      const numeric = parseStudentId(student.studentId);
+      return numeric > max ? numeric : max;
+    }, 0);
+
+    return `STU-${String(maxValue + 1).padStart(4, '0')}`;
+  }
+
   async function handleSaveStudent(values: AddStudentFormData) {
     setStudentModalSubmitting(true);
     try {
@@ -126,6 +142,7 @@ export function AdminStudentsPage() {
           password: values.password || undefined,
           isActive: values.status === 'Active',
           parentMobile: values.parentMobile,
+          studentId: values.studentId || undefined,
         });
 
         if (editingStudent.classCourseId !== classCourse?.id) {
@@ -146,6 +163,7 @@ export function AdminStudentsPage() {
           role: 'Student',
           isActive: values.status === 'Active',
           parentMobile: values.parentMobile ?? '',
+          studentId: values.studentId,
         });
 
         if (classCourse) {
@@ -332,188 +350,192 @@ export function AdminStudentsPage() {
           </Card>
         </div>
 
-        <Card>
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap gap-2">
-              {STATUS_OPTIONS.map((status) => (
-                <button
-                  key={status}
-                  type="button"
-                  onClick={() => setStatusFilter(status)}
-                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${statusFilter === status ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>
-                  {status} <span className="opacity-70 font-normal">{status === 'All' ? students.length : students.filter((student) => student.status === status).length}</span>
-                </button>
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-2 items-center justify-end min-w-[280px]">
-              <select
-                value={classFilter}
-                onChange={(event) => setClassFilter(event.target.value)}
-                className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-              >
-                <option>All classes</option>
-                {classNames.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={sectionFilter}
-                onChange={(event) => setSectionFilter(event.target.value)}
-                className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-              >
-                <option>All sections</option>
-                {sectionNames.map((section) => (
-                  <option key={section} value={section}>
-                    Section {section}
-                  </option>
-                ))}
-              </select>
-              <div className="relative flex-1 max-w-xs">
-                <input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search students…"
-                  className="w-full rounded-2xl border border-slate-200 px-10 py-2.5 text-sm text-slate-700 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                />
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-                </span>
+        {(isLoading || students.length > 0) && (
+          <>
+            <Card>
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-wrap gap-2">
+                  {STATUS_OPTIONS.map((status) => (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => setStatusFilter(status)}
+                      className={`rounded-full px-4 py-2 text-sm font-semibold transition ${statusFilter === status ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>
+                      {status} <span className="opacity-70 font-normal">{status === 'All' ? students.length : students.filter((student) => student.status === status).length}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-2 items-center justify-end min-w-[280px]">
+                  <select
+                    value={classFilter}
+                    onChange={(event) => setClassFilter(event.target.value)}
+                    className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                  >
+                    <option>All classes</option>
+                    {classNames.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={sectionFilter}
+                    onChange={(event) => setSectionFilter(event.target.value)}
+                    className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                  >
+                    <option>All sections</option>
+                    {sectionNames.map((section) => (
+                      <option key={section} value={section}>
+                        Section {section}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="relative flex-1 max-w-xs">
+                    <input
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                      placeholder="Search students…"
+                      className="w-full rounded-2xl border border-slate-200 px-10 py-2.5 text-sm text-slate-700 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    />
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        </Card>
+            </Card>
 
 
-        <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[960px] text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 text-left text-xs uppercase text-slate-400">
-                  <Th>Name</Th>
-                  <Th>Email</Th>
-                  <Th>Class</Th>
-                  <Th>Section</Th>
-                  <Th>Parent</Th>
-                  <Th>Status</Th>
-                  <Th className="text-right">Actions</Th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {paginatedStudents.map((student) => (
-                  <tr key={student.id} className="hover:bg-slate-50 transition-colors duration-150">
-                    <Td className="px-2 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-semibold">
-                          {student.fullName
-                            .split(' ')
-                            .map((part) => part[0])
-                            .join('')
-                            .slice(0, 2)
-                            .toUpperCase()}
-                        </div>
-                        <span className="font-semibold text-slate-700">{student.fullName}</span>
-                      </div>
-                    </Td>
-                    <Td className="px-2 py-3.5 text-slate-500">{student.email}</Td>
-                    <Td className="px-2 py-3.5 text-slate-500">{student.classCourseName || 'Unassigned'}</Td>
-                    <Td className="px-2 py-3.5 text-slate-500">{student.section || '—'}</Td>
-                    <Td className="px-2 py-3.5 text-slate-500">{student.parentMobile || '—'}</Td>
-                    <Td className="px-2 py-3.5">
-                      <Pill className={student.status === 'Active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}>
-                        {student.status}
-                      </Pill>
-                    </Td>
-                    <Td className="px-5 py-3.5 text-right">
-                      <div className="relative inline-flex">
-                        <button
-                          type="button"
-                          data-action-button={student.id}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            if (actionMenuFor === student.id) {
-                              setActionMenuFor(null);
-                              return;
-                            }
-                            const rect = event.currentTarget.getBoundingClientRect();
-                            setMenuPosition({
-                              top: rect.bottom + 8,
-                              left: rect.right - 176, // 176px = menu width (w-44), right-aligned to button
-                            });
-                            setActionMenuFor(student.id);
-                          }}
-                          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100"
-                        >
-                          <MoreVertical className="h-5 w-5" />
-                        </button>
-                        {actionMenuFor === student.id && typeof document !== 'undefined'
-                          ? createPortal(
-                              <div
-                                data-action-menu={student.id}
-                                onClick={(event) => event.stopPropagation()}
-                                style={{
-                                  position: 'fixed',
-                                  top: menuPosition.top,
-                                  left: menuPosition.left,
-                                  zIndex: 9999,
-                                }}
-                                className="w-44 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl"
-                              >
-                                <button type="button" onClick={() => handleEditStudent(student)} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">
-                                  Edit student
-                                </button>
-                                <button type="button" onClick={() => openDeleteStudent(student)} className="w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50">
-                                  Delete student
-                                </button>
-                              </div>,
-                              document.body
-                            )
-                          : null}
-                      </div>
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+            <Card className="overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[960px] text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-left text-xs uppercase text-slate-400">
+                      <Th>Name</Th>
+                      <Th>Email</Th>
+                      <Th>Class</Th>
+                      <Th>Section</Th>
+                      <Th>Parent</Th>
+                      <Th>Status</Th>
+                      <Th className="text-right">Actions</Th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {paginatedStudents.map((student) => (
+                      <tr key={student.id} className="hover:bg-slate-50 transition-colors duration-150">
+                        <Td className="px-2 py-3.5">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-semibold">
+                              {student.fullName
+                                .split(' ')
+                                .map((part) => part[0])
+                                .join('')
+                                .slice(0, 2)
+                                .toUpperCase()}
+                            </div>
+                            <span className="font-semibold text-slate-700">{student.fullName}</span>
+                          </div>
+                        </Td>
+                        <Td className="px-2 py-3.5 text-slate-500">{student.email}</Td>
+                        <Td className="px-2 py-3.5 text-slate-500">{student.classCourseName || 'Unassigned'}</Td>
+                        <Td className="px-2 py-3.5 text-slate-500">{student.section || '—'}</Td>
+                        <Td className="px-2 py-3.5 text-slate-500">{student.parentMobile || '—'}</Td>
+                        <Td className="px-2 py-3.5">
+                          <Pill className={student.status === 'Active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}>
+                            {student.status}
+                          </Pill>
+                        </Td>
+                        <Td className="px-5 py-3.5 text-right">
+                          <div className="relative inline-flex">
+                            <button
+                              type="button"
+                              data-action-button={student.id}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                if (actionMenuFor === student.id) {
+                                  setActionMenuFor(null);
+                                  return;
+                                }
+                                const rect = event.currentTarget.getBoundingClientRect();
+                                setMenuPosition({
+                                  top: rect.bottom + 8,
+                                  left: rect.right - 176, // 176px = menu width (w-44), right-aligned to button
+                                });
+                                setActionMenuFor(student.id);
+                              }}
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100"
+                            >
+                              <MoreVertical className="h-5 w-5" />
+                            </button>
+                            {actionMenuFor === student.id && typeof document !== 'undefined'
+                              ? createPortal(
+                                  <div
+                                    data-action-menu={student.id}
+                                    onClick={(event) => event.stopPropagation()}
+                                    style={{
+                                      position: 'fixed',
+                                      top: menuPosition.top,
+                                      left: menuPosition.left,
+                                      zIndex: 9999,
+                                    }}
+                                    className="w-44 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl"
+                                  >
+                                    <button type="button" onClick={() => handleEditStudent(student)} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">
+                                      Edit student
+                                    </button>
+                                    <button type="button" onClick={() => openDeleteStudent(student)} className="w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50">
+                                      Delete student
+                                    </button>
+                                  </div>,
+                                  document.body
+                                )
+                              : null}
+                          </div>
+                        </Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-          <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-slate-400">
-              Showing <span className="font-semibold text-slate-900">{paginatedStudents.length ? pageIndex * pageSize + 1 : 0}</span>–<span className="font-semibold text-slate-900">{pageIndex * pageSize + paginatedStudents.length}</span> of <span className="font-semibold text-slate-900">{filteredStudents.length}</span> students
-            </p>
-            <div className="flex items-center gap-2">
-              <select
-                value={pageSize}
-                onChange={(event) => setPageSize(Number(event.target.value) as typeof PAGE_SIZE_OPTIONS[number])}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500 outline-none"
-              >
-                {PAGE_SIZE_OPTIONS.map((size) => (
-                  <option key={size} value={size}>
-                    {size} / page
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                disabled={pageIndex === 0}
-                onClick={() => setPageIndex((current) => Math.max(0, current - 1))}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
-              </button>
-              <span className="inline-flex h-8 min-w-[32px] items-center justify-center rounded-lg bg-indigo-600 px-3 text-xs font-semibold text-white">{pageIndex + 1}</span>
-              <button
-                type="button"
-                disabled={pageIndex >= pageCount - 1}
-                onClick={() => setPageIndex((current) => Math.min(pageCount - 1, current + 1))}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
-              </button>
-            </div>
-          </div>
-        </Card>
+              <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs text-slate-400">
+                  Showing <span className="font-semibold text-slate-900">{paginatedStudents.length ? pageIndex * pageSize + 1 : 0}</span>–<span className="font-semibold text-slate-900">{pageIndex * pageSize + paginatedStudents.length}</span> of <span className="font-semibold text-slate-900">{filteredStudents.length}</span> students
+                </p>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={pageSize}
+                    onChange={(event) => setPageSize(Number(event.target.value) as typeof PAGE_SIZE_OPTIONS[number])}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500 outline-none"
+                  >
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                      <option key={size} value={size}>
+                        {size} / page
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    disabled={pageIndex === 0}
+                    onClick={() => setPageIndex((current) => Math.max(0, current - 1))}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+                  </button>
+                  <span className="inline-flex h-8 min-w-[32px] items-center justify-center rounded-lg bg-indigo-600 px-3 text-xs font-semibold text-white">{pageIndex + 1}</span>
+                  <button
+                    type="button"
+                    disabled={pageIndex >= pageCount - 1}
+                    onClick={() => setPageIndex((current) => Math.min(pageCount - 1, current + 1))}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+                  </button>
+                </div>
+              </div>
+            </Card>
+          </>
+        )}
 
         {!isLoading && !error && filteredStudents.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white py-20 px-6 text-center">
@@ -548,7 +570,7 @@ export function AdminStudentsPage() {
           email: editingStudent.email,
           password: '',
           status: editingStudent.status,
-          studentId: '',
+          studentId: editingStudent.studentId ?? '',
           className: editingStudent.classCourseName ?? classCourses[0]?.name ?? '',
           section: editingStudent.section ?? classCourses[0]?.section ?? '',
           guardianName: '',
@@ -559,7 +581,7 @@ export function AdminStudentsPage() {
           email: '',
           password: '',
           status: 'Active',
-          studentId: '',
+          studentId: generateNextStudentId(students),
           className: classCourses[0]?.name ?? '',
           section: classCourses[0]?.section ?? '',
           guardianName: '',
@@ -568,6 +590,8 @@ export function AdminStudentsPage() {
         }}
         isSubmitting={studentModalSubmitting}
         requirePassword={!editingStudent}
+        studentIdReadOnly
+        hidePasswordField={Boolean(editingStudent)}
         onSubmit={handleSaveStudent}
       />
 

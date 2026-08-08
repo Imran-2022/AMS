@@ -313,6 +313,17 @@ export async function getCurrentUser() {
   return request<UserDto>(`/api/auth/me`);
 }
 
+export async function getUserById(id: string) {
+  return request<UserDto>(`/api/users/${id}`);
+}
+
+export async function changePassword(currentPassword: string, newPassword: string) {
+  return request<void>(`/api/auth/change-password`, {
+    method: 'PUT',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+}
+
 export async function getAssignments() {
   return request<AssignmentDto[]>(`/api/assignments`);
 }

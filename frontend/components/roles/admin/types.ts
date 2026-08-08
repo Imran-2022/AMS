@@ -7,6 +7,7 @@ export type StudentUserRecord = {
   classCourseId?: string;
   classCourseName?: string;
   section?: string;
+  studentId?: string;
 };
 
 export type ClassCourseRecord = {

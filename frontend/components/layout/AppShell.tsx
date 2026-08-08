@@ -56,7 +56,7 @@ const NAV: Record<RoleType, NavItem[]> = {
   ],
 };
 
-function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, userName }: { role: RoleType; collapsed: boolean; mobileOpen: boolean; onToggle: () => void; onNavigate: () => void; onLogout: () => void; userName?: string }) {
+function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, userName, avatarUrl }: { role: RoleType; collapsed: boolean; mobileOpen: boolean; onToggle: () => void; onNavigate: () => void; onLogout: () => void; userName?: string; avatarUrl?: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const settingsHref = role === 'Admin' ? '/roles/admin/settings' : role === 'Teacher' ? '/roles/teacher/settings' : '/roles/student/settings';
@@ -105,8 +105,12 @@ function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, 
       <div className="border-t border-[#ECECEF] p-3">
         <div className="relative group">
           <div className="w-full nav-item relative flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-[#F5F5F7] text-left cursor-pointer">
-            <div className={`w-9 h-9 rounded-full ${role === 'Teacher' || role === 'Student' ? 'bg-brand-600' : 'bg-[#1F2430]'} text-white flex items-center justify-center shrink-0`}>
+            <div className={`w-9 h-9 rounded-full ${role === 'Teacher' || role === 'Student' ? 'bg-brand-600' : 'bg-[#1F2430]'} text-white flex items-center justify-center shrink-0 overflow-hidden`}> 
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="Profile" className="h-full w-full object-cover" />
+            ) : (
               <User className="h-5 w-5" />
+            )}
             </div>
             {!collapsed ? (
               <div className="profile-text label min-w-0 transition-all duration-200 opacity-100">
@@ -165,6 +169,7 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [userName, setUserName] = useState<string | undefined>(undefined);
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
   const router = useRouter();
 
   useEffect(() => {
@@ -174,6 +179,7 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
     setIsCollapsed(stored === 'true' || (!stored && isSmall));
     const user = getStoredUser();
     setUserName(user?.fullName ?? user?.email ?? undefined);
+    setAvatarUrl(user?.avatarUrl);
 
     const handleResize = () => {
       const small = window.innerWidth < 1024;
@@ -193,6 +199,17 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
   useEffect(() => {
     window.localStorage.setItem('ams-sidebar-collapsed', String(isCollapsed));
   }, [isCollapsed]);
+
+  useEffect(() => {
+    const handleUserChanged = () => {
+      const user = getStoredUser();
+      setUserName(user?.fullName ?? user?.email ?? undefined);
+      setAvatarUrl(user?.avatarUrl);
+    };
+
+    window.addEventListener('ams-user-changed', handleUserChanged);
+    return () => window.removeEventListener('ams-user-changed', handleUserChanged);
+  }, []);
 
   useEffect(() => {
     // Mirror legacy layout CSS which relies on `body.sidebar-collapsed`
@@ -231,6 +248,7 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
         onNavigate={() => setMobileOpen(false)}
         onLogout={handleLogout}
         userName={userName}
+        avatarUrl={avatarUrl}
       />
       <div className={`flex-1 flex flex-col min-h-0 transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed ? 'lg:ml-[76px]' : 'lg:ml-64'}`}>
         <Topbar breadcrumb={breadcrumb} />

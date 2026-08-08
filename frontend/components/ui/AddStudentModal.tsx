@@ -36,6 +36,8 @@ type AddStudentModalProps = {
   initialValues?: AddStudentFormData;
   isSubmitting?: boolean;
   requirePassword?: boolean;
+  studentIdReadOnly?: boolean;
+  hidePasswordField?: boolean;
   onSubmit: (values: AddStudentFormData) => Promise<void>;
 };
 
@@ -54,6 +56,8 @@ export function AddStudentModal({
   initialValues,
   isSubmitting = false,
   requirePassword = false,
+  studentIdReadOnly = false,
+  hidePasswordField = false,
   onSubmit,
 }: AddStudentModalProps) {
   const [values, setValues] = useState<AddStudentFormData>({
@@ -200,22 +204,23 @@ export function AddStudentModal({
                 <option value="">Select gender</option>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
-                <option value="Prefer not to say">Prefer not to say</option>
               </select>
             </div>
-            <div>
-              <label className={labelClass}>
-                Password <span className="text-rose-500">*</span>
-              </label>
-              <input
-                value={values.password}
-                onChange={(event) => handleChange('password', event.target.value)}
-                placeholder="Create a password"
-                className={inputClass}
-                type="password"
-                required={requirePassword}
-              />
-            </div>
+            {!hidePasswordField && (
+              <div>
+                <label className={labelClass}>
+                  Password <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  value={values.password}
+                  onChange={(event) => handleChange('password', event.target.value)}
+                  placeholder="Create a password"
+                  className={inputClass}
+                  type="password"
+                  required={requirePassword}
+                />
+              </div>
+            )}
             <div>
               <label className={labelClass}>Status</label>
               <select
@@ -239,7 +244,8 @@ export function AddStudentModal({
                 value={values.studentId}
                 onChange={(event) => handleChange('studentId', event.target.value)}
                 placeholder="e.g. STU-0142"
-                className={inputClass}
+                className={`${inputClass} ${studentIdReadOnly ? 'bg-slate-100 text-slate-500' : ''}`}
+                readOnly={studentIdReadOnly}
               />
             </div>
             <div>
