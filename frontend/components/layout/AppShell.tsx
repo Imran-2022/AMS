@@ -22,6 +22,7 @@ import {
   Users,
 } from 'lucide-react';
 import { clearStoredAuth, getStoredUser } from '@/lib/auth';
+import { API_BASE_URL } from '@/lib/api';
 import { ToastContainer } from '../ui';
 import { ROLE, RoleType } from '../data';
 
@@ -179,8 +180,10 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
     setIsMobile(isSmall);
     setIsCollapsed(stored === 'true' || (!stored && isSmall));
     const user = getStoredUser();
+    const base = API_BASE_URL;
+    const avatar = user?.avatarUrl ? (user.avatarUrl.startsWith('http') ? user.avatarUrl : `${base}${user.avatarUrl}`) : undefined;
     setUserName(user?.fullName ?? user?.email ?? undefined);
-    setAvatarUrl(user?.avatarUrl);
+    setAvatarUrl(avatar);
 
     const handleResize = () => {
       const small = window.innerWidth < 1024;
@@ -204,8 +207,10 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
   useEffect(() => {
     const handleUserChanged = () => {
       const user = getStoredUser();
+      const base = API_BASE_URL;
+      const avatar = user?.avatarUrl ? (user.avatarUrl.startsWith('http') ? user.avatarUrl : `${base}${user.avatarUrl}`) : undefined;
       setUserName(user?.fullName ?? user?.email ?? undefined);
-      setAvatarUrl(user?.avatarUrl);
+      setAvatarUrl(avatar);
     };
 
     window.addEventListener('ams-user-changed', handleUserChanged);

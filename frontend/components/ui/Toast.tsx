@@ -39,7 +39,7 @@ export function ToastContainer() {
         <div
           key={t.id}
           className={`max-w-xs rounded-lg px-4 py-2 shadow-md text-sm text-white ${
-            t.type === "error" ? "bg-rose-600" : t.type === "info" ? "bg-sky-600" : "bg-emerald-600"
+            t.type === "error" ? "bg-rose-600" : t.type === "info" ? "bg-sky-600" : "bg-brand-600"
           }`}
         >
           {t.message}

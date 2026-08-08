@@ -87,7 +87,7 @@ public class UserAppService : IUserAppService
 
     public async Task<UserDto> UpdateAsync(Guid id, UpdateUserDto input, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
     {
-        if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can manage users.");
+        if (currentUserRole != nameof(UserRole.Admin) && id != currentUserId) throw new ForbiddenException("Only admins can manage other users.");
         var user = await _userRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException("User not found.");
         // remember previous avatar stored file name so we can delete it after a successful update
         string? previousAvatarStoredFile = null;

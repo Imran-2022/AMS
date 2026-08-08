@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ChangeEvent } from 'react'
 import { AppShell } from '@/components/layout/AppShell'
-import { changePassword, getCurrentUser, getUserById, updateUser, type UserDto } from '@/lib/api'
+import { API_BASE_URL, changePassword, getCurrentUser, updateUser, type UserDto } from '@/lib/api'
 import { uploadFile } from '@/lib/api/files'
 import { setStoredUser } from '@/lib/auth'
 import { emitToast } from '@/components/ui'
@@ -26,7 +26,8 @@ export default function Page() {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [savingPassword, setSavingPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [toggles, setToggles] = useState(() => notificationItems.reduce((acc, item) => ({ ...acc, [item.title]: item.checked }), {} as Record<string, boolean>))
 
@@ -34,8 +35,7 @@ export default function Page() {
     try {
       const current = await getCurrentUser()
       setUser(current)
-      const base = process.env.NEXT_PUBLIC_API_URL ?? ''
-      const avatar = current.avatarUrl ? (current.avatarUrl.startsWith('http') ? current.avatarUrl : `${base}${current.avatarUrl}`) : null
+      const avatar = current.avatarUrl ? (current.avatarUrl.startsWith('http') ? current.avatarUrl : `${API_BASE_URL}${current.avatarUrl}`) : null
       setProfileImage(avatar)
     } catch (err) {
       console.error(err)
@@ -51,22 +51,29 @@ export default function Page() {
     if (!file || !user) return
 
     try {
-      setLoading(true)
+      setUploading(true)
       const uploadResult = await uploadFile(file)
       const updated = await updateUser(user.id, { avatarUrl: uploadResult.fileUrl })
-        setUser(updated)
-        const base = process.env.NEXT_PUBLIC_API_URL ?? ''
-        const avatar = updated.avatarUrl ? (updated.avatarUrl.startsWith('http') ? updated.avatarUrl : `${base}${updated.avatarUrl}`) : null
-        setProfileImage(avatar)
-      setStoredUser(updated)
-        emitToast('Profile photo updated', 'success')
+      setUser(updated)
+      const avatar = updated.avatarUrl ? (updated.avatarUrl.startsWith('http') ? updated.avatarUrl : `${API_BASE_URL}${updated.avatarUrl}`) : null
+      setProfileImage(avatar)
+      setStoredUser({
+        id: updated.id,
+        email: updated.email,
+        role: updated.role,
+        fullName: updated.fullName,
+        isActive: updated.isActive,
+        avatarUrl: updated.avatarUrl,
+      })
+      emitToast('Profile photo updated', 'success')
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('ams-user-changed'))
       }
-    } catch (uploadError) {
+    } catch (uploadError: any) {
       console.error(uploadError)
+      emitToast(uploadError?.message || 'Failed to upload profile photo.', 'error')
     } finally {
-      setLoading(false)
+      setUploading(false)
     }
   }
 
@@ -82,7 +89,7 @@ export default function Page() {
     }
 
     try {
-      setLoading(true)
+      setSavingPassword(true)
       setError(null)
       await changePassword(currentPassword, newPassword)
       setCurrentPassword('')
@@ -92,13 +99,13 @@ export default function Page() {
     } catch (err: any) {
       setError(err?.message || 'Password update failed.')
     } finally {
-      setLoading(false)
+      setSavingPassword(false)
     }
   }
 
   return (
     <AppShell role="Student" breadcrumb="Student / Account">
-      <div className="space-y-6">
+      <div className="space-y-5">
         <div>
           <p className="text-xs font-bold text-brand-600">STUDENT PORTAL</p>
           <h1 className="text-3xl font-extrabold text-slate-800 mt-0.5">My Account</h1>
@@ -122,7 +129,7 @@ export default function Page() {
                 <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z" /><circle cx="12" cy="13" r="4" /></svg>
                 <span>CHANGE PHOTO</span>
               </div>
-              <label htmlFor="profile-upload" className="absolute inset-0 cursor-pointer" />
+              <label htmlFor="profile-upload" className={`absolute inset-0 cursor-pointer ${uploading ? 'pointer-events-none' : ''}`} />
               <input
                 id="profile-upload"
                 type="file"
@@ -130,6 +137,9 @@ export default function Page() {
                 className="hidden"
                 onChange={handleImageChange}
               />
+              {uploading ? (
+                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-slate-900/40 text-white text-sm font-semibold">Uploading…</div>
+              ) : null}
             </div>
             <p className="avatar-help text-center">PNG or JPG, square, up to 2MB</p>
 
@@ -138,14 +148,14 @@ export default function Page() {
               <span className="chip bg-brand-50 text-brand-700 mt-1.5 inline-flex">{user?.role ?? 'Student'}</span>
             </div>
 
-            <div className="pt-4 border-t border-slate-100 text-left space-y-3">
+            <div className="pt-2 border-t border-slate-100 text-left space-y-3">
               <div className="flex items-center gap-2 text-slate-500 text-xs">
                 <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
                 <span className="font-bold text-slate-700">{user?.email ?? 'loading...'}</span>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-100 text-left">
+            <div className="pt-2 border-t border-slate-100 text-left">
               <p className="text-[10.5px] font-bold mb-1">ACCOUNT INFORMATION</p>
               <div className="info-row"><span className="k">Student ID</span><span className="v">{user?.studentId || '—'}</span></div>
               <div className="info-row"><span className="k">Gender</span><span className="v">{user?.gender || '—'}</span></div>
@@ -153,7 +163,7 @@ export default function Page() {
               <div className="info-row"><span className="k">Admission date</span><span className="v">{user?.admissionDate || '—'}</span></div>
               <div className="info-row"><span className="k">Status</span><span className="v inline-flex items-center gap-1.5"><span className={`w-1.5 h-1.5 rounded-full ${user?.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />{user?.isActive ? 'Active' : 'Inactive'}</span></div>
             </div>
-            <div className="pt-4 border-t border-slate-100 text-left">
+            <div className="pt-2 border-t border-slate-100 text-left">
               <p className="text-[10.5px] font-bold mb-1 uppercase">Guardian on file</p>
               <div className="info-row"><span className="k">Name</span><span className="v">{user?.guardianName || '—'}</span></div>
               <div className="info-row"><span className="k">Email</span><span className="v">{user?.guardianEmail || '—'}</span></div>
@@ -241,16 +251,16 @@ export default function Page() {
                   <button
                     type="button"
                     onClick={handleSavePassword}
-                    disabled={loading}
+                    disabled={savingPassword}
                     className="rounded bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50 inline-flex items-center gap-2"
                   >
-                    {loading ? (
+                    {savingPassword ? (
                       <svg className="h-4 w-4 animate-spin text-white" viewBox="0 0 24 24" fill="none">
                         <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-20" />
                         <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
                       </svg>
                     ) : null}
-                    <span>{loading ? 'Saving…' : 'Save changes'}</span>
+                    <span>{savingPassword ? 'Saving…' : 'Save changes'}</span>
                   </button>
                 </div>
               </div>

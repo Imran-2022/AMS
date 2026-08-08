@@ -30,7 +30,14 @@ public class UserRepository : IUserRepository
 
     public async Task UpdateAsync(AppUser user, CancellationToken cancellationToken = default)
     {
-        _dbContext.AppUsers.Update(user);
+        var existing = await _dbContext.AppUsers.FindAsync(new object[] { user.Id }, cancellationToken);
+        if (existing is not null && !ReferenceEquals(existing, user))
+        {
+            _dbContext.Entry(existing).State = EntityState.Detached;
+        }
+
+        _dbContext.Attach(user);
+        _dbContext.Entry(user).State = EntityState.Modified;
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 

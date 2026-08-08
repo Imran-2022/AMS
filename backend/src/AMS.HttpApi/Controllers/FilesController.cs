@@ -32,6 +32,7 @@ public class FilesController : ControllerBase
         return Ok(result);
     }
 
+    [AllowAnonymous]
     [HttpGet("download/{storedFileName}")]
     public async Task<IActionResult> Download(string storedFileName)
     {
@@ -47,6 +48,7 @@ public class FilesController : ControllerBase
         // Reset stream position if possible
         if (result.Value.Stream.CanSeek) result.Value.Stream.Position = 0;
 
-        return File(result.Value.Stream, contentType, result.Value.OriginalFileName);
+        // Return inline content so images can render in <img> tags.
+        return File(result.Value.Stream, contentType);
     }
 }

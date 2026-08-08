@@ -1,4 +1,13 @@
-export function getStoredUser() {
+export type StoredUser = {
+  id: string;
+  email: string;
+  role: string;
+  fullName: string;
+  isActive?: boolean;
+  avatarUrl?: string;
+};
+
+export function getStoredUser(): StoredUser | null {
   if (typeof window === 'undefined') return null;
   const value = window.localStorage.getItem('ams-user');
   if (!value) return null;
@@ -11,7 +20,7 @@ export function getStoredUser() {
   }
 }
 
-export function setStoredUser(user: { id: string; email: string; role: string; fullName: string; isActive?: boolean }) {
+export function setStoredUser(user: StoredUser) {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem('ams-user', JSON.stringify(user));
 }

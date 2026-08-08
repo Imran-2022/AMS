@@ -1,6 +1,6 @@
 import { clearStoredAuth, getStoredRefreshToken, getStoredToken, setStoredRefreshToken, setStoredToken, setStoredUser } from './auth';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 type ApiResponse<T> = T;
 
