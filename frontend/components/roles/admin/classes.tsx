@@ -415,7 +415,7 @@ export function AdminClassesPage() {
                       <div
                         data-action-menu={`class-${cls.id}`}
                         onClick={(ev) => ev.stopPropagation()}
-                        className="absolute right-0 top-full z-20 mt-2 w-40 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl"
+                        className="absolute right-0 top-full z-20 mt-2 w-40 overflow-hidden rounded border border-slate-200 bg-white shadow-xl"
                       >
                         <button
                           type="button"
@@ -541,7 +541,7 @@ export function AdminClassesPage() {
                             <div
                               data-action-menu={`subject-${subject.id}`}
                               onClick={(ev) => ev.stopPropagation()}
-                              className="absolute right-0 top-full z-20 mt-2 w-40 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl"
+                              className="absolute right-0 top-full z-20 mt-2 w-40 overflow-hidden rounded border border-slate-200 bg-white shadow-xl"
                             >
                               <button
                                 type="button"

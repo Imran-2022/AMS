@@ -368,7 +368,7 @@ export function AdminTeachersPage() {
                               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
                             </button>
                             {actionMenuFor === t.id ? (
-                              <div data-action-menu={t.id} onClick={(ev) => ev.stopPropagation()} className="absolute right-0 top-full z-20 mt-2 w-44 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl">
+                              <div data-action-menu={t.id} onClick={(ev) => ev.stopPropagation()} className="absolute right-0 top-full z-20 mt-2 w-44 overflow-hidden rounded border border-slate-200 bg-white shadow-xl">
                                 <button type="button" onClick={() => handleEditTeacher(t)} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">Edit teacher</button>
                                 <button type="button" onClick={() => openDeleteTeacher(t)} className="w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50">Delete teacher</button>
                               </div>

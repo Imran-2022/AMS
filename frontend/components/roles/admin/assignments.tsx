@@ -16,7 +16,6 @@ export function AdminAssignmentsPage() {
   const [selectedTeacher, setSelectedTeacher] = useState(ALL_TEACHERS[0]);
   const [search, setSearch] = useState('');
   const [activeRowMenu, setActiveRowMenu] = useState<number | null>(null);
-  const [menuPlacement, setMenuPlacement] = useState<Record<number, 'top' | 'bottom'>>({});
   const [archiveTarget, setArchiveTarget] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -71,17 +70,6 @@ export function AdminAssignmentsPage() {
 
   function toggleMenu(id: number) {
     setActiveRowMenu((current) => (current === id ? null : id));
-    // compute placement for this menu when opening
-    const btn = document.querySelector(`[data-action-button="assignment-${id}"]`);
-    if (btn) {
-      const rect = (btn as Element).getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const spaceAbove = rect.top; // distance from top
-      // rough estimate of menu height
-      const MENU_HEIGHT = 160;
-      const place: 'top' | 'bottom' = spaceBelow < MENU_HEIGHT && spaceAbove > spaceBelow ? 'top' : 'bottom';
-      setMenuPlacement((m) => ({ ...m, [id]: place }));
-    }
   }
 
   function openArchive(name: string) {
@@ -275,9 +263,7 @@ export function AdminAssignmentsPage() {
                             <div
                               data-action-menu={`assignment-${assignment.id}`}
                               onClick={(ev) => ev.stopPropagation()}
-                              className={`row-menu absolute right-0 w-44 bg-white border border-slate-200 rounded-xl shadow-lg z-10 py-1.5 ${activeRowMenu === assignment.id ? '' : 'hidden'}`}
-                              style={menuPlacement[assignment.id] === 'top' ? { bottom: '100%', marginBottom: '6px' } : { top: '100%', marginTop: '4px' }}
-                            >
+                              className={`row-menu absolute right-0 mt-1 w-44 bg-white border border-slate-200 rounded-xl shadow-lg z-10 py-1.5 ${activeRowMenu === assignment.id ? '' : 'hidden'}`}>
                               <button type="button" className="block w-full text-left px-3.5 py-2 text-sm text-slate-600 hover:bg-slate-50">View details</button>
                             </div>
                           </div>
