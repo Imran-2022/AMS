@@ -84,7 +84,7 @@ export function AdminTeachersPage() {
       const [apiUsers, apiAssignments] = await Promise.all([getUsers(), getTeacherAssignments()]);
       const teacherUsers = apiUsers.filter((user) => user.role === 'Teacher');
       setTeacherAssignments(apiAssignments);
-      setTeachers(teacherUsers.map((user) => {
+      const teacherRows = teacherUsers.map((user) => {
         const classesForTeacher = new Set(
           apiAssignments
             .filter((assignment) => assignment.teacherId === user.id)
@@ -100,8 +100,9 @@ export function AdminTeachersPage() {
               .map((assignment) => assignment.subjectName)
           )),
         };
-      }));
-      setMode('data');
+      });
+      setTeachers(teacherRows);
+      setMode(teacherRows.length === 0 ? 'empty' : 'data');
     } catch (err) {
       console.error(err);
       setMode('error');
@@ -304,115 +305,116 @@ export function AdminTeachersPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-2">
-            <button onClick={()=>setTab('All')} className={`tab px-4 py-2 rounded-xl text-sm font-semibold ${selectedTab==='All' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>All <span className="opacity-70 font-normal">{teachers.length}</span></button>
-            <button onClick={()=>setTab('Active')} className={`tab px-4 py-2 rounded-xl text-sm font-semibold ${selectedTab==='Active' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>Active <span className="opacity-60 font-normal">{teachers.filter(t=>t.status==='Active').length}</span></button>
-            <button onClick={()=>setTab('On leave')} className={`tab px-4 py-2 rounded-xl text-sm font-semibold ${selectedTab==='On leave' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>On leave <span className="opacity-60 font-normal">{teachers.filter(t=>t.status==='On leave').length}</span></button>
-          </div>
-          <div className="flex items-center gap-2.5 flex-1 justify-end min-w-[280px]">
-            <select className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white">
-              <option>All subjects</option>
-            </select>
-            <div className="relative flex-1 max-w-xs">
-              <input value={search} onChange={(e)=>setSearch(e.target.value)} type="text" placeholder="Search teachers…" className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-brand-500" />
-              <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-            </div>
-          </div>
-        </div>
-
-        
-
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-          <div id="dataTable" className={`${mode==='data' ? '' : 'hidden'}`}>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 text-left">
-                  
-                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">NAME</th>
-                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">EMAIL</th>
-                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">SUBJECTS</th>
-                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">CLASSES</th>
-                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">STATUS</th>
-                  <th className="w-16 px-5 py-3.5 text-right text-[11px] font-bold text-slate-400">ACTIONS</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {rows.map((t) => (
-                  <tr key={t.id} className="hover:bg-slate-50">
-                    
-                    <td className="px-2 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${t.id==='mh'?'bg-brand-100 text-brand-700':'bg-slate-100 text-slate-700'}`}>{t.initials}</div>
-                        <span className="font-semibold text-slate-700">{t.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-2 py-3.5 text-slate-500">{t.email}</td>
-                    <td className="px-2 py-3.5">
-                      <div className="flex flex-wrap gap-1">{t.subjects.map(s=> <span key={s} className="chip">{s}</span>)}</div>
-                    </td>
-                    <td className="px-2 py-3.5 text-slate-500">{t.classesCount} classes</td>
-                    <td className="px-2 py-3.5">
-                      <span
-                        className={`badge ${t.tone === 'emerald' ? 'bg-emerald-50 text-emerald-600' : t.tone === 'slate' ? 'bg-slate-100 text-slate-700' : 'bg-amber-50 text-amber-600'}`}
-                      >
-                        <span
-                          className={`badge-dot ${t.tone === 'emerald' ? 'bg-emerald-500' : t.tone === 'slate' ? 'bg-slate-500' : 'bg-amber-500'}`}
-                        ></span>
-                        {t.status}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <div className="relative inline-flex">
-                        <button
-                          type="button"
-                          data-action-button={t.id}
-                          onClick={(e)=>{ e.stopPropagation(); setActionMenuFor(actionMenuFor===t.id? null : t.id); }}
-                          className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-400 inline-flex items-center justify-center"
-                        >
-                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-                        </button>
-                        {actionMenuFor===t.id ? (
-                          <div data-action-menu={t.id} onClick={(ev)=>ev.stopPropagation()} className="absolute right-0 top-full z-20 mt-2 w-44 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl">
-                            <button type="button" onClick={()=>handleEditTeacher(t)} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">Edit teacher</button>
-                            <button type="button" onClick={()=>openDeleteTeacher(t)} className="w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50">Delete teacher</button>
-                          </div>
-                        ) : null}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100">
-              <p className="text-xs text-slate-400">Showing <span className="font-semibold text-slate-600">1–{rows.length}</span> of <span className="font-semibold text-slate-600">{teachers.length}</span> teachers</p>
+        {mode === 'data' && (
+          <>
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-2">
-                <select className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-slate-500">
-                  <option>10 / page</option>
-                  <option>25 / page</option>
-                  <option>50 / page</option>
+                <button onClick={()=>setTab('All')} className={`tab px-4 py-2 rounded-xl text-sm font-semibold ${selectedTab==='All' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>All <span className="opacity-70 font-normal">{teachers.length}</span></button>
+                <button onClick={()=>setTab('Active')} className={`tab px-4 py-2 rounded-xl text-sm font-semibold ${selectedTab==='Active' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>Active <span className="opacity-60 font-normal">{teachers.filter(t=>t.status==='Active').length}</span></button>
+                <button onClick={()=>setTab('On leave')} className={`tab px-4 py-2 rounded-xl text-sm font-semibold ${selectedTab==='On leave' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>On leave <span className="opacity-60 font-normal">{teachers.filter(t=>t.status==='On leave').length}</span></button>
+              </div>
+              <div className="flex items-center gap-2.5 flex-1 justify-end min-w-[280px]">
+                <select className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white">
+                  <option>All subjects</option>
                 </select>
-                <button className="w-8 h-8 rounded-lg border border-slate-200 text-slate-300 flex items-center justify-center" disabled>
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="m15 18-6-6 6-6"/></svg>
-                </button>
-                <span className="w-8 h-8 rounded-lg bg-brand-600 text-white text-xs font-semibold flex items-center justify-center">1</span>
-                <button className="w-8 h-8 rounded-lg border border-slate-200 text-slate-300 flex items-center justify-center" disabled>
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="m9 18 6-6-6-6"/></svg>
-                </button>
+                <div className="relative flex-1 max-w-xs">
+                  <input value={search} onChange={(e)=>setSearch(e.target.value)} type="text" placeholder="Search teachers…" className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-brand-500" />
+                  <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div id="emptyState" className={`${mode==='empty' ? 'flex' : 'hidden'} flex-col items-center justify-center text-center py-20 px-6`}>
-            <div className="w-16 h-16 rounded-2xl bg-brand-50 text-brand-400 flex items-center justify-center mb-4">
-              <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+              <div id="dataTable" className="">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-left">
+                      <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">NAME</th>
+                      <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">EMAIL</th>
+                      <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">SUBJECTS</th>
+                      <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">CLASSES</th>
+                      <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">STATUS</th>
+                      <th className="w-16 px-5 py-3.5 text-right text-[11px] font-bold text-slate-400">ACTIONS</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {rows.map((t) => (
+                      <tr key={t.id} className="hover:bg-slate-50">
+                        <td className="px-2 py-3.5">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${t.id==='mh'?'bg-brand-100 text-brand-700':'bg-slate-100 text-slate-700'}`}>{t.initials}</div>
+                            <span className="font-semibold text-slate-700">{t.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-2 py-3.5 text-slate-500">{t.email}</td>
+                        <td className="px-2 py-3.5">
+                          <div className="flex flex-wrap gap-1">{t.subjects.map((s) => <span key={s} className="chip">{s}</span>)}</div>
+                        </td>
+                        <td className="px-2 py-3.5 text-slate-500">{t.classesCount} classes</td>
+                        <td className="px-2 py-3.5">
+                          <span className={`badge ${t.tone === 'emerald' ? 'bg-emerald-50 text-emerald-600' : t.tone === 'slate' ? 'bg-slate-100 text-slate-700' : 'bg-amber-50 text-amber-600'}`}>
+                            <span className={`badge-dot ${t.tone === 'emerald' ? 'bg-emerald-500' : t.tone === 'slate' ? 'bg-slate-500' : 'bg-amber-500'}`}></span>
+                            {t.status}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3.5 text-right">
+                          <div className="relative inline-flex">
+                            <button
+                              type="button"
+                              data-action-button={t.id}
+                              onClick={(e) => { e.stopPropagation(); setActionMenuFor(actionMenuFor === t.id ? null : t.id); }}
+                              className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-400 inline-flex items-center justify-center"
+                            >
+                              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                            </button>
+                            {actionMenuFor === t.id ? (
+                              <div data-action-menu={t.id} onClick={(ev) => ev.stopPropagation()} className="absolute right-0 top-full z-20 mt-2 w-44 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl">
+                                <button type="button" onClick={() => handleEditTeacher(t)} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">Edit teacher</button>
+                                <button type="button" onClick={() => openDeleteTeacher(t)} className="w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50">Delete teacher</button>
+                              </div>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100">
+                  <p className="text-xs text-slate-400">Showing <span className="font-semibold text-slate-600">1–{rows.length}</span> of <span className="font-semibold text-slate-600">{teachers.length}</span> teachers</p>
+                  <div className="flex items-center gap-2">
+                    <select className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-slate-500">
+                      <option>10 / page</option>
+                      <option>25 / page</option>
+                      <option>50 / page</option>
+                    </select>
+                    <button className="w-8 h-8 rounded-lg border border-slate-200 text-slate-300 flex items-center justify-center" disabled>
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="m15 18-6-6 6-6"/></svg>
+                    </button>
+                    <span className="w-8 h-8 rounded-lg bg-brand-600 text-white text-xs font-semibold flex items-center justify-center">1</span>
+                    <button className="w-8 h-8 rounded-lg border border-slate-200 text-slate-300 flex items-center justify-center" disabled>
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="m9 18 6-6-6-6"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
-            <p className="text-base font-bold text-slate-700">No teachers yet</p>
-            <p className="text-sm text-slate-400 mt-1 max-w-sm">Add your first teacher to start assigning them to classes and subjects.</p>
-            <div className="flex items-center gap-2.5 mt-5">
-              <button onClick={openNewTeacher} className="px-4 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700">Add teacher</button>
-            </div>
+          </>
+        )}
+
+        <div id="emptyState" className={`${mode==='empty' ? 'flex' : 'hidden'} flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white py-20 px-6 text-center`}>
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-500">
+            <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <line x1="19" y1="8" x2="19" y2="14" />
+              <line x1="16" y1="11" x2="22" y2="11" />
+            </svg>
+          </div>
+          <p className="text-base font-bold text-slate-800">No teachers yet</p>
+          <p className="text-sm text-slate-500 mt-1 max-w-md">Add your first teacher, or import a roster from a CSV file to get started quickly.</p>
+          <div className="mt-5">
+            <button onClick={openNewTeacher} className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-700">Add teacher</button>
           </div>
         </div>
       </div>
