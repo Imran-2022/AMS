@@ -11,22 +11,29 @@ public class StudentEnrollmentAppService : IEnrollmentAppService
     private readonly IStudentEnrollmentRepository _enrollmentRepository;
     private readonly IUserRepository _userRepository;
     private readonly IClassCourseRepository _classCourseRepository;
+    private readonly ITeacherSubjectAssignmentRepository _teacherSubjectAssignmentRepository;
 
     public StudentEnrollmentAppService(
         IStudentEnrollmentRepository enrollmentRepository,
         IUserRepository userRepository,
-        IClassCourseRepository classCourseRepository)
+        IClassCourseRepository classCourseRepository,
+        ITeacherSubjectAssignmentRepository teacherSubjectAssignmentRepository)
     {
         _enrollmentRepository = enrollmentRepository;
         _userRepository = userRepository;
         _classCourseRepository = classCourseRepository;
+        _teacherSubjectAssignmentRepository = teacherSubjectAssignmentRepository;
     }
 
     public async Task<IReadOnlyList<StudentEnrollmentDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
     {
-        if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can manage enrollments.");
+        var enrollments = currentUserRole switch
+        {
+            nameof(UserRole.Admin) => await _enrollmentRepository.GetAllAsync(cancellationToken),
+            nameof(UserRole.Teacher) => await LoadTeacherEnrollmentsAsync(currentUserId, cancellationToken),
+            _ => throw new ForbiddenException("Only admins and teachers can manage enrollments.")
+        };
 
-        var enrollments = await _enrollmentRepository.GetAllAsync(cancellationToken);
         var result = new List<StudentEnrollmentDto>();
 
         foreach (var enrollment in enrollments)
@@ -45,6 +52,21 @@ public class StudentEnrollmentAppService : IEnrollmentAppService
         }
 
         return result;
+    }
+
+    private async Task<IReadOnlyList<Domain.Entities.StudentEnrollment>> LoadTeacherEnrollmentsAsync(Guid teacherId, CancellationToken cancellationToken)
+    {
+        var assignments = await _teacherSubjectAssignmentRepository.GetByTeacherAsync(teacherId, cancellationToken);
+        var classIds = assignments.Select(a => a.ClassCourseId).Distinct().ToList();
+        var enrollments = new List<Domain.Entities.StudentEnrollment>();
+
+        foreach (var classId in classIds)
+        {
+            var classEnrollments = await _enrollmentRepository.GetByClassCourseAsync(classId, cancellationToken);
+            enrollments.AddRange(classEnrollments);
+        }
+
+        return enrollments;
     }
 
     public async Task<StudentEnrollmentDto> CreateAsync(CreateStudentEnrollmentDto input, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '../../layout/AppShell';
+import { AmsPagination } from '../../ui';
 import { getAssignments, getClassCourses, getSubjects } from '@/lib/api';
 import type { AssignmentDto, ClassCourseDto, SubjectDto } from '@/lib/api';
 
@@ -21,6 +22,9 @@ export function TeacherClassesPage() {
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const PAGE_SIZE_OPTIONS = [4, 8, 12] as const;
+  const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(4);
+  const [pageIndex, setPageIndex] = useState(0);
 
   useEffect(() => {
     async function loadData() {
@@ -87,6 +91,15 @@ export function TeacherClassesPage() {
       draftAssignmentCount: draftAssignments
     };
   }, [assignments, classes.length, subjects.length]);
+
+  useEffect(() => {
+    setPageIndex(0);
+  }, [classes.length]);
+
+  const pagedClasses = useMemo(() => {
+    const start = pageIndex * pageSize;
+    return classes.slice(start, start + pageSize);
+  }, [classes, pageIndex, pageSize]);
 
   if (loading) {
     return (
@@ -168,7 +181,7 @@ export function TeacherClassesPage() {
         </div>
 
         <div className="grid gap-5 lg:grid-cols-2">
-          {classes.map((classCourse) => {
+          {pagedClasses.map((classCourse) => {
             const subjectsForClass = classSubjectsMap[classCourse.id] ?? [];
             const assignmentCount = classAssignmentCountMap[classCourse.id] ?? 0;
 
@@ -208,6 +221,19 @@ export function TeacherClassesPage() {
             );
           })}
         </div>
+
+        {classes.length > 0 && (
+          <AmsPagination
+            currentPage={pageIndex}
+            pageSize={pageSize}
+            totalItems={classes.length}
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
+            onPageChange={setPageIndex}
+            onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
+            label="Showing"
+            itemLabel="classes"
+          />
+        )}
 
         {selectedClass && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm" onClick={() => setSelectedClassId(null)}>

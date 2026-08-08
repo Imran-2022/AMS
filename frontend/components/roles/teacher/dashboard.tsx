@@ -180,7 +180,7 @@ export function TeacherDashboardPage() {
                 </div>
               ))}
               {classesWithSubjects.length === 0 && (
-                <div className="rounded-2xl border border-slate-100 p-5 text-sm text-slate-500">You have no classes assigned yet.</div>
+                <div className="p-5 text-sm text-slate-500">You have no classes assigned yet.</div>
               )}
             </div>
           </div>

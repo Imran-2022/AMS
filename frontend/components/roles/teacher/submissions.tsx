@@ -278,58 +278,76 @@ export function TeacherSubmissionsPage() {
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 text-left">
-                <th className="px-5 py-3.5 text-[11px] font-bold  text-slate-400">STUDENT</th>
-                <th className="px-2 py-3.5 text-[11px] font-bold  text-slate-400">ASSIGNMENT</th>
-                <th className="px-2 py-3.5 text-[11px] font-bold  text-slate-400">SUBMITTED</th>
-                <th className="px-2 py-3.5 text-[11px] font-bold  text-slate-400">STATUS</th>
-                <th className="px-2 py-3.5 text-[11px] font-bold  text-slate-400">MARKS</th>
-                <th className="w-28 px-5 py-3.5 text-right text-[11px] font-bold  text-slate-400">ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {visibleSubmissions.map((submission) => (
-                <tr key={submission.id}>
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
-                        {submission.studentInitials}
-                      </div>
-                      <span className="font-semibold text-slate-700">{submission.studentName}</span>
-                    </div>
-                  </td>
-                  <td className="px-2 py-3.5 text-slate-500">{submission.assignmentTitle}</td>
-                  <td className={`px-2 py-3.5 ${submission.submittedAt ? 'text-slate-500' : 'text-slate-400 italic'}`}>
-                    {submission.submittedAt ? new Date(submission.submittedAt).toLocaleString() : 'Not submitted'}
-                  </td>
-                  <td className="px-2 py-3.5">
-                    <StatusBadge status={submission.status} />
-                  </td>
-                  <td className="px-2 py-3.5 text-slate-600">
-                    {submission.status === 'Graded' ? `${submission.marks ?? 0}` : '—'}
-                  </td>
-                  <td className="px-5 py-3.5 text-right">
-                    <button type="button" onClick={() => openGradeModal(submission)} className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold ${submission.status === 'Graded' ? 'border border-slate-200 text-slate-600 hover:bg-slate-50' : 'bg-brand-600 text-white hover:bg-brand-700'}`}>
-                      {submission.status === 'Graded' ? 'View' : 'Grade'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {visibleSubmissions.length === 0 ? (
+            <div className="min-h-[320px] flex items-center justify-center px-6 py-12">
+              <div className="flex w-full max-w-xl flex-col items-center gap-4 rounded-3xl border border-slate-200 bg-slate-50 px-8 py-10 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <p className="text-base font-semibold text-slate-900">No submissions yet</p>
+                <p className="max-w-[24rem] text-sm text-slate-500">
+                  Once your students submit their work, submissions will appear here for review.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 text-left">
+                    <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">STUDENT</th>
+                    <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">ASSIGNMENT</th>
+                    <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">SUBMITTED</th>
+                    <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">STATUS</th>
+                    <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">MARKS</th>
+                    <th className="w-28 px-5 py-3.5 text-right text-[11px] font-bold text-slate-400">ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {visibleSubmissions.map((submission) => (
+                    <tr key={submission.id}>
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
+                            {submission.studentInitials}
+                          </div>
+                          <span className="font-semibold text-slate-700">{submission.studentName}</span>
+                        </div>
+                      </td>
+                      <td className="px-2 py-3.5 text-slate-500">{submission.assignmentTitle}</td>
+                      <td className={`px-2 py-3.5 ${submission.submittedAt ? 'text-slate-500' : 'text-slate-400 italic'}`}>
+                        {submission.submittedAt ? new Date(submission.submittedAt).toLocaleString() : 'Not submitted'}
+                      </td>
+                      <td className="px-2 py-3.5">
+                        <StatusBadge status={submission.status} />
+                      </td>
+                      <td className="px-2 py-3.5 text-slate-600">
+                        {submission.status === 'Graded' ? `${submission.marks ?? 0}` : '—'}
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <button type="button" onClick={() => openGradeModal(submission)} className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold ${submission.status === 'Graded' ? 'border border-slate-200 text-slate-600 hover:bg-slate-50' : 'bg-brand-600 text-white hover:bg-brand-700'}`}>
+                          {submission.status === 'Graded' ? 'View' : 'Grade'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
 
-          <AmsPagination
-            currentPage={pageIndex}
-            pageSize={pageSize}
-            totalItems={visibleSubmissions.length}
-            pageSizeOptions={PAGE_SIZE_OPTIONS}
-            onPageChange={setPageIndex}
-            onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
-            label="Showing"
-            itemLabel="submissions"
-          />
+              {visibleSubmissions.length > 0 && (
+                <AmsPagination
+                  currentPage={pageIndex}
+                  pageSize={pageSize}
+                  totalItems={visibleSubmissions.length}
+                  pageSizeOptions={PAGE_SIZE_OPTIONS}
+                  onPageChange={setPageIndex}
+                  onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
+                  label="Showing"
+                  itemLabel="submissions"
+                />
+              )}
+            </>
+          )}
         </div>
 
         {loadError && (

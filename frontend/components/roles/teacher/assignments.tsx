@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BookOpen, ClipboardList, Copy, FileText, Layers, Pencil, Plus, Search, Send, Trash2, Eye } from 'lucide-react';
 import { AppShell } from '../../layout/AppShell';
-import { AmsDeleteComfiramtionModal, Button, FileUpload } from '../../ui';
+import { AmsDeleteComfiramtionModal, AmsPagination, Button, FileUpload } from '../../ui';
 import { getAssignments, getClassCourses, getSubjects, createAssignment, updateAssignment, deleteAssignment, publishAssignment, unpublishAssignment } from '@/lib/api';
 import type { AssignmentDto, ClassCourseDto, SubjectDto, CreateAssignmentDto, UpdateAssignmentDto } from '@/lib/api';
 
@@ -69,6 +69,9 @@ export function TeacherAssignmentsPage() {
   const [form, setForm] = useState<AssignmentFormValues>(createEmptyForm());
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
+  const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
+  const [pageIndex, setPageIndex] = useState(0);
 
   useEffect(() => {
     const handleClick = () => setOpenMenuId(null);
@@ -129,6 +132,15 @@ export function TeacherAssignmentsPage() {
       return matchesFilter && matchesClass && matchesSection && matchesSubject && matchesSearch;
     });
   }, [assignments, classFilter, filter, searchTerm, sectionFilter, subjectFilter]);
+
+  useEffect(() => {
+    setPageIndex(0);
+  }, [filter, classFilter, sectionFilter, subjectFilter, searchTerm]);
+
+  const pagedAssignments = useMemo(() => {
+    const start = pageIndex * pageSize;
+    return visibleAssignments.slice(start, start + pageSize);
+  }, [pageIndex, pageSize, visibleAssignments]);
 
   const stats = useMemo(() => {
     const published = assignments.filter((assignment) => assignment.status === 'Published').length;
@@ -476,7 +488,7 @@ export function TeacherAssignmentsPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {visibleAssignments.map((assignment) => (
+            {pagedAssignments.map((assignment) => (
               <div key={assignment.id} className="rounded-2xl border border-slate-200 bg-white p-5">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                   <div className="flex-1">
@@ -542,6 +554,18 @@ export function TeacherAssignmentsPage() {
                 </div>
               </div>
             ))}
+            {visibleAssignments.length > 0 && (
+              <AmsPagination
+                currentPage={pageIndex}
+                pageSize={pageSize}
+                totalItems={visibleAssignments.length}
+                pageSizeOptions={PAGE_SIZE_OPTIONS}
+                onPageChange={setPageIndex}
+                onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
+                label="Showing"
+                itemLabel="assignments"
+              />
+            )}
           </div>
         )}
 

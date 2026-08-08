@@ -22,7 +22,7 @@ public class UsersController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<UserDto>>> GetAll()
     {
         var currentUserId = this.GetCurrentUserId();
-        var currentUserRole = User.IsInRole("Admin") ? "Admin" : "Student";
+        var currentUserRole = User.IsInRole("Admin") ? "Admin" : User.IsInRole("Teacher") ? "Teacher" : "Student";
         var users = await _userAppService.GetAllAsync(currentUserId, currentUserRole);
         return Ok(users);
     }
