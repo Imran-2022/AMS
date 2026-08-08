@@ -184,7 +184,7 @@ export function AdminAdministratorsPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+        <div className="rounded-2xl border border-slate-200 bg-white overflow-visible">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-left">

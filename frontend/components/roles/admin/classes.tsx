@@ -489,7 +489,7 @@ export function AdminClassesPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-visible">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 text-left">
@@ -733,7 +733,7 @@ export function AdminClassesPage() {
       </div>
 
       <div className={`${activeModal === 'delete' ? 'flex' : 'hidden'} fixed inset-0 z-50 items-center justify-center bg-slate-900/40 p-4`}>
-        <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl p-7 text-center">
+        <div className="bg-white rounded w-full max-w-sm shadow-2xl p-7 text-center">
           <div className="w-14 h-14 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center mx-auto mb-4">
             <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           </div>

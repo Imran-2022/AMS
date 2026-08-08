@@ -324,7 +324,7 @@ export function AdminTeachersPage() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-visible">
               <div id="dataTable" className="">
                 <table className="w-full text-sm">
                   <thead>

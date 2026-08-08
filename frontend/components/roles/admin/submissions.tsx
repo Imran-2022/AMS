@@ -225,7 +225,7 @@ export function AdminSubmissionsPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-visible">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-100 text-left">
