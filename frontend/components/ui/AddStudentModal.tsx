@@ -47,6 +47,12 @@ const labelClass = 'mb-2 block text-[13px] font-semibold text-slate-800';
 const hintClass = 'mt-1 text-[11.5px] text-slate-500';
 const sectionTitleClass = 'text-[11px] font-semibold uppercase tracking-[0.06em] text-brand-600';
 
+function normalizeDate(value?: string) {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
+}
+
 export function AddStudentModal({
   open,
   onClose,
@@ -84,18 +90,18 @@ export function AddStudentModal({
       email: initialValues?.email ?? '',
       password: initialValues?.password ?? '',
       status: initialValues?.status ?? 'Active',
-      dateOfBirth: initialValues?.dateOfBirth ?? '',
+      dateOfBirth: normalizeDate(initialValues?.dateOfBirth),
       gender: initialValues?.gender ?? '',
       studentId: initialValues?.studentId ?? '',
       className: initialValues?.className ?? classCourses[0]?.name ?? '',
       section: initialValues?.section ?? classCourses[0]?.section ?? '',
-      admissionDate: initialValues?.admissionDate ?? '',
+      admissionDate: normalizeDate(initialValues?.admissionDate),
       guardianName: initialValues?.guardianName ?? '',
       parentMobile: initialValues?.parentMobile ?? '',
       guardianEmail: initialValues?.guardianEmail ?? '',
       avatarUrl: initialValues?.avatarUrl ?? '',
     });
-  }, [open]);
+  }, [open, initialValues, classCourses]);
 
   useEffect(() => {
     if (classCourses.length && !values.className) {
