@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { AppShell } from '../../layout/AppShell';
+import { AmsPagination } from '../../ui';
 import {
   createClassCourse,
   updateClassCourse,
@@ -42,6 +43,9 @@ export function AdminClassesPage() {
   const [actionMenuFor, setActionMenuFor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [classStudentCountsState, setClassStudentCountsState] = useState<Record<string, number>>({});
+  const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
+  const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
+  const [pageIndex, setPageIndex] = useState(0);
 
   useEffect(() => {
     void loadData();
@@ -406,6 +410,19 @@ export function AdminClassesPage() {
     });
   }, [search, selectedClass, subjects, classCourseMap, assignmentMap]);
 
+  const pagedSubjects = useMemo(() => {
+    const start = pageIndex * pageSize;
+    return filteredSubjects.slice(start, start + pageSize);
+  }, [filteredSubjects, pageIndex, pageSize]);
+
+  const pageCount = useMemo(() => Math.max(1, Math.ceil(filteredSubjects.length / pageSize)), [filteredSubjects.length, pageSize]);
+
+  useEffect(() => {
+    if (pageIndex >= pageCount) {
+      setPageIndex(pageCount - 1);
+    }
+  }, [pageCount, pageIndex]);
+
   const subjectSelectOptions = useMemo(
     () =>
       subjects.map((subject) => {
@@ -572,7 +589,7 @@ export function AdminClassesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {filteredSubjects.map((subject) => {
+                {pagedSubjects.map((subject) => {
                   const course = classCourseMap[subject.classCourseId];
                   const teacherName = assignmentMap[subject.id]?.teacherName ?? 'Unassigned';
                   return (
@@ -638,9 +655,16 @@ export function AdminClassesPage() {
               </tbody>
             </table>
 
-            <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100">
-              <p className="text-xs text-slate-400">Showing <span className="font-semibold text-slate-600">1–{filteredSubjects.length}</span> of <span className="font-semibold text-slate-600">{filteredSubjects.length}</span> subjects</p>
-            </div>
+            <AmsPagination
+              currentPage={pageIndex}
+              pageSize={pageSize}
+              totalItems={filteredSubjects.length}
+              pageSizeOptions={PAGE_SIZE_OPTIONS}
+              onPageChange={setPageIndex}
+              onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
+              label="Showing"
+              itemLabel="subjects"
+            />
           </div>
         </div>
       </div>

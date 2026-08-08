@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { FileText, Search, X } from 'lucide-react';
 import { AppShell } from '../../layout/AppShell';
+import { AmsPagination } from '../../ui';
 import { getSubmissions, gradeSubmission, updateSubmissionStatus } from '@/lib/api';
 import type { SubmissionDto } from '@/lib/api';
 
@@ -66,6 +67,9 @@ export function TeacherSubmissionsPage() {
   const [feedback, setFeedback] = useState('');
   const [status, setStatus] = useState('Submitted');
   const [loadError, setLoadError] = useState<string | null>(null);
+  const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
+  const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
+  const [pageIndex, setPageIndex] = useState(0);
 
   useEffect(() => {
     async function loadSubmissions() {
@@ -123,6 +127,11 @@ export function TeacherSubmissionsPage() {
     () => ['All assignments', ...Array.from(new Set(submissions.map((submission) => submission.assignmentTitle)))],
     [submissions]
   );
+
+  const pagedSubmissions = useMemo(() => {
+    const start = pageIndex * pageSize;
+    return visibleSubmissions.slice(start, start + pageSize);
+  }, [visibleSubmissions, pageIndex, pageSize]);
 
   const openGradeModal = (submission: SubmissionDto) => {
     setGradeModal(submission);
@@ -311,22 +320,16 @@ export function TeacherSubmissionsPage() {
             </tbody>
           </table>
 
-          <div className="flex items-center justify-between border-t border-slate-100 px-5 py-4">
-            <p className="text-xs text-slate-400">
-              Showing <span className="font-semibold text-slate-600">1–{visibleSubmissions.length}</span> of <span className="font-semibold text-slate-600">{stats.total}</span> submissions
-            </p>
-            <div className="flex items-center gap-2">
-              <button type="button" className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-300" disabled>
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6" /></svg>
-              </button>
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-xs font-semibold text-white">1</span>
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-semibold text-slate-500 hover:bg-slate-50">2</span>
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-semibold text-slate-500 hover:bg-slate-50">3</span>
-              <button type="button" className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50">
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6" /></svg>
-              </button>
-            </div>
-          </div>
+          <AmsPagination
+            currentPage={pageIndex}
+            pageSize={pageSize}
+            totalItems={visibleSubmissions.length}
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
+            onPageChange={setPageIndex}
+            onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
+            label="Showing"
+            itemLabel="submissions"
+          />
         </div>
 
         {loadError && (

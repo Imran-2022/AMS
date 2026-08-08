@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { Modal, AddTeacherModal, type AddTeacherFormData } from '../../ui';
+import { useEffect, useMemo, useState } from 'react';
+import { AmsPagination, Modal, AddTeacherModal, type AddTeacherFormData } from '../../ui';
 import { AppShell } from '../../layout/AppShell';
 import { createUser, deleteUser, getUsers, updateUser } from '@/lib/api';
 import { getTeacherAssignments, type TeacherSubjectAssignmentDto } from '@/lib/api/teacherAssignments';
@@ -74,6 +74,9 @@ export function AdminTeachersPage() {
   const [isTeacherModalOpen, setIsTeacherModalOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<TeacherRow | null>(null);
   const [teacherModalSubmitting, setTeacherModalSubmitting] = useState(false);
+  const [pageSize, setPageSize] = useState(10);
+  const [pageIndex, setPageIndex] = useState(0);
+  const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 
   useEffect(() => {
     void loadTeachers();
@@ -233,6 +236,10 @@ export function AdminTeachersPage() {
   }
 
   const rows = visibleRows();
+  const pagedRows = useMemo(() => {
+    const start = pageIndex * pageSize;
+    return rows.slice(start, start + pageSize);
+  }, [rows, pageIndex, pageSize]);
 
   return (
     <AppShell role="Admin" breadcrumb="Admin / Teachers">
@@ -338,7 +345,7 @@ export function AdminTeachersPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {rows.map((t) => (
+                    {pagedRows.map((t) => (
                       <tr key={t.id} className="hover:bg-slate-50">
                         <td className="px-2 py-3.5">
                           <div className="flex items-center gap-3">
@@ -380,23 +387,16 @@ export function AdminTeachersPage() {
                   </tbody>
                 </table>
 
-                <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100">
-                  <p className="text-xs text-slate-400">Showing <span className="font-semibold text-slate-600">1–{rows.length}</span> of <span className="font-semibold text-slate-600">{teachers.length}</span> teachers</p>
-                  <div className="flex items-center gap-2">
-                    <select className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-slate-500">
-                      <option>10 / page</option>
-                      <option>25 / page</option>
-                      <option>50 / page</option>
-                    </select>
-                    <button className="w-8 h-8 rounded-lg border border-slate-200 text-slate-300 flex items-center justify-center" disabled>
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="m15 18-6-6 6-6"/></svg>
-                    </button>
-                    <span className="w-8 h-8 rounded-lg bg-brand-600 text-white text-xs font-semibold flex items-center justify-center">1</span>
-                    <button className="w-8 h-8 rounded-lg border border-slate-200 text-slate-300 flex items-center justify-center" disabled>
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="m9 18 6-6-6-6"/></svg>
-                    </button>
-                  </div>
-                </div>
+              <AmsPagination
+                currentPage={pageIndex}
+                pageSize={pageSize}
+                totalItems={rows.length}
+                pageSizeOptions={PAGE_SIZE_OPTIONS}
+                onPageChange={setPageIndex}
+                onPageSizeChange={setPageSize}
+                label="Showing"
+                itemLabel="teachers"
+              />
               </div>
             </div>
           </>
