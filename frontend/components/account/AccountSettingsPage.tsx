@@ -27,7 +27,7 @@ type InfoSection = {
 }
 
 interface AccountSettingsPageProps {
-  role: 'Teacher' | 'Student'
+  role: 'Admin' | 'Teacher' | 'Student'
   breadcrumb: string
   portalLabel: string
   headerTitle: string

@@ -3,33 +3,41 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '../../layout/AppShell';
 import { AmsPagination } from '../../ui';
-import { ASSIGNMENTS, CLASSES, SUBJECTS, USERS } from '../../data';
+import { getAssignments, type AssignmentDto } from '@/lib/api';
 
-const ALL_CLASSES = ['All classes', ...CLASSES.map((item) => `${item.name} - ${item.section}`)];
-const ALL_TEACHERS = [
-  'All teachers',
-  ...USERS.filter((user) => user.role === 'Teacher').map((teacher) => teacher.name),
-];
 const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 
 export function AdminAssignmentsPage() {
   const [activeTab, setActiveTab] = useState<'All' | 'Published' | 'Drafts' | 'Overdue'>('All');
-  const [selectedClass, setSelectedClass] = useState(ALL_CLASSES[0]);
-  const [selectedTeacher, setSelectedTeacher] = useState(ALL_TEACHERS[0]);
+  const [selectedClass, setSelectedClass] = useState('All classes');
+  const [selectedTeacher, setSelectedTeacher] = useState('All teachers');
   const [search, setSearch] = useState('');
   const [activeRowMenu, setActiveRowMenu] = useState<number | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<string | null>(null);
+  const [assignments, setAssignments] = useState<AssignmentDto[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
-  const assignments = useMemo(() => {
-    return ASSIGNMENTS.filter((assignment) => {
+  const ALL_CLASSES = useMemo(
+    () => ['All classes', ...Array.from(new Set(assignments.map((assignment) => `${assignment.classCourseName} - ${assignment.classCourseSection}`)))],
+    [assignments]
+  );
+
+  const ALL_TEACHERS = useMemo(
+    () => ['All teachers', ...Array.from(new Set(assignments.map((assignment) => assignment.teacherName || 'Unknown')))],
+    [assignments]
+  );
+
+  const filteredAssignments = useMemo(() => {
+    return assignments.filter((assignment) => {
       if (activeTab !== 'All' && assignment.status !== activeTab) {
         return false;
       }
-      if (selectedClass !== 'All classes' && assignment.cls !== selectedClass) {
+      const assignmentClass = `${assignment.classCourseName} - ${assignment.classCourseSection}`;
+      if (selectedClass !== 'All classes' && assignmentClass !== selectedClass) {
         return false;
       }
-      if (selectedTeacher !== 'All teachers' && assignment.teacher !== selectedTeacher) {
+      if (selectedTeacher !== 'All teachers' && (assignment.teacherName || 'Unknown') !== selectedTeacher) {
         return false;
       }
       const term = search.trim().toLowerCase();
@@ -38,22 +46,38 @@ export function AdminAssignmentsPage() {
       }
       return (
         assignment.title.toLowerCase().includes(term) ||
-        assignment.cls.toLowerCase().includes(term) ||
-        assignment.teacher.toLowerCase().includes(term)
+        assignmentClass.toLowerCase().includes(term) ||
+        (assignment.teacherName || 'Unknown').toLowerCase().includes(term)
       );
     });
-  }, [activeTab, selectedClass, selectedTeacher, search]);
+  }, [activeTab, selectedClass, selectedTeacher, search, assignments]);
 
   function isOverdueStatus(status: string): status is 'Overdue' {
     return status === 'Overdue';
   }
 
   const totals = useMemo(() => {
-    const total = ASSIGNMENTS.length;
-    const published = ASSIGNMENTS.filter((item) => item.status === 'Published').length;
-    const drafts = ASSIGNMENTS.filter((item) => item.status === 'Draft').length;
-    const overdue = ASSIGNMENTS.filter((item) => isOverdueStatus(item.status)).length;
+    const total = assignments.length;
+    const published = assignments.filter((item) => item.status === 'Published').length;
+    const drafts = assignments.filter((item) => item.status === 'Draft').length;
+    const overdue = assignments.filter((item) => isOverdueStatus(item.status)).length;
     return { total, published, drafts, overdue };
+  }, [assignments]);
+
+  useEffect(() => {
+    async function loadAssignments() {
+      setIsLoading(true);
+      try {
+        const items = await getAssignments();
+        setAssignments(items);
+      } catch (error) {
+        console.error('Failed to load assignments', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    void loadAssignments();
   }, []);
 
   useEffect(() => {
@@ -82,16 +106,16 @@ export function AdminAssignmentsPage() {
     setArchiveTarget(null);
   }
 
-  const rowCount = assignments.length;
+  const rowCount = filteredAssignments.length;
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
   const [pageIndex, setPageIndex] = useState(0);
 
   const pagedAssignments = useMemo(() => {
     const start = pageIndex * pageSize;
-    return assignments.slice(start, start + pageSize);
-  }, [assignments, pageIndex, pageSize]);
+    return filteredAssignments.slice(start, start + pageSize);
+  }, [filteredAssignments, pageIndex, pageSize]);
 
-  const pageCount = Math.max(1, Math.ceil(assignments.length / pageSize));
+  const pageCount = Math.max(1, Math.ceil(filteredAssignments.length / pageSize));
 
   return (
     <AppShell role="Admin" breadcrumb="Admin / Assignments">
@@ -227,7 +251,8 @@ export function AdminAssignmentsPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {pagedAssignments.map((assignment) => {
-                    const initials = assignment.teacher
+                    const teacherName = assignment.teacherName ?? 'Unknown';
+                    const initials = teacherName
                       .split(' ')
                       .map((part) => part[0])
                       .join('');
@@ -243,15 +268,15 @@ export function AdminAssignmentsPage() {
                     return (
                       <tr key={assignment.id}>
                         <td className="px-5 py-3.5 font-semibold text-slate-700">{assignment.title}</td>
-                        <td className="px-2 py-3.5 text-slate-500">{assignment.cls}</td>
+                        <td className="px-2 py-3.5 text-slate-500">{`${assignment.classCourseName} - ${assignment.classCourseSection}`}</td>
                         <td className="px-2 py-3.5">
                           <div className="flex items-center gap-2">
                             <div className="w-6 h-6 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-[10px] font-bold">{initials}</div>
-                            <span className="text-slate-600">{assignment.teacher}</span>
+                            <span className="text-slate-600">{assignment.teacherName ?? 'Unknown'}</span>
                           </div>
                         </td>
                         <td className={`px-2 py-3.5 ${isOverdue ? 'text-rose-500 font-semibold' : 'text-slate-500'}`}>{assignment.deadline}</td>
-                        <td className="px-2 py-3.5 text-slate-500">{assignment.submissions} / {assignment.total}</td>
+                        <td className="px-2 py-3.5 text-slate-500">{assignment.submittedCount ?? 0} / {assignment.totalStudents ?? 0}</td>
                         <td className="px-2 py-3.5">
                           <span className={`badge ${statusClasses}`}>
                             <span className="badge-dot" />

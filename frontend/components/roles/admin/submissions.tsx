@@ -1,71 +1,9 @@
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AmsPagination } from '../../ui';
 import { AppShell } from '../../layout/AppShell';
-import { ASSIGNMENTS, CLASSES } from '../../data';
-
-const CLASS_OPTIONS = ['All classes', ...CLASSES.map((item) => `${item.name} — ${item.section}`)];
-const ASSIGNMENT_OPTIONS = ['All assignments', ...ASSIGNMENTS.map((item) => item.title)];
-
-const INITIAL_SUBMISSIONS = [
-  {
-    id: 1,
-    student: 'Ayesha Rahman',
-    initials: 'AR',
-    avatarBg: 'brand',
-    assignment: 'Algebra Worksheet 3',
-    cls: 'Class 9 — A',
-    submittedAt: 'Aug 11, 2026 · 6:40 PM',
-    status: 'Graded',
-    marks: '18 / 20',
-  },
-  {
-    id: 2,
-    student: 'Karim Hasan',
-    initials: 'KH',
-    avatarBg: 'amber',
-    assignment: "Newton's Laws Lab Report",
-    cls: 'Class 9 — A',
-    submittedAt: 'Aug 14, 2026 · 9:12 AM',
-    status: 'Pending review',
-    marks: '—',
-  },
-  {
-    id: 3,
-    student: 'Nusrat Farah',
-    initials: 'NF',
-    avatarBg: 'sky',
-    assignment: 'Essay: My Summer Vacation',
-    cls: 'Class 10 — B',
-    submittedAt: 'Jul 29, 2026 · 11:58 PM',
-    status: 'Graded',
-    marks: '22 / 25',
-  },
-  {
-    id: 4,
-    student: 'Tanvir Islam',
-    initials: 'TI',
-    avatarBg: 'rose',
-    assignment: 'Essay: My Summer Vacation',
-    cls: 'Class 10 — B',
-    submittedAt: null,
-    status: 'Missing',
-    marks: '—',
-  },
-  {
-    id: 5,
-    student: 'Sadia Akter',
-    initials: 'SA',
-    avatarBg: 'violet',
-    assignment: 'Algebra Worksheet 3',
-    cls: 'Class 9 — A',
-    submittedAt: 'Aug 13, 2026 · 2:04 AM',
-    status: 'Pending review',
-    marks: '—',
-    isLate: true,
-  },
-];
+import { getSubmissions, type SubmissionDto } from '@/lib/api';
 
 const statusClasses: Record<string, string> = {
   Graded: 'bg-emerald-50 text-emerald-600',
@@ -81,36 +19,67 @@ const avatarClasses: Record<string, string> = {
   violet: 'bg-violet-100 text-violet-700',
 };
 
+const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
+
 export function AdminSubmissionsPage() {
   const [activeTab, setActiveTab] = useState<'All' | 'Graded' | 'Pending' | 'Missing'>('All');
-  const [selectedClass, setSelectedClass] = useState(CLASS_OPTIONS[0]);
-  const [selectedAssignment, setSelectedAssignment] = useState(ASSIGNMENT_OPTIONS[0]);
+  const [selectedClass, setSelectedClass] = useState('All classes');
+  const [selectedAssignment, setSelectedAssignment] = useState('All assignments');
   const [search, setSearch] = useState('');
+  const [submissions, setSubmissions] = useState<SubmissionDto[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const CLASS_OPTIONS = useMemo(
+    () => ['All classes', ...Array.from(new Set(submissions.map((item) => `${item.classCourseName} — ${item.classCourseSection}`)))],
+    [submissions]
+  );
+
+  const ASSIGNMENT_OPTIONS = useMemo(
+    () => ['All assignments', ...Array.from(new Set(submissions.map((item) => item.assignmentTitle)))],
+    [submissions]
+  );
+
+  useEffect(() => {
+    async function loadSubmissions() {
+      setIsLoading(true);
+      try {
+        const items = await getSubmissions();
+        setSubmissions(items);
+      } catch (error) {
+        console.error('Failed to load submissions', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    void loadSubmissions();
+  }, []);
 
   const totals = useMemo(() => {
-    const total = INITIAL_SUBMISSIONS.length;
-    const graded = INITIAL_SUBMISSIONS.filter((item) => item.status === 'Graded').length;
-    const pending = INITIAL_SUBMISSIONS.filter((item) => item.status === 'Pending review').length;
-    const missing = INITIAL_SUBMISSIONS.filter((item) => item.status === 'Missing').length;
+    const total = submissions.length;
+    const graded = submissions.filter((item) => item.status === 'Graded').length;
+    const pending = submissions.filter((item) => item.status === 'Pending review').length;
+    const missing = submissions.filter((item) => item.status === 'Missing').length;
     return { total, graded, pending, missing };
-  }, []);
+  }, [submissions]);
 
   const visibleSubmissions = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return INITIAL_SUBMISSIONS.filter((submission) => {
+    return submissions.filter((submission) => {
       const matchesTab =
         activeTab === 'All' ||
         (activeTab === 'Graded' && submission.status === 'Graded') ||
         (activeTab === 'Pending' && submission.status === 'Pending review') ||
         (activeTab === 'Missing' && submission.status === 'Missing');
 
-      const matchesClass = selectedClass === 'All classes' || submission.cls === selectedClass;
-      const matchesAssignment = selectedAssignment === 'All assignments' || submission.assignment === selectedAssignment;
-      const matchesSearch = !query || submission.student.toLowerCase().includes(query);
+      const submissionClass = `${submission.classCourseName} — ${submission.classCourseSection}`;
+      const matchesClass = selectedClass === 'All classes' || submissionClass === selectedClass;
+      const matchesAssignment = selectedAssignment === 'All assignments' || submission.assignmentTitle === selectedAssignment;
+      const matchesSearch = !query || submission.studentName.toLowerCase().includes(query);
 
       return matchesTab && matchesClass && matchesAssignment && matchesSearch;
     });
-  }, [activeTab, selectedClass, selectedAssignment, search]);
+  }, [activeTab, selectedClass, selectedAssignment, search, submissions]);
 
   const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
@@ -252,13 +221,13 @@ export function AdminSubmissionsPage() {
                     <tr key={submission.id}>
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${avatarClasses[submission.avatarBg]}`}>
-                            {submission.initials}
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${avatarClasses.brand}`}>
+                            {submission.studentInitials}
                           </div>
-                          <span className="font-semibold text-slate-700">{submission.student}</span>
+                          <span className="font-semibold text-slate-700">{submission.studentName}</span>
                         </div>
                       </td>
-                      <td className="px-2 py-3.5 text-slate-500">{submission.assignment}</td>
+                      <td className="px-2 py-3.5 text-slate-500">{submission.assignmentTitle}</td>
                       <td className="px-2 py-3.5 text-slate-500">{submission.submittedAt ?? <span className="italic text-slate-400">Not submitted</span>}</td>
                       <td className="px-2 py-3.5">
                         <span className={`badge ${statusClasses[submission.status]}`}>
@@ -266,8 +235,8 @@ export function AdminSubmissionsPage() {
                           {submission.status}
                         </span>
                       </td>
-                      <td className={`px-2 py-3.5 ${submission.marks === '—' ? 'text-slate-400' : 'font-semibold text-slate-700'}`}>
-                        {submission.marks}
+                      <td className={`px-2 py-3.5 ${submission.marks == null ? 'text-slate-400' : 'font-semibold text-slate-700'}`}>
+                        {submission.marks == null ? '—' : submission.marks}
                       </td>
                       <td className="px-5 py-3.5 text-right">
                         <button

@@ -46,7 +46,7 @@ export default function LoginScreen() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-      <div className="w-full max-w-4xl grid grid-cols-2 rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
+      <div className="w-full max-w-4xl grid grid-cols-2 rounded overflow-hidden border border-slate-200 shadow-sm">
         <div className="bg-slate-900 text-white p-10 flex flex-col justify-between">
           <div>
             <p className="font-serif text-2xl">AMS</p>
@@ -83,7 +83,7 @@ export default function LoginScreen() {
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="Enter your email"
                 autoComplete="email"
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
               />
             </div>
             <div>
@@ -97,7 +97,7 @@ export default function LoginScreen() {
                   onChange={(event) => setPassword(event.target.value)}
                   placeholder="••••••••"
                   autoComplete="current-password"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm pr-10 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm pr-10 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                 />
                 <button
                   type="button"
@@ -119,7 +119,7 @@ export default function LoginScreen() {
               </div>
             </div>
             {error ? <p className="text-sm text-rose-600">{error}</p> : null}
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full !rounded" disabled={isLoading}>
               {isLoading ? 'Signing in…' : 'Sign In'}
             </Button>
           </form>

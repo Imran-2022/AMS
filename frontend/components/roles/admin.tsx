@@ -3,6 +3,7 @@ export { AdminStudentsPage } from './admin/students';
 export { AdminTeachersPage } from './admin/teachers';
 export { AdminAdministratorsPage } from './admin/administrators';
 export { AdminSettingsPage } from './admin/settings';
+export { AdminAmsSettingsPage } from './admin/ams-settings';
 export { AdminUsersPage } from './admin/users';
 export { AdminClassesPage } from './admin/classes';
 export { AdminEnrollmentsPage } from './admin/enrollments';

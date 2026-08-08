@@ -55,6 +55,7 @@ function getBreadcrumb(pathname: string, role: RoleType | undefined) {
       assignments: 'Assignments',
       submissions: 'Submissions',
       settings: 'Settings',
+      'ams-settings': 'AMS Settings',
       enrollments: 'Enrollments',
       'teacher-assignments': 'Teacher assignments',
       users: 'Users',
@@ -91,7 +92,7 @@ const NAV: Record<RoleType, NavItem[]> = {
     { href: '/roles/admin/classes', label: 'Classes & Subjects', Icon: BookOpen },
     { href: '/roles/admin/assignments', label: 'Assignments', Icon: ClipboardList },
     { href: '/roles/admin/submissions', label: 'Submissions', Icon: Inbox },
-    { href: '/roles/admin/settings', label: 'Settings', Icon: Settings },
+    { href: '/roles/admin/ams-settings', label: 'AMS Settings', Icon: Settings },
   ],
   Teacher: [
     { href: '/roles/teacher/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
@@ -111,7 +112,7 @@ function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, 
   const pathname = usePathname();
   const router = useRouter();
   const settingsHref = role === 'Admin' ? '/roles/admin/settings' : role === 'Teacher' ? '/roles/teacher/settings' : '/roles/student/settings';
-  const settingsLabel = role === 'Teacher' ? 'Account Settings' : role === 'Student' ? 'Account Settings' : 'Admin Settings';
+  const settingsLabel = 'Account Settings';
 
   const widthClass = mobileOpen ? 'w-64' : collapsed ? 'w-[76px]' : 'w-64';
   return (
