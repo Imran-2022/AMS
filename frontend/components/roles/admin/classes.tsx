@@ -540,18 +540,17 @@ export function AdminClassesPage() {
                     </div>
                   </div>
                   <div className="relative inline-flex">
-                    <Button
+                    <button
                       type="button"
-                      variant="ghost"
                       data-action-button={`class-${cls.id}`}
                       onClick={(event) => {
                         event.stopPropagation();
                         setActionMenuFor(actionMenuFor === `class-${cls.id}` ? null : `class-${cls.id}`);
                       }}
-                      className="w-8 h-8 rounded-lg p-0 text-slate-400 hover:bg-slate-100"
+                      className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md p-0 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
                     >
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-                    </Button>
+                    </button>
                     {actionMenuFor === `class-${cls.id}` ? (
                       <div
                         data-action-menu={`class-${cls.id}`}
@@ -672,18 +671,17 @@ export function AdminClassesPage() {
                       </td>
                       <td className="px-5 py-3.5 text-right">
                         <div className="relative inline-flex">
-                          <Button
+                          <button
                             type="button"
-                            variant="ghost"
                             data-action-button={`subject-${subject.id}`}
                             onClick={(event) => {
                               event.stopPropagation();
                               setActionMenuFor(actionMenuFor === `subject-${subject.id}` ? null : `subject-${subject.id}`);
                             }}
-                            className="w-8 h-8 rounded-lg p-0 text-slate-400 hover:bg-slate-100"
+                            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md p-0 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
                           >
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-                          </Button>
+                          </button>
                           {actionMenuFor === `subject-${subject.id}` ? (
                             <div
                               data-action-menu={`subject-${subject.id}`}
