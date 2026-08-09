@@ -279,16 +279,14 @@ export function TeacherSubmissionsPage() {
 
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
           {visibleSubmissions.length === 0 ? (
-            <div className="min-h-[320px] flex items-center justify-center px-6 py-12">
-              <div className="flex w-full max-w-xl flex-col items-center gap-4 rounded-3xl border border-slate-200 bg-slate-50 px-8 py-10 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
-                  <FileText className="h-5 w-5" />
-                </div>
-                <p className="text-base font-semibold text-slate-900">No submissions yet</p>
-                <p className="max-w-[24rem] text-sm text-slate-500">
-                  Once your students submit their work, submissions will appear here for review.
-                </p>
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-8 py-20 text-center">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-500">
+                <FileText className="h-7 w-7" />
               </div>
+              <p className="text-base font-bold text-slate-800">No submissions yet</p>
+              <p className="mt-2 max-w-md text-sm text-slate-500">
+                Once your students submit their work, submissions will appear here for review.
+              </p>
             </div>
           ) : (
             <>

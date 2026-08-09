@@ -77,6 +77,15 @@ public class AttachmentAppService : IAttachmentAppService
         await _attachmentRepository.DeleteAsync(id);
     }
 
+    public async Task DeleteByOwnerAsync(string ownerType, Guid ownerId)
+    {
+        var attachments = await _attachmentRepository.GetByOwnerAsync(ownerType, ownerId);
+        foreach (var attachment in attachments)
+        {
+            await DeleteAsync(attachment.Id);
+        }
+    }
+
     public async Task<Stream?> OpenStreamAsync(string storedFileName)
     {
         var file = await _fileAppService.OpenFileAsync(storedFileName);

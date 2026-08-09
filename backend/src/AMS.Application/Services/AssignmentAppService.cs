@@ -15,6 +15,7 @@ public class AssignmentAppService : IAssignmentAppService
     private readonly IUserRepository _userRepository;
     private readonly IClassCourseRepository _classCourseRepository;
     private readonly ISubjectRepository _subjectRepository;
+    private readonly IAttachmentAppService _attachmentAppService;
 
     public AssignmentAppService(
         IAssignmentRepository assignmentRepository,
@@ -23,7 +24,8 @@ public class AssignmentAppService : IAssignmentAppService
         ISubmissionRepository submissionRepository,
         IUserRepository userRepository,
         IClassCourseRepository classCourseRepository,
-        ISubjectRepository subjectRepository)
+        ISubjectRepository subjectRepository,
+        IAttachmentAppService attachmentAppService)
     {
         _assignmentRepository = assignmentRepository;
         _teacherSubjectAssignmentRepository = teacherSubjectAssignmentRepository;
@@ -32,6 +34,7 @@ public class AssignmentAppService : IAssignmentAppService
         _userRepository = userRepository;
         _classCourseRepository = classCourseRepository;
         _subjectRepository = subjectRepository;
+        _attachmentAppService = attachmentAppService;
     }
 
     public async Task<IReadOnlyList<AssignmentDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
@@ -157,6 +160,7 @@ public class AssignmentAppService : IAssignmentAppService
     {
         var assignment = await _assignmentRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Assignment not found.");
         EnsureCanManage(assignment, currentUserId, currentUserRole);
+        await _attachmentAppService.DeleteByOwnerAsync("Assignment", id);
         await _assignmentRepository.DeleteAsync(id, cancellationToken);
     }
 
