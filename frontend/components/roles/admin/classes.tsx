@@ -517,10 +517,39 @@ export function AdminClassesPage() {
     [classDefinitions]
   );
 
-  const teacherOptions = useMemo(
-    () => teachers.map((teacher) => ({ id: teacher.id, label: teacher.fullName })),
-    [teachers]
-  );
+  const teacherOptions = useMemo(() => {
+    const subject = subjects.find((s) => s.id === assignForm.subjectId) ?? null;
+
+    // Build a set of teacherIds who already have this subject assigned
+    const assignedTeacherIds = new Set<string>(
+      (subject ? assignments.filter((a) => a.subjectId === subject.id).map((a) => a.teacherId) : [])
+    );
+
+    // Normalize helper: from stored "Name — CODE" or plain name to name
+    const normalize = (raw?: string) =>
+      (raw ?? '')
+        .split(',')
+        .map((v) => v.trim())
+        .map((val) => val.split('—')[0].trim())
+        .filter(Boolean);
+
+    if (!subject) {
+      // No subject selected — show all teachers
+      return teachers.map((teacher) => ({ id: teacher.id, label: teacher.fullName }));
+    }
+
+    const want = subject.name;
+
+    const filtered = teachers.filter((teacher) => {
+      // include if teacher already assigned to this subject
+      if (assignedTeacherIds.has(teacher.id)) return true;
+
+      const specs = normalize(teacher.subjectSpecialization);
+      return specs.some((s) => s.toLowerCase() === want.toLowerCase());
+    });
+
+    return filtered.map((t) => ({ id: t.id, label: t.fullName }));
+  }, [teachers, subjects, assignForm.subjectId, assignments]);
 
   const sectionOptions = useMemo(
     () => classes.map((cls) => ({ id: cls.id, label: `${cls.name} — ${cls.section}` })),
@@ -583,23 +612,32 @@ export function AdminClassesPage() {
     () =>
       classes
         .filter((cls) => !assignForm.classDefinitionId || cls.classDefinitionId === assignForm.classDefinitionId)
-        .map((cls) => ({ id: cls.id, label: `${cls.name} — ${cls.section}` })),
-    [classes, assignForm.classDefinitionId]
+        .map((cls) => ({
+          id: cls.id,
+          label: `${cls.name} — ${cls.section}${cls.groupId ? ` (${groupNameMap[cls.groupId] ?? ''})` : ''}`,
+        })),
+    [classes, assignForm.classDefinitionId, groupNameMap]
   );
 
-  const subjectSelectOptions = useMemo(
-    () =>
-      subjects
-        .filter((subject) => !assignForm.classCourseId || subject.classCourseId === assignForm.classCourseId)
-        .map((subject) => {
+  const subjectSelectOptions = useMemo(() => {
+    return subjects
+      .filter((subject) => {
+        if (assignForm.classCourseId) {
+          return subject.classCourseId === assignForm.classCourseId;
+        }
+
+        if (assignForm.classDefinitionId) {
           const course = classCourseMap[subject.classCourseId];
-          return {
-            id: subject.id,
-            label: `${subject.name} — ${course ? `${course.name} — ${course.section}` : 'Unassigned'}`,
-          };
-        }),
-    [subjects, assignForm.classCourseId, classCourseMap]
-  );
+          return course?.classDefinitionId === assignForm.classDefinitionId;
+        }
+
+        return false;
+      })
+      .map((subject) => ({
+        id: subject.id,
+        label: `${subject.name} — ${subject.code}`,
+      }));
+  }, [subjects, assignForm.classCourseId, assignForm.classDefinitionId, classCourseMap]);
 
   const classSubjectCounts = useMemo(
     () =>

@@ -223,7 +223,7 @@ export function AdminDashboardPage() {
             gender: '',
             qualification: '',
             joiningDate: '',
-            subjectSpecialization: '',
+            subjectSpecializations: [],
           }}
           isSubmitting={teacherModalSubmitting}
           requirePassword
@@ -240,7 +240,7 @@ export function AdminDashboardPage() {
                 gender: values.gender ?? '',
                 qualification: values.qualification ?? '',
                 joiningDate: values.joiningDate ?? '',
-                subjectSpecialization: values.subjectSpecialization ?? '',
+                subjectSpecialization: (values.subjectSpecializations ?? []).join(', '),
               });
               setTeacherModalOpen(false);
               await loadDashboard();

@@ -44,12 +44,16 @@ function mapUserToTeacherRow(user: {
     .slice(0, 2)
     .toUpperCase();
 
+  const subjectSpecializations = user.subjectSpecialization
+    ? user.subjectSpecialization.split(',').map((value) => value.trim()).filter(Boolean)
+    : [];
+
   return {
     id: user.id,
     initials,
     name: user.fullName,
     email: user.email,
-    subjects: user.subjectSpecialization ? [user.subjectSpecialization] : [],
+    subjects: subjectSpecializations,
     classesCount: 0,
     status: user.isActive ? 'Active' : 'Inactive',
     tone: user.isActive ? 'emerald' : 'slate',
@@ -186,12 +190,13 @@ export function AdminTeachersPage() {
 
     setTeacherModalSubmitting(true);
     try {
+      const specializationValue = (values.subjectSpecializations ?? []).join(', ');
       if (editingTeacher) {
         await updateUser(editingTeacher.id, {
           fullName: values.fullName,
           email: values.email,
           isActive: values.status === 'Active',
-          subjectSpecialization: values.subjectSpecialization,
+          subjectSpecialization: specializationValue,
           phoneNumber: values.phone,
           gender: values.gender,
           qualification: values.qualification,
@@ -205,7 +210,7 @@ export function AdminTeachersPage() {
           password: values.password,
           role: 'Teacher',
           isActive: values.status === 'Active',
-          subjectSpecialization: values.subjectSpecialization,
+          subjectSpecialization: specializationValue,
           phoneNumber: values.phone,
           gender: values.gender,
           qualification: values.qualification,
@@ -338,7 +343,7 @@ export function AdminTeachersPage() {
                     <tr className="border-b border-slate-100 text-left">
                       <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">NAME</th>
                       <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">EMAIL</th>
-                      <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">SUBJECTS</th>
+                      <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">SUBJECTS ASSIGNED</th>
                       <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">CLASSES</th>
                       <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">STATUS</th>
                       <th className="w-16 px-5 py-3.5 text-right text-[11px] font-bold text-slate-400">ACTIONS</th>
@@ -452,7 +457,17 @@ export function AdminTeachersPage() {
           gender: editingTeacher.gender ?? '',
           qualification: editingTeacher.qualification ?? '',
           joiningDate: editingTeacher.joiningDate ?? '',
-          subjectSpecialization: editingTeacher.subjectSpecialization ?? editingTeacher.subjects[0] ?? '',
+          subjectSpecializations: editingTeacher.subjectSpecialization
+            ? editingTeacher.subjectSpecialization
+                .split(',')
+                .map((v) => v.trim())
+                .map((val) => {
+                  // stored values may include code like "Subject — CODE"; normalize to subject name
+                  const parts = val.split('—');
+                  return parts[0].trim();
+                })
+                .filter(Boolean)
+            : editingTeacher.subjects,
           avatarUrl: editingTeacher.avatarUrl ?? '',
         } : undefined}
         isSubmitting={teacherModalSubmitting}
