@@ -2,6 +2,7 @@ using AMS.Application.Services;
 using AMS.Domain.Entities;
 using AMS.Domain.Repositories;
 using AMS.Domain.Shared;
+using Moq;
 using Xunit;
 
 namespace AMS.Application.Tests;
@@ -11,21 +12,50 @@ public class AuthAppServiceTests
     [Fact]
     public async Task LoginAsync_Should_Return_Null_For_Invalid_Credentials()
     {
-        var repo = new FakeUserRepository();
-        var service = new AuthAppService(repo);
+        var repo = new Mock<IUserRepository>(MockBehavior.Strict);
+        repo.Setup(r => r.GetByEmailAsync("unknown@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AppUser?)null);
+
+        var service = new AuthAppService(repo.Object);
 
         var result = await service.LoginAsync("unknown@example.com", "wrong");
 
         Assert.Null(result);
     }
 
-    private class FakeUserRepository : IUserRepository
+    [Fact]
+    public async Task LoginAsync_Should_Return_Null_For_Wrong_Password()
     {
-        public Task AddAsync(AppUser user, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task<IReadOnlyList<AppUser>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<AppUser>>(Array.Empty<AppUser>());
-        public Task<AppUser?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) => Task.FromResult<AppUser?>(null);
-        public Task<AppUser?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult<AppUser?>(null);
-        public Task UpdateAsync(AppUser user, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        var passwordHash = BCrypt.Net.BCrypt.HashPassword("correct");
+        var user = new AppUser(Guid.NewGuid(), "Test User", "test@example.com", passwordHash, UserRole.Student);
+
+        var repo = new Mock<IUserRepository>(MockBehavior.Strict);
+        repo.Setup(r => r.GetByEmailAsync("test@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        var service = new AuthAppService(repo.Object);
+
+        var result = await service.LoginAsync("test@example.com", "wrong");
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task LoginAsync_Should_Return_User_For_Correct_Password()
+    {
+        var passwordHash = BCrypt.Net.BCrypt.HashPassword("correct");
+        var user = new AppUser(Guid.NewGuid(), "Test User", "test@example.com", passwordHash, UserRole.Student);
+
+        var repo = new Mock<IUserRepository>(MockBehavior.Strict);
+        repo.Setup(r => r.GetByEmailAsync("test@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        var service = new AuthAppService(repo.Object);
+
+        var result = await service.LoginAsync("test@example.com", "correct");
+
+        Assert.NotNull(result);
+        Assert.Equal(user.Id, result!.Id);
+        Assert.Equal(user.Email, result.Email);
     }
 }

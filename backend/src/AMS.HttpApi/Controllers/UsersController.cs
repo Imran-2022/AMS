@@ -12,17 +12,19 @@ namespace AMS.HttpApi.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly IUserAppService _userAppService;
+    private readonly ICurrentUserService _currentUser;
 
-    public UsersController(IUserAppService userAppService)
+    public UsersController(IUserAppService userAppService, ICurrentUserService currentUser)
     {
         _userAppService = userAppService;
+        _currentUser = currentUser;
     }
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<UserDto>>> GetAll()
     {
-        var currentUserId = this.GetCurrentUserId();
-        var currentUserRole = User.IsInRole("Admin") ? "Admin" : User.IsInRole("Teacher") ? "Teacher" : "Student";
+        var currentUserId = _currentUser.UserId;
+        var currentUserRole = _currentUser.Role;
         var users = await _userAppService.GetAllAsync(currentUserId, currentUserRole);
         return Ok(users);
     }
@@ -30,17 +32,18 @@ public class UsersController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<UserDto>> GetById(Guid id)
     {
-        var currentUserId = this.GetCurrentUserId();
-        var currentUserRole = User.IsInRole("Admin") ? "Admin" : "Student";
+        var currentUserId = _currentUser.UserId;
+        var currentUserRole = _currentUser.Role;
         var user = await _userAppService.GetByIdAsync(id, currentUserId, currentUserRole);
         return user is null ? NotFound() : Ok(user);
     }
 
     [HttpPost]
+    [Authorize(Policy = "AdminsOnly")]
     public async Task<ActionResult<UserDto>> Create([FromBody] CreateUserDto input)
     {
-        var currentUserId = this.GetCurrentUserId();
-        var currentUserRole = User.IsInRole("Admin") ? "Admin" : "Student";
+        var currentUserId = _currentUser.UserId;
+        var currentUserRole = _currentUser.Role;
         var user = await _userAppService.CreateAsync(input, currentUserId, currentUserRole);
         return CreatedAtAction(nameof(GetById), new { id = user.Id }, user);
     }
@@ -48,26 +51,34 @@ public class UsersController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<UserDto>> Update(Guid id, [FromBody] UpdateUserDto input)
     {
-        var currentUserId = this.GetCurrentUserId();
-        var currentUserRole = User.IsInRole("Admin") ? "Admin" : "Student";
+        var currentUserId = _currentUser.UserId;
+        var currentUserRole = _currentUser.Role;
+
+        if (currentUserRole != "Admin" && id != currentUserId)
+        {
+            return Forbid();
+        }
+
         var user = await _userAppService.UpdateAsync(id, input, currentUserId, currentUserRole);
         return Ok(user);
     }
 
     [HttpPatch("{id:guid}/toggle-status")]
+    [Authorize(Policy = "AdminsOnly")]
     public async Task<ActionResult<UserDto>> ToggleStatus(Guid id)
     {
-        var currentUserId = this.GetCurrentUserId();
-        var currentUserRole = User.IsInRole("Admin") ? "Admin" : "Student";
+        var currentUserId = _currentUser.UserId;
+        var currentUserRole = _currentUser.Role;
         var user = await _userAppService.ToggleActiveAsync(id, currentUserId, currentUserRole);
         return Ok(user);
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "AdminsOnly")]
     public async Task<ActionResult> Delete(Guid id)
     {
-        var currentUserId = this.GetCurrentUserId();
-        var currentUserRole = User.IsInRole("Admin") ? "Admin" : "Student";
+        var currentUserId = _currentUser.UserId;
+        var currentUserRole = _currentUser.Role;
         await _userAppService.DeleteAsync(id, currentUserId, currentUserRole);
         return NoContent();
     }

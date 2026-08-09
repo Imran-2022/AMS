@@ -16,6 +16,9 @@ public class AttachmentRepository : IAttachmentRepository
     public async Task<Attachment?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         => await _dbContext.Set<Attachment>().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
+    public async Task<Attachment?> GetByStoredFileNameAsync(string storedFileName, CancellationToken cancellationToken = default)
+        => await _dbContext.Set<Attachment>().FirstOrDefaultAsync(x => x.StoredFileName == storedFileName, cancellationToken);
+
     public async Task<IReadOnlyList<Attachment>> GetByOwnerAsync(string ownerType, Guid ownerId, CancellationToken cancellationToken = default)
         => await _dbContext.Set<Attachment>().Where(a => a.OwnerType == ownerType && a.OwnerId == ownerId).ToListAsync(cancellationToken);
 

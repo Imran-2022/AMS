@@ -12,7 +12,7 @@ export function AdminAssignmentsPage() {
   const [selectedClass, setSelectedClass] = useState('All classes');
   const [selectedTeacher, setSelectedTeacher] = useState('All teachers');
   const [search, setSearch] = useState('');
-  const [activeRowMenu, setActiveRowMenu] = useState<number | null>(null);
+  const [activeRowMenu, setActiveRowMenu] = useState<string | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<string | null>(null);
   const [assignments, setAssignments] = useState<AssignmentDto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -94,7 +94,7 @@ export function AdminAssignmentsPage() {
     return () => document.removeEventListener('click', handleDocumentClick);
   }, [activeRowMenu]);
 
-  function toggleMenu(id: number) {
+  function toggleMenu(id: string) {
     setActiveRowMenu((current) => (current === id ? null : id));
   }
 
