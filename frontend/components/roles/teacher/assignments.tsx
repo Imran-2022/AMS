@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BookOpen, ClipboardList, Copy, FileText, Layers, Pencil, Plus, Search, Send, Trash2, Eye } from 'lucide-react';
 import { AppShell } from '../../layout/AppShell';
 import { AmsDeleteComfiramtionModal, AmsPagination, Button, FileUpload } from '../../ui';
-import { getAssignments, getClassCourses, getSubjects, createAssignment, updateAssignment, deleteAssignment, publishAssignment, unpublishAssignment, uploadAttachment, listAttachments } from '@/lib/api';
+import { getAssignments, getClassCourses, getSubjects, createAssignment, updateAssignment, deleteAssignment, publishAssignment, unpublishAssignment, uploadAttachment, listAttachments, renameAttachment } from '@/lib/api';
 import type { AssignmentDto, ClassCourseDto, SubjectDto, CreateAssignmentDto, UpdateAssignmentDto } from '@/lib/api';
 
 type AssignmentStatus = 'Published' | 'Draft';
@@ -619,9 +619,15 @@ export function TeacherAssignmentsPage() {
                     <p className="mt-3 text-sm text-slate-600">{assignment.description}</p>
                     <div className="mt-4 flex flex-wrap items-center gap-2">
                       <span className="rounded-lg bg-slate-50 px-2.5 py-1 text-[11px] font-mono text-slate-500">Due: {new Date(assignment.deadline).toLocaleString()}</span>
-                      {assignment.attachmentName && (
+                      {assignment.attachments && assignment.attachments.length > 0 ? (
+                        assignment.attachments.map((attachment) => (
+                          <span key={attachment.id} className="rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
+                            {attachment.originalFileName}
+                          </span>
+                        ))
+                      ) : assignment.attachmentName ? (
                         <span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">Attachment: {assignment.attachmentName}</span>
-                      )}
+                      ) : null}
                     </div>
                     <div className="mt-4">
                       <div className="mb-2 flex items-center justify-between gap-4 text-[11px] uppercase tracking-[0.12em] text-slate-500">
@@ -769,7 +775,39 @@ export function TeacherAssignmentsPage() {
                     initialFileUrl={form.attachmentUrl}
                     initialFileName={form.attachmentName}
                     onRemoveExistingAttachment={(id) => setExistingAttachments((current) => current.filter((item) => item.id !== id))}
-                    onRenameExistingAttachment={(id, name) => setExistingAttachments((current) => current.map((item) => (item.id === id ? { ...item, originalFileName: name } : item)))}
+                    onRenameExistingAttachment={async (id, name) => {
+                      const attachment = existingAttachments.find((item) => item.id === id);
+                      if (!attachment) return;
+
+                      const normalizedName = (() => {
+                        const extIndex = attachment.originalFileName.lastIndexOf('.');
+                        if (extIndex >= 0) {
+                          const extension = attachment.originalFileName.substring(extIndex);
+                          return name.endsWith(extension) ? name : `${name}${extension}`;
+                        }
+                        return name;
+                      })();
+
+                      const updateLocal = (updatedName: string) => {
+                        setExistingAttachments((current) => current.map((item) => (item.id === id ? { ...item, originalFileName: updatedName } : item)));
+                        if (form.attachmentUrl === attachment.downloadUrl) {
+                          setForm((current) => ({ ...current, attachmentName: updatedName }));
+                        }
+                      };
+
+                      if (id.startsWith('assignment-record-attachment')) {
+                        updateLocal(normalizedName);
+                        return;
+                      }
+
+                      try {
+                        const renamed = await renameAttachment(id, normalizedName);
+                        updateLocal(renamed.originalFileName);
+                      } catch (error) {
+                        console.error('Unable to rename attachment', error);
+                        updateLocal(normalizedName);
+                      }
+                    }}
                     onFileSelected={(file) => {
                       setAttachmentFiles([file]);
                       setForm((current) => ({ ...current, attachmentUrl: '', attachmentName: '' }));

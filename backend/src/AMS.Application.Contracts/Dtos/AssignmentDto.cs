@@ -22,6 +22,7 @@ public class AssignmentDto
     public string TeacherName { get; set; } = string.Empty;
     public int SubmittedCount { get; set; }
     public int TotalStudents { get; set; }
+    public IReadOnlyList<AttachmentDto> Attachments { get; set; } = Array.Empty<AttachmentDto>();
 }
 
 public class CreateAssignmentDto

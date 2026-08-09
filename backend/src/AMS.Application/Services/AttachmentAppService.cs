@@ -59,6 +59,29 @@ public class AttachmentAppService : IAttachmentAppService
         }).ToList();
     }
 
+    public async Task<AttachmentDto> RenameAsync(Guid id, string newOriginalFileName)
+    {
+        var entity = await _attachmentRepository.GetByIdAsync(id);
+        if (entity is null) throw new InvalidOperationException("Attachment not found.");
+
+        entity.Rename(newOriginalFileName);
+        await _attachmentRepository.UpdateAsync(entity);
+
+        return new AttachmentDto
+        {
+            Id = entity.Id,
+            OwnerType = entity.OwnerType,
+            OwnerId = entity.OwnerId,
+            OriginalFileName = entity.OriginalFileName,
+            StoredFileName = entity.StoredFileName,
+            ContentType = entity.ContentType,
+            SizeBytes = entity.SizeBytes,
+            UploadedByUserId = entity.UploadedByUserId,
+            UploadedAt = entity.UploadedAt,
+            DownloadUrl = $"/api/files/download/{entity.StoredFileName}"
+        };
+    }
+
     public async Task DeleteAsync(Guid id)
     {
         var entity = await _attachmentRepository.GetByIdAsync(id);

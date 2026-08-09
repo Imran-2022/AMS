@@ -91,6 +91,7 @@ export type AssignmentDto = {
   createdAt: string;
   submittedCount?: number;
   totalStudents?: number;
+  attachments?: AttachmentDto[];
 };
 
 export type AttachmentDto = {
@@ -559,6 +560,13 @@ export async function listAttachments(ownerType: string, ownerId: string) {
 
 export async function deleteAttachment(id: string) {
   return request<void>(`/api/attachments/${id}`, { method: 'DELETE' });
+}
+
+export async function renameAttachment(id: string, newOriginalFileName: string) {
+  return request<AttachmentDto>(`/api/attachments/${id}/rename`, {
+    method: 'PATCH',
+    body: JSON.stringify({ newOriginalFileName })
+  });
 }
 
 export async function updateSubmission(id: string, input: UpdateSubmissionDto) {

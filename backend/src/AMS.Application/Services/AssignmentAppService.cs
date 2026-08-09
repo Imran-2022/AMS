@@ -199,6 +199,8 @@ public class AssignmentAppService : IAssignmentAppService
         var submissions = await _submissionRepository.GetByAssignmentAsync(assignment.Id, cancellationToken).ConfigureAwait(false);
         var enrollments = await _studentEnrollmentRepository.GetByClassCourseAsync(assignment.ClassCourseId, cancellationToken).ConfigureAwait(false);
 
+        var attachments = await _attachmentAppService.ListAsync("Assignment", assignment.Id);
+
         return new AssignmentDto
         {
             Id = assignment.Id,
@@ -219,7 +221,8 @@ public class AssignmentAppService : IAssignmentAppService
             ClassCourseSection = classCourse.Section,
             SubjectName = subject.Name,
             SubmittedCount = submissions.Count,
-            TotalStudents = enrollments.Count
+            TotalStudents = enrollments.Count,
+            Attachments = attachments
         };
     }
 }
