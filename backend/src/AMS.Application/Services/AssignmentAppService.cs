@@ -97,6 +97,12 @@ public class AssignmentAppService : IAssignmentAppService
             teacherId = teacher.Id;
         }
 
+        if (currentUserRole == nameof(UserRole.Teacher) || (currentUserRole == nameof(UserRole.Admin) && input.TeacherId is not null))
+        {
+            var teacherAssignment = await _teacherSubjectAssignmentRepository.GetAsync(teacherId, input.SubjectId, cancellationToken);
+            if (teacherAssignment is null) throw new ForbiddenException("Teacher is not assigned to this subject.");
+        }
+
         DateTime NormalizeToUtc(DateTime dt)
         {
             if (dt.Kind == DateTimeKind.Utc) return dt;

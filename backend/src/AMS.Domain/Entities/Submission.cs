@@ -71,6 +71,18 @@ public class Submission
         Status = IsLate ? SubmissionStatus.Late : SubmissionStatus.Resubmitted;
     }
 
+    public void EditBeforeDeadline(string contentText, string? fileUrl, string? fileName, DateTime now, DateTime deadline, bool allowLateSubmission)
+    {
+        if (Status == SubmissionStatus.Graded) throw new DomainException("Cannot edit a graded submission.");
+        if (now > deadline && !allowLateSubmission) throw new DomainException("Submission is past the deadline and late submissions are not allowed.");
+
+        ContentText = contentText ?? string.Empty;
+        FileUrl = fileUrl;
+        FileName = fileName;
+        // keep original SubmittedAt; update late flag
+        IsLate = now > deadline;
+    }
+
     public void MarkGraded(int marks, string? feedback, Guid teacherId, Assignment assignment)
     {
         if (marks < 0) throw new DomainException("Marks cannot be negative.");

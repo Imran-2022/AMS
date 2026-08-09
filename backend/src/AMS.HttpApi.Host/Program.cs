@@ -4,7 +4,14 @@ using AMS.Application.Services;
 using AMS.Domain.Repositories;
 using AMS.EntityFrameworkCore;
 using AMS.EntityFrameworkCore.Repositories;
+using AMS.Infrastructure.Auth;
+using AMS.Infrastructure.Files;
+using AppValidationException = AMS.Application.ValidationException;
+using FluentValidation;
+using FluentValidation.AspNetCore;
+using Hellang.Middleware.ProblemDetails;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -15,6 +22,69 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddValidatorsFromAssemblyContaining<AMS.Application.Validators.CreateSubmissionDtoValidator>();
+
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var problemDetails = new ValidationProblemDetails(context.ModelState)
+        {
+            Title = "One or more validation errors occurred.",
+            Status = StatusCodes.Status400BadRequest
+        };
+
+        return new BadRequestObjectResult(problemDetails)
+        {
+            ContentTypes = { "application/problem+json", "application/problem+xml" }
+        };
+    };
+});
+
+builder.Services.AddProblemDetails(options =>
+{
+    options.Map<AppValidationException>(ex => new ValidationProblemDetails(new Dictionary<string, string[]>
+    {
+        { "ValidationError", new[] { ex.Message } }
+    })
+    {
+        Title = "Validation failed",
+        Detail = ex.Message,
+        Status = StatusCodes.Status400BadRequest
+    });
+
+    options.Map<FluentValidation.ValidationException>(ex => new ValidationProblemDetails(ex.Errors.GroupBy(e => e.PropertyName)
+        .ToDictionary(g => string.IsNullOrEmpty(g.Key) ? "ValidationError" : g.Key,
+            g => g.Select(e => e.ErrorMessage).ToArray()))
+    {
+        Title = "Validation failed",
+        Detail = "One or more validation errors occurred.",
+        Status = StatusCodes.Status400BadRequest
+    });
+
+    options.Map<ForbiddenException>(ex => new ProblemDetails
+    {
+        Title = "Forbidden",
+        Detail = ex.Message,
+        Status = StatusCodes.Status403Forbidden
+    });
+
+    options.Map<NotFoundException>(ex => new ProblemDetails
+    {
+        Title = "Not Found",
+        Detail = ex.Message,
+        Status = StatusCodes.Status404NotFound
+    });
+
+    options.Map<Exception>(ex => new ProblemDetails
+    {
+        Title = "An unexpected error occurred.",
+        Detail = builder.Environment.IsDevelopment() ? ex.Message : "An unexpected error occurred.",
+        Status = StatusCodes.Status500InternalServerError
+    });
+});
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -68,6 +138,13 @@ builder.Services.AddScoped<IDashboardAppService, DashboardAppService>();
 builder.Services.AddScoped<IFileAppService, FileAppService>();
 builder.Services.AddScoped<IAttachmentAppService, AttachmentAppService>();
 
+// Current user access
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserAccessor>();
+builder.Services.AddScoped<ICurrentUserAccessor, CurrentUserAccessor>();
+
+builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -93,7 +170,19 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(AmsPermissions.ManageUsers, policy => policy.RequireRole(AmsPermissions.Admin));
+    options.AddPolicy(AmsPermissions.ManageClasses, policy => policy.RequireRole(AmsPermissions.Admin, AmsPermissions.Teacher));
+    options.AddPolicy(AmsPermissions.ManageSubjects, policy => policy.RequireRole(AmsPermissions.Admin, AmsPermissions.Teacher));
+    options.AddPolicy(AmsPermissions.ManageAssignments, policy => policy.RequireRole(AmsPermissions.Admin, AmsPermissions.Teacher));
+    options.AddPolicy(AmsPermissions.ManageSubmissions, policy => policy.RequireRole(AmsPermissions.Admin, AmsPermissions.Teacher, AmsPermissions.Student));
+
+    // Convenience policies
+    options.AddPolicy("StudentsOnly", p => p.RequireRole(AmsPermissions.Student));
+    options.AddPolicy("TeachersOrAdmins", p => p.RequireRole(AmsPermissions.Teacher, AmsPermissions.Admin));
+    options.AddPolicy("AdminsOnly", p => p.RequireRole(AmsPermissions.Admin));
+});
 
 builder.Services.AddCors(options =>
 {
@@ -106,36 +195,13 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Register authorization handlers
+builder.Services.AddScoped<IAuthorizationHandler, AMS.Application.Authorization.SubmissionAuthorizationHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, AMS.Application.Authorization.AttachmentAuthorizationHandler>();
+
 var app = builder.Build();
 
-app.Use(async (context, next) =>
-{
-    try
-    {
-        await next();
-    }
-    catch (ValidationException ex)
-    {
-        context.Response.StatusCode = StatusCodes.Status400BadRequest;
-        await context.Response.WriteAsJsonAsync(new { error = ex.Message });
-    }
-    catch (ForbiddenException ex)
-    {
-        context.Response.StatusCode = StatusCodes.Status403Forbidden;
-        await context.Response.WriteAsJsonAsync(new { error = ex.Message });
-    }
-    catch (NotFoundException ex)
-    {
-        context.Response.StatusCode = StatusCodes.Status404NotFound;
-        await context.Response.WriteAsJsonAsync(new { error = ex.Message });
-    }
-    catch (Exception ex)
-    {
-        app.Logger.LogError(ex, "Unhandled exception");
-        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-        await context.Response.WriteAsJsonAsync(new { error = "An unexpected error occurred." });
-    }
-});
+app.UseProblemDetails();
 
 if (app.Environment.IsDevelopment())
 {

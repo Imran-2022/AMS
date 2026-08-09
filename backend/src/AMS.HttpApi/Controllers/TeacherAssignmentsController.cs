@@ -12,36 +12,38 @@ namespace AMS.HttpApi.Controllers;
 public class TeacherAssignmentsController : ControllerBase
 {
     private readonly ITeacherSubjectAssignmentAppService _appService;
+    private readonly ICurrentUserService _currentUser;
 
-    public TeacherAssignmentsController(ITeacherSubjectAssignmentAppService appService)
+    public TeacherAssignmentsController(ITeacherSubjectAssignmentAppService appService, ICurrentUserService currentUser)
     {
         _appService = appService;
+        _currentUser = currentUser;
     }
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<TeacherSubjectAssignmentDto>>> GetAll()
-    {
-        var currentUserId = this.GetCurrentUserId();
-        var currentUserRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? string.Empty;
-        var items = await _appService.GetAllAsync(currentUserId, currentUserRole);
+        {
+            var currentUserId = _currentUser.UserId;
+            var currentUserRole = _currentUser.Role;
+            var items = await _appService.GetAllAsync(currentUserId, currentUserRole);
         return Ok(items);
     }
 
     [HttpPost]
     public async Task<ActionResult<TeacherSubjectAssignmentDto>> Create([FromBody] CreateTeacherSubjectAssignmentDto input)
-    {
-        var currentUserId = this.GetCurrentUserId();
-        var currentUserRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? string.Empty;
-        var item = await _appService.CreateAsync(input, currentUserId, currentUserRole);
+        {
+            var currentUserId = _currentUser.UserId;
+            var currentUserRole = _currentUser.Role;
+            var item = await _appService.CreateAsync(input, currentUserId, currentUserRole);
         return CreatedAtAction(nameof(GetAll), item);
     }
 
     [HttpDelete]
     public async Task<ActionResult> Delete([FromQuery] Guid teacherId, [FromQuery] Guid subjectId)
-    {
-        var currentUserId = this.GetCurrentUserId();
-        var currentUserRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? string.Empty;
-        await _appService.DeleteAsync(teacherId, subjectId, currentUserId, currentUserRole);
+        {
+            var currentUserId = _currentUser.UserId;
+            var currentUserRole = _currentUser.Role;
+            await _appService.DeleteAsync(teacherId, subjectId, currentUserId, currentUserRole);
         return NoContent();
     }
 }

@@ -12,17 +12,19 @@ namespace AMS.HttpApi.Controllers;
 public class EnrollmentsController : ControllerBase
 {
     private readonly IEnrollmentAppService _enrollmentAppService;
+    private readonly ICurrentUserService _currentUser;
 
-    public EnrollmentsController(IEnrollmentAppService enrollmentAppService)
+    public EnrollmentsController(IEnrollmentAppService enrollmentAppService, ICurrentUserService currentUser)
     {
         _enrollmentAppService = enrollmentAppService;
+        _currentUser = currentUser;
     }
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<StudentEnrollmentDto>>> GetAll()
     {
-        var currentUserId = this.GetCurrentUserId();
-        var currentUserRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? string.Empty;
+        var currentUserId = _currentUser.UserId;
+        var currentUserRole = _currentUser.Role;
         var items = await _enrollmentAppService.GetAllAsync(currentUserId, currentUserRole);
         return Ok(items);
     }
@@ -30,8 +32,8 @@ public class EnrollmentsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<StudentEnrollmentDto>> Create([FromBody] CreateStudentEnrollmentDto input)
     {
-        var currentUserId = this.GetCurrentUserId();
-        var currentUserRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? string.Empty;
+        var currentUserId = _currentUser.UserId;
+        var currentUserRole = _currentUser.Role;
         var item = await _enrollmentAppService.CreateAsync(input, currentUserId, currentUserRole);
         return CreatedAtAction(nameof(GetAll), item);
     }
@@ -39,8 +41,8 @@ public class EnrollmentsController : ControllerBase
     [HttpDelete]
     public async Task<ActionResult> Delete([FromQuery] Guid studentId, [FromQuery] Guid classCourseId)
     {
-        var currentUserId = this.GetCurrentUserId();
-        var currentUserRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? string.Empty;
+        var currentUserId = _currentUser.UserId;
+        var currentUserRole = _currentUser.Role;
         await _enrollmentAppService.DeleteAsync(studentId, classCourseId, currentUserId, currentUserRole);
         return NoContent();
     }

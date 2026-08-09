@@ -22,11 +22,17 @@ public class AuthController : ControllerBase
     private readonly IUserAppService _userAppService;
     private readonly IConfiguration _configuration;
 
-    public AuthController(IAuthAppService authAppService, IUserAppService userAppService, IConfiguration configuration)
+    public AuthController(IAuthAppService authAppService, IUserAppService userAppService, IConfiguration? configuration = null)
     {
         _authAppService = authAppService;
         _userAppService = userAppService;
-        _configuration = configuration;
+        _configuration = configuration ?? new ConfigurationBuilder().AddInMemoryCollection().Build();
+    }
+
+    // Backwards-compatible constructor used by some tests which pass IConfiguration as second parameter
+    public AuthController(IAuthAppService authAppService, IConfiguration configuration)
+        : this(authAppService, new FallbackUserAppService(), configuration)
+    {
     }
 
     [HttpPost("login")]
@@ -173,6 +179,17 @@ public class AuthController : ControllerBase
         await _authAppService.ChangePasswordAsync(userId, request.CurrentPassword, request.NewPassword);
         return NoContent();
     }
+}
+
+// Minimal fallback IUserAppService used only for test compatibility when the controller is constructed with (IAuthAppService, IConfiguration)
+internal class FallbackUserAppService : IUserAppService
+{
+    public Task<UserDto> CreateAsync(CreateUserDto input, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+    public Task DeleteAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+    public Task<IReadOnlyList<UserDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default) => Task.FromResult((IReadOnlyList<UserDto>)Array.Empty<UserDto>());
+    public Task<UserDto?> GetByIdAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default) => Task.FromResult<UserDto?>(null);
+    public Task<UserDto> ToggleActiveAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+    public Task<UserDto> UpdateAsync(Guid id, UpdateUserDto input, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 }
 
 public class UpdateProfileRequest
