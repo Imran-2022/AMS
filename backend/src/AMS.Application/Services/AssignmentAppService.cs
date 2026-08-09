@@ -152,6 +152,33 @@ public class AssignmentAppService : IAssignmentAppService
         return await ToDtoAsync(assignment, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<AssignmentDto> DuplicateAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
+    {
+        var existingAssignment = await _assignmentRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Assignment not found.");
+        EnsureCanManage(existingAssignment, currentUserId, currentUserRole);
+
+        var duplicateAssignment = new Assignment(
+            Guid.NewGuid(),
+            existingAssignment.Title + " (Copy)",
+            existingAssignment.Description,
+            existingAssignment.ClassCourseId,
+            existingAssignment.SubjectId,
+            existingAssignment.TeacherId,
+            existingAssignment.Deadline,
+            existingAssignment.MaxMarks,
+            AssignmentStatus.Draft,
+            existingAssignment.AllowLateSubmission,
+            existingAssignment.AllowResubmission,
+            DateTime.UtcNow,
+            existingAssignment.AttachmentUrl,
+            existingAssignment.AttachmentName);
+
+        await _assignmentRepository.AddAsync(duplicateAssignment, cancellationToken);
+        await _attachmentAppService.CloneAttachmentsAsync("Assignment", existingAssignment.Id, "Assignment", duplicateAssignment.Id);
+
+        return await ToDtoAsync(duplicateAssignment, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task DeleteAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
     {
         var assignment = await _assignmentRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Assignment not found.");

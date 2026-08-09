@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BookOpen, ClipboardList, Copy, FileText, Layers, Pencil, Plus, Search, Send, Trash2, Eye } from 'lucide-react';
 import { AppShell } from '../../layout/AppShell';
 import { AmsDeleteComfiramtionModal, AmsPagination, Button, FileUpload } from '../../ui';
-import { getAssignments, getClassCourses, getSubjects, createAssignment, updateAssignment, deleteAssignment, publishAssignment, unpublishAssignment, uploadAttachment, listAttachments, renameAttachment } from '@/lib/api';
+import { getAssignments, getClassCourses, getSubjects, createAssignment, duplicateAssignment as duplicateAssignmentApi, updateAssignment, deleteAssignment, publishAssignment, unpublishAssignment, uploadAttachment, listAttachments, renameAttachment } from '@/lib/api';
 import type { AssignmentDto, ClassCourseDto, SubjectDto, CreateAssignmentDto, UpdateAssignmentDto } from '@/lib/api';
 
 type AssignmentStatus = 'Published' | 'Draft';
@@ -434,19 +434,8 @@ export function TeacherAssignmentsPage() {
   const handleDuplicate = async (assignment: AssignmentDto) => {
     try {
       setLoadError(null);
-      const duplicateAssignment = await createAssignment({
-        title: `${assignment.title} (Copy)`,
-        description: assignment.description,
-        attachmentUrl: assignment.attachmentUrl || undefined,
-        attachmentName: assignment.attachmentName || undefined,
-        classCourseId: assignment.classCourseId,
-        subjectId: assignment.subjectId,
-        deadline: assignment.deadline,
-        maxMarks: assignment.maxMarks,
-        allowLateSubmission: false,
-        allowResubmission: false,
-      });
-      setAssignments((current) => [duplicateAssignment, ...current]);
+      const duplicate = await duplicateAssignmentApi(assignment.id);
+      setAssignments((current) => [duplicate, ...current]);
     } catch (error) {
       console.error(error);
       try {

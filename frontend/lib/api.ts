@@ -488,6 +488,12 @@ export async function createAssignment(input: CreateAssignmentDto) {
   });
 }
 
+export async function duplicateAssignment(id: string) {
+  return request<AssignmentDto>(`/api/assignments/${id}/duplicate`, {
+    method: 'POST'
+  });
+}
+
 export async function updateAssignment(id: string, input: UpdateAssignmentDto) {
   return request<AssignmentDto>(`/api/assignments/${id}`, {
     method: 'PUT',
