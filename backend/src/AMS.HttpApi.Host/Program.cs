@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Microsoft.Extensions.FileProviders;
 using System.Security.Claims;
 using System.Text;
 
@@ -202,6 +203,15 @@ builder.Services.AddScoped<IAuthorizationHandler, AMS.Application.Authorization.
 var app = builder.Build();
 
 app.UseProblemDetails();
+
+// Serve uploaded files publicly from /uploads (maps to App_Data/Uploads)
+var _uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "App_Data", "Uploads");
+Directory.CreateDirectory(_uploadsPath);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(_uploadsPath),
+    RequestPath = "/uploads"
+});
 
 if (app.Environment.IsDevelopment())
 {

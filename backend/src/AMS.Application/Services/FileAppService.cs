@@ -30,7 +30,7 @@ public class FileAppService : IFileAppService
         return new FileUploadResultDto
         {
             FileName = fileName,
-            FileUrl = $"/api/files/download/{storedFileName}",
+            FileUrl = $"/uploads/{storedFileName}",
             SizeBytes = fileStream.Length
         };
     }

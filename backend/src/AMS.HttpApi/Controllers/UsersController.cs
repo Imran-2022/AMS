@@ -49,11 +49,16 @@ public class UsersController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "AdminsOnly")]
     public async Task<ActionResult<UserDto>> Update(Guid id, [FromBody] UpdateUserDto input)
     {
         var currentUserId = _currentUser.UserId;
         var currentUserRole = _currentUser.Role;
+
+        if (currentUserRole != "Admin" && id != currentUserId)
+        {
+            return Forbid();
+        }
+
         var user = await _userAppService.UpdateAsync(id, input, currentUserId, currentUserRole);
         return Ok(user);
     }
