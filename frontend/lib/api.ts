@@ -93,6 +93,19 @@ export type AssignmentDto = {
   totalStudents?: number;
 };
 
+export type AttachmentDto = {
+  id: string;
+  ownerType: string;
+  ownerId: string;
+  originalFileName: string;
+  storedFileName: string;
+  contentType: string;
+  sizeBytes: number;
+  uploadedByUserId: string;
+  uploadedAt: string;
+  downloadUrl: string;
+};
+
 export type SubmissionDto = {
   id: string;
   assignmentId: string;

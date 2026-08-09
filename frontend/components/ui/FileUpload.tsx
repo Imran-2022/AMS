@@ -1,11 +1,15 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { MoreHorizontal } from 'lucide-react';
 import { uploadFile } from '@/lib/api/files';
 
 interface FileUploadProps {
-  onFileUploaded: (fileUrl: string, fileName: string) => void;
+  onFileUploaded?: (fileUrl: string, fileName: string) => void;
   onFileSelected?: (file: File) => void;
+  onFilesSelected?: (files: File[]) => void;
+  selectedFiles?: File[];
   allowedTypesText?: string;
   maxSizeBytes?: number;
+  multiple?: boolean;
   initialFileUrl?: string;
   initialFileName?: string;
 }
@@ -13,23 +17,48 @@ interface FileUploadProps {
 export function FileUpload({
   onFileUploaded,
   onFileSelected,
+  onFilesSelected,
+  selectedFiles = [],
   allowedTypesText = 'PDF, DOCX, TXT, ZIP, PNG, JPG (Max 10MB)',
   maxSizeBytes = 10 * 1024 * 1024,
+  multiple = false,
   initialFileUrl,
   initialFileName,
 }: FileUploadProps) {
+  const [files, setFiles] = useState<File[]>(selectedFiles);
   const [fileUrl, setFileUrl] = useState<string | null>(initialFileUrl || null);
   const [fileName, setFileName] = useState<string | null>(initialFileName || null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [activeMenuIndex, setActiveMenuIndex] = useState<number | null>(null);
+  const [editingFileIndex, setEditingFileIndex] = useState<number | null>(null);
+  const [editingName, setEditingName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleFiles = async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    const file = files[0];
+  useEffect(() => {
+    setFiles(selectedFiles);
+  }, [selectedFiles]);
 
-    if (file.size > maxSizeBytes) {
+  useEffect(() => {
+    if (activeMenuIndex === null) return;
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setActiveMenuIndex(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [activeMenuIndex]);
+
+  const handleFiles = async (filesList: FileList | null) => {
+    if (!filesList || filesList.length === 0) return;
+    const newFiles = Array.from(filesList);
+    const oversized = newFiles.find((file) => file.size > maxSizeBytes);
+    if (oversized) {
       setError(`File size exceeds limit of ${(maxSizeBytes / (1024 * 1024)).toFixed(0)}MB.`);
       return;
     }
@@ -38,15 +67,33 @@ export function FileUpload({
     setUploading(true);
 
     try {
-      if (onFileSelected) {
-        // defer upload to caller
+      if (multiple && onFilesSelected) {
+        const combined = [...files, ...newFiles];
+        setFiles(combined);
+        onFilesSelected(combined);
+        setFileUrl(null);
+        setFileName(null);
+      } else if (onFilesSelected) {
+        const combined = [...newFiles];
+        setFiles(combined);
+        onFilesSelected(combined);
+        setFileName(combined[0].name);
+        setFileUrl(null);
+      } else if (onFileSelected) {
+        const file = newFiles[0];
+        setFiles([file]);
         setFileName(file.name);
+        setFileUrl(null);
         onFileSelected(file);
       } else {
+        const file = newFiles[0];
         const result = await uploadFile(file);
         setFileUrl(result.fileUrl);
         setFileName(result.fileName);
-        onFileUploaded(result.fileUrl, result.fileName);
+        setFiles([file]);
+        if (onFileUploaded) {
+          onFileUploaded(result.fileUrl, result.fileName);
+        }
       }
     } catch (err: any) {
       setError(err.message || 'File upload failed');
@@ -65,6 +112,13 @@ export function FileUpload({
     }
   };
 
+  const openFilePicker = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+      fileInputRef.current.click();
+    }
+  };
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -74,47 +128,126 @@ export function FileUpload({
     }
   };
 
-  const handleRemove = () => {
-    setFileUrl(null);
-    setFileName(null);
-    onFileUploaded('', '');
+  const removeFile = (index: number) => {
+    const updated = files.filter((_, i) => i !== index);
+    setFiles(updated);
+    onFilesSelected?.(updated);
+    setActiveMenuIndex(null);
+    if (updated.length <= 0) {
+      setFileUrl(null);
+      setFileName(null);
+    }
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const startRename = (index: number) => {
+    setEditingFileIndex(index);
+    setActiveMenuIndex(null);
+    setEditingName(files[index]?.name ?? '');
+  };
+
+  const saveRename = () => {
+    if (editingFileIndex === null) return;
+    const updatedFiles = [...files];
+    const file = updatedFiles[editingFileIndex];
+    const dotIndex = file.name.lastIndexOf('.');
+    const extension = dotIndex >= 0 ? file.name.slice(dotIndex) : '';
+    const newName = editingName.trim() || file.name;
+    updatedFiles[editingFileIndex] = new File([file], newName.endsWith(extension) ? newName : `${newName}${extension}`, { type: file.type });
+    setFiles(updatedFiles);
+    onFilesSelected?.(updatedFiles);
+    setEditingFileIndex(null);
+  };
+
+  const cancelRename = () => {
+    setEditingFileIndex(null);
+    setEditingName('');
+  };
+
   return (
-    <div className="w-full">
+    <div ref={containerRef} className="w-full">
       <input
         ref={fileInputRef}
         type="file"
         className="hidden"
-        onChange={(e) => handleFiles(e.target.files)}
+        multiple={multiple}
+        onChange={(e) => {
+          handleFiles(e.target.files);
+          if (e.target) e.target.value = '';
+        }}
       />
 
-      {fileUrl ? (
-        <div className="flex items-center justify-between p-3.5 bg-indigo-50/50 border border-indigo-200 rounded-xl transition-all duration-200">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-9 h-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center flex-shrink-0 font-medium text-xs">
-              FILE
-            </div>
-            <div className="truncate">
-              <p className="text-sm font-medium text-slate-800 truncate">{fileName || 'Uploaded File'}</p>
-              <a
-                href={fileUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs text-indigo-600 hover:underline inline-flex items-center gap-1"
-              >
-                View / Download Attachment
-              </a>
-            </div>
+      {files.length > 0 ? (
+        <div className="space-y-3">
+          <div className="rounded border border-slate-200 bg-slate-50 p-3">
+            {files.map((file, index) => (
+              <div key={`${file.name}-${file.size}-${index}`} className="relative flex items-center justify-between gap-3 rounded bg-white px-4 py-3 mb-2 last:mb-0 border border-slate-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded bg-slate-900 text-white flex items-center justify-center text-xs font-semibold">
+                    {file.name.split('.').pop()?.slice(0, 3).toUpperCase() || 'FILE'}
+                  </div>
+                  <div className="min-w-0">
+                    {editingFileIndex === index ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          value={editingName}
+                          onChange={(event) => setEditingName(event.target.value)}
+                          className="min-w-0 flex-1 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                        />
+                        <button type="button" onClick={saveRename} className="cursor-pointer rounded bg-brand-600 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-700">Save</button>
+                        <button type="button" onClick={cancelRename} className="cursor-pointer rounded border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100">Cancel</button>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-sm font-medium text-slate-900 truncate">{file.name}</p>
+                        <p className="text-xs text-slate-500">{(file.size / 1024).toFixed(1)} KB</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setActiveMenuIndex(activeMenuIndex === index ? null : index);
+                    }}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-600 cursor-pointer transition-colors duration-200"
+                    aria-label="Open file actions"
+                  >
+                    <MoreHorizontal className="h-5 w-5" />
+                  </button>
+
+                  {activeMenuIndex === index && (
+                    <div className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded border border-slate-200 bg-white shadow-xl">
+                      <button
+                        type="button"
+                        onClick={() => startRename(index)}
+                        className="cursor-pointer w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
+                      >
+                        Edit file name
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeFile(index)}
+                        className="cursor-pointer w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-rose-50"
+                      >
+                        Delete this file
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
+
           <button
             type="button"
-            onClick={handleRemove}
-            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-            title="Remove file"
+            onClick={openFilePicker}
+            className="w-full rounded border border-dashed border-slate-300 bg-white px-4 py-4 text-sm font-medium text-slate-600 hover:border-slate-400 hover:bg-slate-50 cursor-pointer"
           >
-            ✕
+            Add More Files
           </button>
         </div>
       ) : (
@@ -124,7 +257,7 @@ export function FileUpload({
           onDragLeave={handleDrag}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all duration-200 ${
+          className={`border-2 border-dashed rounded p-6 text-center cursor-pointer transition-all duration-200 ${
             dragActive
               ? 'border-indigo-500 bg-indigo-50/70 scale-[1.005]'
               : 'border-slate-300 hover:border-indigo-400 bg-slate-50/50 hover:bg-white'
@@ -132,16 +265,16 @@ export function FileUpload({
         >
           {uploading ? (
             <div className="flex flex-col items-center justify-center gap-2">
-              <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded animate-spin" />
               <p className="text-sm font-medium text-indigo-600">Uploading file...</p>
             </div>
           ) : (
             <div className="space-y-1.5">
-              <div className="w-10 h-10 mx-auto rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-lg">
+              <div className="w-10 h-10 mx-auto rounded bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-lg">
                 ↑
               </div>
               <p className="text-sm font-medium text-slate-700">
-                Click to upload or drag & drop file
+                Click to upload or drag & drop file{multiple ? 's' : ''}
               </p>
               <p className="text-xs text-slate-400">{allowedTypesText}</p>
             </div>

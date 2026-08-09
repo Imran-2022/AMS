@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BookOpen, ClipboardList, Copy, FileText, Layers, Pencil, Plus, Search, Send, Trash2, Eye } from 'lucide-react';
 import { AppShell } from '../../layout/AppShell';
 import { AmsDeleteComfiramtionModal, AmsPagination, Button, FileUpload } from '../../ui';
-import { getAssignments, getClassCourses, getSubjects, createAssignment, updateAssignment, deleteAssignment, publishAssignment, unpublishAssignment } from '@/lib/api';
+import { getAssignments, getClassCourses, getSubjects, createAssignment, updateAssignment, deleteAssignment, publishAssignment, unpublishAssignment, uploadAttachment } from '@/lib/api';
 import type { AssignmentDto, ClassCourseDto, SubjectDto, CreateAssignmentDto, UpdateAssignmentDto } from '@/lib/api';
 
 type AssignmentStatus = 'Published' | 'Draft';
@@ -67,6 +67,9 @@ export function TeacherAssignmentsPage() {
   const [editingAssignment, setEditingAssignment] = useState<AssignmentDto | null>(null);
   const [pendingDelete, setPendingDelete] = useState<AssignmentDto | null>(null);
   const [form, setForm] = useState<AssignmentFormValues>(createEmptyForm());
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
+  const [selectedClassName, setSelectedClassName] = useState('');
+  const [selectedSection, setSelectedSection] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
@@ -100,7 +103,7 @@ export function TeacherAssignmentsPage() {
   }, []);
 
   useEffect(() => {
-    if (!form.classCourseId && classes.length) {
+    if (!form.classCourseId && classes.length && !modalOpen) {
       const defaultClass = classes[0];
       const classSubjects = subjects.filter((subject) => subject.classCourseId === defaultClass.id);
       setForm((current) => ({
@@ -111,8 +114,10 @@ export function TeacherAssignmentsPage() {
         subjectId: classSubjects[0]?.id ?? '',
         subjectName: classSubjects[0]?.name ?? '',
       }));
+      setSelectedClassName(defaultClass.name);
+      setSelectedSection(defaultClass.section);
     }
-  }, [classes, subjects, form.classCourseId]);
+  }, [classes, subjects, form.classCourseId, modalOpen]);
 
   const visibleAssignments = useMemo(() => {
     return assignments.filter((assignment) => {
@@ -170,6 +175,21 @@ export function TeacherAssignmentsPage() {
     [assignments]
   );
 
+  const classNames = useMemo(
+    () => Array.from(new Set(classes.map((cls) => cls.name))),
+    [classes]
+  );
+
+  const sectionOptions = useMemo(
+    () => classes.filter((cls) => cls.name === selectedClassName).map((cls) => cls.section),
+    [classes, selectedClassName]
+  );
+
+  const selectedClass = useMemo(
+    () => classes.find((cls) => cls.name === selectedClassName && cls.section === selectedSection),
+    [classes, selectedClassName, selectedSection]
+  );
+
   const availableSubjectsForForm = useMemo(
     () => subjects.filter((subject) => subject.classCourseId === form.classCourseId),
     [subjects, form.classCourseId]
@@ -178,6 +198,9 @@ export function TeacherAssignmentsPage() {
   const openCreateModal = (assignment?: AssignmentDto) => {
     if (assignment) {
       setEditingAssignment(assignment);
+      const assignmentClass = classes.find((c) => c.id === assignment.classCourseId);
+      setSelectedClassName(assignmentClass?.name ?? '');
+      setSelectedSection(assignmentClass?.section ?? '');
       setForm({
         title: assignment.title,
         description: assignment.description,
@@ -195,6 +218,8 @@ export function TeacherAssignmentsPage() {
       const defaultClass = classes[0];
       const defaultSubject = subjects.find((subject) => subject.classCourseId === defaultClass?.id);
       setEditingAssignment(null);
+      setSelectedClassName(defaultClass?.name ?? '');
+      setSelectedSection(defaultClass?.section ?? '');
       setForm({
         title: '',
         description: '',
@@ -208,6 +233,7 @@ export function TeacherAssignmentsPage() {
         attachmentUrl: '',
         attachmentName: '',
       });
+      setAttachmentFiles([]);
     }
     setModalOpen(true);
   };
@@ -216,6 +242,9 @@ export function TeacherAssignmentsPage() {
     setModalOpen(false);
     setEditingAssignment(null);
     setForm(createEmptyForm());
+    setAttachmentFiles([]);
+    setSelectedClassName('');
+    setSelectedSection('');
   };
 
   const handleSubmit = async (status: AssignmentStatus) => {
@@ -241,12 +270,18 @@ export function TeacherAssignmentsPage() {
       if (editingAssignment) {
         const updatedAssignment = await updateAssignment(editingAssignment.id, payload as UpdateAssignmentDto);
         setAssignments((current) => current.map((item) => (item.id === updatedAssignment.id ? updatedAssignment : item)));
+        if (attachmentFiles.length > 0) {
+          await Promise.all(attachmentFiles.map((file) => uploadAttachment('Assignment', editingAssignment.id, file)));
+        }
         if (status === 'Published' && updatedAssignment.status === 'Draft') {
           const publishedAssignment = await publishAssignment(updatedAssignment.id);
           setAssignments((current) => current.map((item) => (item.id === publishedAssignment.id ? publishedAssignment : item)));
         }
       } else {
         const createdAssignment = await createAssignment(payload);
+        if (attachmentFiles.length > 0) {
+          await Promise.all(attachmentFiles.map((file) => uploadAttachment('Assignment', createdAssignment.id, file)));
+        }
         setAssignments((current) => [createdAssignment, ...current]);
         if (status === 'Published') {
           const publishedAssignment = await publishAssignment(createdAssignment.id);
@@ -383,17 +418,26 @@ export function TeacherAssignmentsPage() {
     }
   };
 
-  const handleClassChange = (classCourseId: string) => {
-    const selectedClass = classes.find((cls) => cls.id === classCourseId);
-    const classSubjects = subjects.filter((subject) => subject.classCourseId === classCourseId);
-    setForm((current) => ({
-      ...current,
-      classCourseId,
-      classCourseName: selectedClass?.name ?? current.classCourseName,
-      classCourseSection: selectedClass?.section ?? current.classCourseSection,
-      subjectId: classSubjects[0]?.id ?? current.subjectId,
-      subjectName: classSubjects[0]?.name ?? current.subjectName,
-    }));
+  const handleClassNameChange = (className: string) => {
+    setSelectedClassName(className);
+    const firstSection = classes.find((cls) => cls.name === className)?.section ?? '';
+    setSelectedSection(firstSection);
+  };
+
+  const handleSectionChange = (section: string) => {
+    setSelectedSection(section);
+    const selected = classes.find((cls) => cls.name === selectedClassName && cls.section === section);
+    if (selected) {
+      const classSubjects = subjects.filter((subject) => subject.classCourseId === selected.id);
+      setForm((current) => ({
+        ...current,
+        classCourseId: selected.id,
+        classCourseName: selected.name,
+        classCourseSection: selected.section,
+        subjectId: classSubjects[0]?.id ?? current.subjectId,
+        subjectName: classSubjects[0]?.name ?? current.subjectName,
+      }));
+    }
   };
 
   const handleSubjectChange = (subjectId: string) => {
@@ -428,34 +472,34 @@ export function TeacherAssignmentsPage() {
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex flex-wrap items-center gap-2">
-              <button type="button" onClick={() => setFilter('all')} className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${filter === 'all' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+              <button type="button" onClick={() => setFilter('all')} className={`rounded px-4 py-2 text-sm font-semibold transition ${filter === 'all' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
                 All <span className="ml-1 font-normal opacity-70">{stats.total}</span>
               </button>
-              <button type="button" onClick={() => setFilter('published')} className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${filter === 'published' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+              <button type="button" onClick={() => setFilter('published')} className={`rounded px-4 py-2 text-sm font-semibold transition ${filter === 'published' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
                 Published <span className="ml-1 font-normal opacity-70">{stats.published}</span>
               </button>
-              <button type="button" onClick={() => setFilter('drafts')} className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${filter === 'drafts' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+              <button type="button" onClick={() => setFilter('drafts')} className={`rounded px-4 py-2 text-sm font-semibold transition ${filter === 'drafts' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
                 Drafts <span className="ml-1 font-normal opacity-70">{stats.drafts}</span>
               </button>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <select value={classFilter} onChange={(event) => setClassFilter(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 outline-none focus:border-brand-500">
+              <select value={classFilter} onChange={(event) => setClassFilter(event.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500">
                 {availableClasses.map((option) => (
                   <option key={option} value={option}>
                     {option}
                   </option>
                 ))}
               </select>
-              <select value={sectionFilter} onChange={(event) => setSectionFilter(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 outline-none focus:border-brand-500">
+              <select value={sectionFilter} onChange={(event) => setSectionFilter(event.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500">
                 {availableSections.map((option) => (
                   <option key={option} value={option}>
                     {option}
                   </option>
                 ))}
               </select>
-              <select value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 outline-none focus:border-brand-500">
+              <select value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500">
                 {availableSubjects.map((option) => (
                   <option key={option} value={option}>
                     {option}
@@ -464,7 +508,7 @@ export function TeacherAssignmentsPage() {
               </select>
               <div className="relative min-w-[240px]">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} type="text" placeholder="Search assignments…" className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-600 outline-none focus:border-brand-500" />
+                <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} type="text" placeholder="Search assignments…" className="w-full rounded border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-600 outline-none focus:border-brand-500" />
               </div>
             </div>
           </div>
@@ -571,7 +615,7 @@ export function TeacherAssignmentsPage() {
 
         {modalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
-            <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl">
+            <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded border border-slate-200 bg-white shadow-2xl">
               <div className="flex items-start justify-between border-b border-slate-100 px-7 py-6">
                 <div>
                   <h2 className="text-xl font-extrabold text-slate-900">{editingAssignment ? 'Edit assignment' : 'Create assignment'}</h2>
@@ -596,21 +640,36 @@ export function TeacherAssignmentsPage() {
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div>
                     <label className="mb-2 block text-[13px] font-semibold text-slate-800">Class <span className="text-rose-500">*</span></label>
-                    <select value={form.classCourseId} onChange={(event) => handleClassChange(event.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100">
-                      {classes.map((cls) => (
-                        <option key={cls.id} value={cls.id}>
-                          {cls.name} — {cls.section}
+                    <select value={selectedClassName} onChange={(event) => handleClassNameChange(event.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100">
+                      <option value="" disabled>
+                        Select class
+                      </option>
+                      {classNames.map((name) => (
+                        <option key={name} value={name}>
+                          {name}
                         </option>
                       ))}
                     </select>
                   </div>
                   <div>
                     <label className="mb-2 block text-[13px] font-semibold text-slate-800">Section <span className="text-rose-500">*</span></label>
-                    <input value={form.classCourseSection} disabled className="w-full rounded-2xl border border-slate-300 bg-slate-100 px-4 py-2.5 text-sm text-slate-500 outline-none" />
+                    <select value={selectedSection} onChange={(event) => handleSectionChange(event.target.value)} className={`w-full rounded-2xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100 ${!selectedClassName ? 'bg-slate-100 text-slate-500' : 'bg-white text-slate-700'}`} disabled={!selectedClassName}>
+                      <option value="" disabled>
+                        {selectedClassName ? 'Select section' : 'Select class first'}
+                      </option>
+                      {sectionOptions.map((section) => (
+                        <option key={section} value={section}>
+                          {section}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="mb-2 block text-[13px] font-semibold text-slate-800">Subject <span className="text-rose-500">*</span></label>
-                    <select value={form.subjectId} onChange={(event) => handleSubjectChange(event.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100">
+                    <select value={form.subjectId} onChange={(event) => handleSubjectChange(event.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100" disabled={!selectedClass}>
+                      <option value="" disabled>
+                        {selectedClass ? 'Select subject' : 'Select class first'}
+                      </option>
                       {availableSubjectsForForm.map((subject) => (
                         <option key={subject.id} value={subject.id}>
                           {subject.name}
@@ -632,8 +691,19 @@ export function TeacherAssignmentsPage() {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-[13px] font-semibold text-slate-800">Attachment <span className="text-slate-400 font-normal">(optional)</span></label>
-                  <FileUpload onFileUploaded={(url, name) => setForm((current) => ({ ...current, attachmentUrl: url, attachmentName: name }))} />
+                  <label className="mb-2 block text-[13px] font-semibold text-slate-800">Attachments <span className="text-slate-400 font-normal">(optional)</span></label>
+                  <FileUpload
+                    multiple
+                    selectedFiles={attachmentFiles}
+                    onFileSelected={(file) => {
+                      setAttachmentFiles([file]);
+                      setForm((current) => ({ ...current, attachmentUrl: '', attachmentName: '' }));
+                    }}
+                    onFilesSelected={(files) => {
+                      setAttachmentFiles(files);
+                      setForm((current) => ({ ...current, attachmentUrl: '', attachmentName: '' }));
+                    }}
+                  />
                 </div>
               </div>
 
