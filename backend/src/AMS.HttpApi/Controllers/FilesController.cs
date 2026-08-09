@@ -2,11 +2,9 @@ using AMS.Application.Contracts;
 using AMS.Application.Contracts.Authorization;
 using AMS.Domain.Repositories;
 using AMS.Domain.Shared;
-using System.Security.Claims;
 using AMS.Application;
 using System.Linq;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
@@ -24,49 +22,27 @@ public class FilesController : ControllerBase
     private readonly ISubmissionRepository _submissionRepository;
     private readonly IAssignmentRepository _assignmentRepository;
     private readonly IStudentEnrollmentRepository _studentEnrollmentRepository;
-    private readonly ILogger<FilesController> _logger;
+
     public FilesController(IFileAppService fileAppService,
         IAttachmentRepository attachmentRepository,
         ISubmissionRepository submissionRepository,
         IAssignmentRepository assignmentRepository,
-        IStudentEnrollmentRepository studentEnrollmentRepository,
-        ILogger<FilesController> logger)
+        IStudentEnrollmentRepository studentEnrollmentRepository)
     {
         _fileAppService = fileAppService;
         _attachmentRepository = attachmentRepository;
         _submissionRepository = submissionRepository;
         _assignmentRepository = assignmentRepository;
         _studentEnrollmentRepository = studentEnrollmentRepository;
-        _logger = logger;
     }
 
     [HttpPost("upload")]
-    [AllowAnonymous]
     [Consumes("multipart/form-data")]
     public async Task<ActionResult<FileUploadResultDto>> Upload(IFormFile file)
     {
         if (file == null || file.Length == 0)
         {
             return BadRequest("No file uploaded.");
-        }
-
-        // Debug logging to help diagnose 403 issues from frontend
-        try
-        {
-            var authHeader = Request.Headers.ContainsKey("Authorization") ? Request.Headers["Authorization"].ToString() : null;
-            _logger.LogInformation("Upload called. Auth header present: {HasAuth}", authHeader != null);
-            _logger.LogInformation("User is authenticated: {IsAuthenticated}", User?.Identity?.IsAuthenticated ?? false);
-            if (User?.Identity?.IsAuthenticated ?? false)
-            {
-                foreach (var claim in User.Claims)
-                {
-                    _logger.LogInformation("Claim: {Type}={Value}", claim.Type, claim.Value);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error while logging upload auth info");
         }
 
         using var stream = file.OpenReadStream();
