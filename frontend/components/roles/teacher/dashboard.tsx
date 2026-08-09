@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '../../layout/AppShell';
+import { Button } from '../../ui/Button';
 import { getAssignments, getClassCourses, getSubjects } from '@/lib/api';
 import { getTeacherDashboardStats, type TeacherDashboardStats } from '@/lib/api/dashboard';
 import type { AssignmentDto, ClassCourseDto, SubjectDto } from '@/lib/api';
@@ -78,14 +79,14 @@ export function TeacherDashboardPage() {
             <p className="text-sm text-slate-400 mt-1">Review performance and keep your classes on track.</p>
           </div>
           <div className="flex gap-3">
-            <button type="button" className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">Grade submissions</button>
-            <button type="button" className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 transition">
+            <Button type="button" variant="secondary">Grade submissions</Button>
+            <Button type="button" variant="primary">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
               Create assignment
-            </button>
+            </Button>
           </div>
         </div>
 
