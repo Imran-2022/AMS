@@ -47,7 +47,8 @@ export function AdminClassesPage() {
   const [availableGroups, setAvailableGroups] = useState<{ id: string; name: string }[]>([]);
   const [groupNameMap, setGroupNameMap] = useState<Record<string, string>>({});
   const [editingClass, setEditingClass] = useState<ClassCourseDto | null>(null);
-  const [subjectForm, setSubjectForm] = useState({ name: '', code: '', gradeId: '' });
+  const [subjectForm, setSubjectForm] = useState({ name: '', code: '', gradeId: '', groupId: '' });
+  const [subjectAvailableGroups, setSubjectAvailableGroups] = useState<{ id: string; name: string }[]>([]);
   const [editingSubject, setEditingSubject] = useState<SubjectDto | null>(null);
   const [assignForm, setAssignForm] = useState({ classDefinitionId: '', classCourseId: '', subjectId: '', teacherId: '' });
   const [classDefinitionMenuOpen, setClassDefinitionMenuOpen] = useState(false);
@@ -105,6 +106,35 @@ export function AdminClassesPage() {
 
     void loadGroups();
   }, [classForm.classDefinitionId]);
+
+  useEffect(() => {
+    async function loadSubjectGroups() {
+      if (!subjectForm.gradeId) {
+        setSubjectAvailableGroups([]);
+        setSubjectForm((s) => ({ ...s, groupId: '' }));
+        return;
+      }
+
+      try {
+        const groups = await getGroupsForClass(subjectForm.gradeId);
+        // sort preferred order: Science, Arts, Commerce
+        const preferred = ['Science', 'Arts', 'Commerce'];
+        groups.sort((a, b) => Math.max(0, preferred.indexOf(a.name)) - Math.max(0, preferred.indexOf(b.name)));
+        setSubjectAvailableGroups(groups);
+        if (!groups.some((g) => g.id === subjectForm.groupId)) {
+          // default to Science if present
+          const science = groups.find((g) => g.name.toLowerCase() === 'science');
+          setSubjectForm((s) => ({ ...s, groupId: science ? science.id : '' }));
+        }
+      } catch (err) {
+        console.error('Failed to load subject groups', err);
+        setSubjectAvailableGroups([]);
+        setSubjectForm((s) => ({ ...s, groupId: '' }));
+      }
+    }
+
+    void loadSubjectGroups();
+  }, [subjectForm.gradeId]);
 
   async function loadClassDefinitions() {
     try {
@@ -276,7 +306,7 @@ export function AdminClassesPage() {
 
     if (modal === 'subject') {
       setEditingSubject(null);
-      setSubjectForm({ name: '', code: '', gradeId: classDefinitions[0]?.id ?? '' });
+      setSubjectForm({ name: '', code: '', gradeId: classDefinitions[0]?.id ?? '', groupId: '' });
     }
 
     if (modal === 'assign') {
@@ -292,7 +322,7 @@ export function AdminClassesPage() {
   function closeModal() {
     setActiveModal(null);
     setEditingSubject(null);
-    setSubjectForm({ name: '', code: '', gradeId: classDefinitions[0]?.id ?? '' });
+    setSubjectForm({ name: '', code: '', gradeId: classDefinitions[0]?.id ?? '', groupId: '' });
     setEditingClass(null);
     const activeYear = academicYears.find(y => y.isActive)?.id ?? academicYears[0]?.id ?? '';
     setClassForm({ classDefinitionId: classDefinitions[0]?.id ?? '', groupId: '', name: '', section: '', year: activeYear });
@@ -373,7 +403,7 @@ export function AdminClassesPage() {
     event.preventDefault();
 
     const gradeId = subjectForm.gradeId?.trim();
-    const representativeClass = classes.find((cls) => cls.classDefinitionId === gradeId) ?? classes[0];
+    const representativeClass = classes.find((cls) => cls.classDefinitionId === gradeId && (subjectForm.groupId ? cls.groupId === subjectForm.groupId : true)) ?? classes.find((cls) => cls.classDefinitionId === gradeId) ?? classes[0];
 
     if (!subjectForm.name.trim() || !subjectForm.code.trim() || !gradeId || !representativeClass) {
       alert('Please enter a valid subject name, code, and grade before saving.');
@@ -395,7 +425,7 @@ export function AdminClassesPage() {
         });
       }
 
-      setSubjectForm({ name: '', code: '', gradeId: classDefinitions[0]?.id ?? '' });
+      setSubjectForm({ name: '', code: '', gradeId: classDefinitions[0]?.id ?? '', groupId: '' });
       setEditingSubject(null);
       await loadData();
       closeModal();
@@ -408,8 +438,10 @@ export function AdminClassesPage() {
 
   function openEditSubject(subject: SubjectDto) {
     setEditingSubject(subject);
-    const gradeId = classes.find((cls) => cls.id === subject.classCourseId)?.classDefinitionId ?? classDefinitions[0]?.id ?? '';
-    setSubjectForm({ name: subject.name, code: subject.code, gradeId });
+    const repClass = classes.find((cls) => cls.id === subject.classCourseId) ?? null;
+    const gradeId = repClass?.classDefinitionId ?? classDefinitions[0]?.id ?? '';
+    const groupId = repClass?.groupId ?? '';
+    setSubjectForm({ name: subject.name, code: subject.code, gradeId, groupId });
     setActiveModal('subject');
   }
 
@@ -722,7 +754,7 @@ export function AdminClassesPage() {
                     <tr key={subject.id}>
                       <td className="px-5 py-3.5 font-semibold text-slate-700">{subject.name}</td>
                       <td className="px-2 py-3.5 text-slate-500 font-mono text-xs">{subject.code}</td>
-                      <td className="px-2 py-3.5 text-slate-500">{course ? `${course.name} — ${course.section}` : 'Unassigned'}</td>
+                      <td className="px-2 py-3.5 text-slate-500">{course ? `${course.name} — ${course.section}${course.groupId ? ` (${groupNameMap[course.groupId] ?? ''})` : ''}` : 'Unassigned'}</td>
                       <td className="px-2 py-3.5">
                         {teacherName === 'Unassigned' ? (
                           <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-[11.5px] font-bold text-amber-600">
@@ -982,6 +1014,29 @@ export function AdminClassesPage() {
                 </div>
               </div>
             </div>
+            {subjectAvailableGroups.length > 0 ? (
+              <div>
+                <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Group</label>
+                <div className="relative">
+                  <select
+                    value={subjectForm.groupId}
+                    onChange={(event) => setSubjectForm({ ...subjectForm, groupId: event.target.value })}
+                    className="w-full appearance-none rounded border border-slate-300 bg-white px-4 py-2.5 pr-10 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                  >
+                    <option value="">Unassigned</option>
+                    {subjectAvailableGroups.map((g) => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                  <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-500">
+                    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd"/>
+                    </svg>
+                  </span>
+                </div>
+                <p className="mt-2 text-xs text-slate-500">Optionally select a group; subjects can vary by group.</p>
+              </div>
+            ) : null}
             <div className="flex items-center justify-end gap-3 py-5 border-t border-slate-100 bg-slate-50/60 rounded-b-3xl">
               <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
               <Button type="submit">{editingSubject ? 'Save changes' : 'Create subject'}</Button>
