@@ -44,14 +44,14 @@ export function AmsDeleteComfiramtionModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 rounded border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50"
+            className="flex-1 px-4 py-2.5 rounded border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 cursor-pointer"
           >
             {cancelLabel}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className={`flex-1 px-4 py-2.5 rounded text-white text-sm font-semibold ${
+            className={`flex-1 px-4 py-2.5 rounded text-white text-sm font-semibold cursor-pointer ${
               confirmVariant === 'primary' ? 'bg-brand-600 hover:bg-brand-700' : 'bg-rose-600 hover:bg-rose-700'
             }`}
           >

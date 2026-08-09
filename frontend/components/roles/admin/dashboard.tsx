@@ -61,10 +61,12 @@ export function AdminDashboardPage() {
       setDashboardTeachers(users.filter((user: any) => user.role === 'Teacher').map((teacher: any) => ({
         id: teacher.id,
         fullName: teacher.fullName,
+        subjectSpecialization: teacher.subjectSpecialization ?? '',
       })));
       setDashboardSubjects(subjects.map((subject: any) => ({
         id: subject.id,
         name: subject.name,
+        code: subject.code,
         classCourseId: subject.classCourseId,
       })));
     } catch (err) {
@@ -223,7 +225,7 @@ export function AdminDashboardPage() {
             gender: '',
             qualification: '',
             joiningDate: '',
-            subjectSpecialization: '',
+            subjectSpecializations: [],
           }}
           isSubmitting={teacherModalSubmitting}
           requirePassword
@@ -240,7 +242,7 @@ export function AdminDashboardPage() {
                 gender: values.gender ?? '',
                 qualification: values.qualification ?? '',
                 joiningDate: values.joiningDate ?? '',
-                subjectSpecialization: values.subjectSpecialization ?? '',
+                subjectSpecialization: (values.subjectSpecializations ?? []).join(', '),
               });
               setTeacherModalOpen(false);
               await loadDashboard();
@@ -260,6 +262,7 @@ export function AdminDashboardPage() {
           teachers={dashboardTeachers}
           classCourses={dashboardClassCourses}
           subjects={dashboardSubjects}
+          assignments={[]}
           isSubmitting={assignTeacherSubmitting}
           onSubmit={async (values) => {
             try {

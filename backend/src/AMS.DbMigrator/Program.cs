@@ -99,6 +99,21 @@ if (missingClassNames.Any())
     classDefinitions = await classDefRepo.GetAllAsync(CancellationToken.None);
 }
 
+// Ensure default groups exist for higher-secondary classes (9-12) regardless of existing class courses
+var higherSecondaryDefinitions = classDefinitions.Where(cd => new[] { "Nine", "Ten", "Eleven", "Twelve" }.Contains(cd.Name)).ToList();
+foreach (var classDefinition in higherSecondaryDefinitions)
+{
+    var existingGroups = await groupRepo.GetByClassDefinitionAsync(classDefinition.Id, CancellationToken.None);
+    var defaultGroups = new[] { "Science", "Arts", "Commerce" };
+    foreach (var groupName in defaultGroups)
+    {
+        if (existingGroups.All(g => g.Name != groupName))
+        {
+            await groupRepo.AddAsync(new Group(Guid.NewGuid(), classDefinition.Id, groupName), CancellationToken.None);
+        }
+    }
+}
+
 var classCourse = await classRepo.GetAllAsync(CancellationToken.None);
 if (classCourse.Count == 0)
 {
@@ -108,15 +123,7 @@ if (classCourse.Count == 0)
     var elevenDef = seededDefinitions.FirstOrDefault(c => c.Name == "Eleven");
     if (elevenDef is not null)
     {
-        var groups = await groupRepo.GetByClassDefinitionAsync(elevenDef.Id, CancellationToken.None);
-        scienceGroupId = groups.FirstOrDefault(g => g.Name == "Science")?.Id;
-
-        if (scienceGroupId is null)
-        {
-            var scienceGroup = new Group(Guid.NewGuid(), elevenDef.Id, "Science");
-            await groupRepo.AddAsync(scienceGroup, CancellationToken.None);
-            scienceGroupId = scienceGroup.Id;
-        }
+        scienceGroupId = (await groupRepo.GetByClassDefinitionAsync(elevenDef.Id, CancellationToken.None)).FirstOrDefault(g => g.Name == "Science")?.Id;
     }
 
     var orderedDefinitions = classNames

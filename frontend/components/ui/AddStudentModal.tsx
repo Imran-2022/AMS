@@ -113,6 +113,11 @@ export function AddStudentModal({
     }
   }, [classCourses, values.className]);
 
+  const classNames = useMemo(
+    () => Array.from(new Set(classCourses.map((cls) => cls.name))),
+    [classCourses]
+  );
+
   const sectionOptions = useMemo(
     () => Array.from(new Set(classCourses.filter((cls) => cls.name === values.className).map((cls) => cls.section))),
     [classCourses, values.className]
@@ -128,6 +133,25 @@ export function AddStudentModal({
     setValues((current) => ({ ...current, [field]: value }));
   }
 
+  function handleSubmit() {
+    if (!values.gender) {
+      alert('Gender is required.');
+      return;
+    }
+
+    if (!values.className) {
+      alert('Class is required.');
+      return;
+    }
+
+    if (!values.section) {
+      alert('Section is required.');
+      return;
+    }
+
+    void onSubmit(values);
+  }
+
   return (
     <Modal
       open={open}
@@ -140,7 +164,7 @@ export function AddStudentModal({
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="button" disabled={isSubmitting} onClick={() => onSubmit(values)}>
+          <Button type="button" disabled={isSubmitting} onClick={handleSubmit}>
             {submitLabel}
           </Button>
         </div>
@@ -261,9 +285,9 @@ export function AddStudentModal({
                 onChange={(event) => handleChange('className', event.target.value)}
                 className={`${inputClass} text-slate-700`}>
                 <option value="">No classes loaded</option>
-                {classCourses.map((cls) => (
-                  <option key={cls.id} value={cls.name}>
-                    {cls.name}
+                {classNames.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
                   </option>
                 ))}
               </select>
