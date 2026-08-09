@@ -56,7 +56,7 @@ export function AmsPagination({
           </svg>
         </button>
 
-        <span className="inline-flex h-8 min-w-[36px] items-center justify-center rounded-lg bg-brand-600 px-3 text-xs font-semibold text-white">
+        <span className="inline-flex h-8 min-w-[36px] items-center justify-center rounded bg-brand-600 px-3 text-xs font-semibold text-white">
           {currentPage + 1}
         </span>
 
