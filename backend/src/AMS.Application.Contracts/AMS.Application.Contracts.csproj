@@ -6,6 +6,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\AMS.Domain.Shared\AMS.Domain.Shared.csproj" />
-    <PackageReference Include="Microsoft.AspNetCore.Authorization" Version="8.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authorization" Version="10.0.0" />
   </ItemGroup>
 </Project>
