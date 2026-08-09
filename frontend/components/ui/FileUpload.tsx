@@ -2,6 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MoreHorizontal } from 'lucide-react';
 import { uploadFile } from '@/lib/api/files';
 
+interface ExistingAttachment {
+  id: string;
+  originalFileName: string;
+  downloadUrl: string;
+  sizeBytes: number;
+}
+
 interface FileUploadProps {
   onFileUploaded?: (fileUrl: string, fileName: string) => void;
   onFileSelected?: (file: File) => void;
@@ -12,6 +19,9 @@ interface FileUploadProps {
   multiple?: boolean;
   initialFileUrl?: string;
   initialFileName?: string;
+  existingAttachments?: ExistingAttachment[];
+  onRemoveExistingAttachment?: (id: string) => void;
+  onRenameExistingAttachment?: (id: string, name: string) => void;
 }
 
 export function FileUpload({
@@ -24,6 +34,9 @@ export function FileUpload({
   multiple = false,
   initialFileUrl,
   initialFileName,
+  existingAttachments = [],
+  onRemoveExistingAttachment,
+  onRenameExistingAttachment,
 }: FileUploadProps) {
   const [files, setFiles] = useState<File[]>(selectedFiles);
   const [fileUrl, setFileUrl] = useState<string | null>(initialFileUrl || null);
@@ -31,8 +44,8 @@ export function FileUpload({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
-  const [activeMenuIndex, setActiveMenuIndex] = useState<number | null>(null);
-  const [editingFileIndex, setEditingFileIndex] = useState<number | null>(null);
+  const [activeMenuKey, setActiveMenuKey] = useState<string | null>(null);
+  const [editingFileKey, setEditingFileKey] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -42,17 +55,22 @@ export function FileUpload({
   }, [selectedFiles]);
 
   useEffect(() => {
-    if (activeMenuIndex === null) return;
+    setFileUrl(initialFileUrl || null);
+    setFileName(initialFileName || null);
+  }, [initialFileUrl, initialFileName]);
+
+  useEffect(() => {
+    if (activeMenuKey === null) return;
 
     const handleOutsideClick = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setActiveMenuIndex(null);
+        setActiveMenuKey(null);
       }
     };
 
     document.addEventListener('mousedown', handleOutsideClick);
     return () => document.removeEventListener('mousedown', handleOutsideClick);
-  }, [activeMenuIndex]);
+  }, [activeMenuKey]);
 
   const handleFiles = async (filesList: FileList | null) => {
     if (!filesList || filesList.length === 0) return;
@@ -132,7 +150,7 @@ export function FileUpload({
     const updated = files.filter((_, i) => i !== index);
     setFiles(updated);
     onFilesSelected?.(updated);
-    setActiveMenuIndex(null);
+    setActiveMenuKey(null);
     if (updated.length <= 0) {
       setFileUrl(null);
       setFileName(null);
@@ -140,28 +158,43 @@ export function FileUpload({
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const startRename = (index: number) => {
-    setEditingFileIndex(index);
-    setActiveMenuIndex(null);
-    setEditingName(files[index]?.name ?? '');
+  const startRename = (key: string, currentName: string) => {
+    setEditingFileKey(key);
+    setActiveMenuKey(null);
+    setEditingName(currentName);
   };
 
   const saveRename = () => {
-    if (editingFileIndex === null) return;
-    const updatedFiles = [...files];
-    const file = updatedFiles[editingFileIndex];
-    const dotIndex = file.name.lastIndexOf('.');
-    const extension = dotIndex >= 0 ? file.name.slice(dotIndex) : '';
-    const newName = editingName.trim() || file.name;
-    updatedFiles[editingFileIndex] = new File([file], newName.endsWith(extension) ? newName : `${newName}${extension}`, { type: file.type });
-    setFiles(updatedFiles);
-    onFilesSelected?.(updatedFiles);
-    setEditingFileIndex(null);
+    if (!editingFileKey) return;
+    if (editingFileKey.startsWith('file-')) {
+      const index = Number(editingFileKey.replace('file-', ''));
+      if (Number.isNaN(index) || index < 0 || index >= files.length) return;
+      const updatedFiles = [...files];
+      const file = updatedFiles[index];
+      const dotIndex = file.name.lastIndexOf('.');
+      const extension = dotIndex >= 0 ? file.name.slice(dotIndex) : '';
+      const newName = editingName.trim() || file.name;
+      updatedFiles[index] = new File([file], newName.endsWith(extension) ? newName : `${newName}${extension}`, { type: file.type });
+      setFiles(updatedFiles);
+      onFilesSelected?.(updatedFiles);
+    } else if (editingFileKey.startsWith('existing-')) {
+      const id = editingFileKey.replace('existing-', '');
+      renameExistingAttachment(id, editingName.trim());
+    }
+    setEditingFileKey(null);
   };
 
   const cancelRename = () => {
-    setEditingFileIndex(null);
+    setEditingFileKey(null);
     setEditingName('');
+  };
+
+  const removeExistingAttachment = (id: string) => {
+    if (onRemoveExistingAttachment) onRemoveExistingAttachment(id);
+  };
+
+  const renameExistingAttachment = (id: string, name: string) => {
+    if (onRenameExistingAttachment) onRenameExistingAttachment(id, name);
   };
 
   return (
@@ -177,9 +210,68 @@ export function FileUpload({
         }}
       />
 
-      {files.length > 0 ? (
+      {(files.length > 0 || fileUrl || fileName || existingAttachments.length > 0) ? (
         <div className="space-y-3">
           <div className="rounded border border-slate-200 bg-slate-50 p-3">
+                  {existingAttachments.map((attachment) => (
+              <div key={`existing-${attachment.id}`} className="relative flex items-center justify-between gap-3 rounded bg-white px-4 py-3 mb-2 last:mb-0 border border-slate-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded bg-slate-900 text-white flex items-center justify-center text-xs font-semibold">
+                    {attachment.originalFileName.split('.').pop()?.slice(0, 3).toUpperCase() || 'FILE'}
+                  </div>
+                  <div className="min-w-0">
+                    {editingFileKey === `existing-${attachment.id}` ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          value={editingName}
+                          onChange={(event) => setEditingName(event.target.value)}
+                          className="min-w-0 flex-1 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                        />
+                        <button type="button" onClick={saveRename} className="cursor-pointer rounded bg-brand-600 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-700">Save</button>
+                        <button type="button" onClick={cancelRename} className="cursor-pointer rounded border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100">Cancel</button>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-sm font-medium text-slate-900 truncate">{attachment.originalFileName}</p>
+                        <p className="text-xs text-slate-500">Existing attachment</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setActiveMenuKey(activeMenuKey === `existing-${attachment.id}` ? null : `existing-${attachment.id}`);
+                    }}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-600 cursor-pointer transition-colors duration-200"
+                    aria-label="Open file actions"
+                  >
+                    <MoreHorizontal className="h-5 w-5" />
+                  </button>
+                  {activeMenuKey === `existing-${attachment.id}` && (
+                    <div className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded border border-slate-200 bg-white shadow-xl">
+                      <button
+                        type="button"
+                        onClick={() => startRename(`existing-${attachment.id}`, attachment.originalFileName)}
+                        className="cursor-pointer w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
+                      >
+                        Edit file name
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeExistingAttachment(attachment.id)}
+                        className="cursor-pointer w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-rose-50"
+                      >
+                        Delete this file
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
             {files.map((file, index) => (
               <div key={`${file.name}-${file.size}-${index}`} className="relative flex items-center justify-between gap-3 rounded bg-white px-4 py-3 mb-2 last:mb-0 border border-slate-200">
                 <div className="flex items-center gap-3">
@@ -187,7 +279,7 @@ export function FileUpload({
                     {file.name.split('.').pop()?.slice(0, 3).toUpperCase() || 'FILE'}
                   </div>
                   <div className="min-w-0">
-                    {editingFileIndex === index ? (
+                    {editingFileKey === `file-${index}` ? (
                       <div className="flex items-center gap-2">
                         <input
                           value={editingName}
@@ -211,7 +303,7 @@ export function FileUpload({
                     type="button"
                     onClick={(event) => {
                       event.stopPropagation();
-                      setActiveMenuIndex(activeMenuIndex === index ? null : index);
+                      setActiveMenuKey(activeMenuKey === `file-${index}` ? null : `file-${index}`);
                     }}
                     className="inline-flex h-9 w-9 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-600 cursor-pointer transition-colors duration-200"
                     aria-label="Open file actions"
@@ -219,11 +311,11 @@ export function FileUpload({
                     <MoreHorizontal className="h-5 w-5" />
                   </button>
 
-                  {activeMenuIndex === index && (
+                  {activeMenuKey === `file-${index}` && (
                     <div className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded border border-slate-200 bg-white shadow-xl">
                       <button
                         type="button"
-                        onClick={() => startRename(index)}
+                        onClick={() => startRename(`file-${index}`, file.name)}
                         className="cursor-pointer w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
                       >
                         Edit file name

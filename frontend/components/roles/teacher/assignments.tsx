@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BookOpen, ClipboardList, Copy, FileText, Layers, Pencil, Plus, Search, Send, Trash2, Eye } from 'lucide-react';
 import { AppShell } from '../../layout/AppShell';
 import { AmsDeleteComfiramtionModal, AmsPagination, Button, FileUpload } from '../../ui';
-import { getAssignments, getClassCourses, getSubjects, createAssignment, updateAssignment, deleteAssignment, publishAssignment, unpublishAssignment, uploadAttachment } from '@/lib/api';
+import { getAssignments, getClassCourses, getSubjects, createAssignment, updateAssignment, deleteAssignment, publishAssignment, unpublishAssignment, uploadAttachment, listAttachments } from '@/lib/api';
 import type { AssignmentDto, ClassCourseDto, SubjectDto, CreateAssignmentDto, UpdateAssignmentDto } from '@/lib/api';
 
 type AssignmentStatus = 'Published' | 'Draft';
@@ -25,6 +25,13 @@ type AssignmentFormValues = {
   attachmentName: string;
 };
 
+type ExistingAttachment = {
+  id: string;
+  originalFileName: string;
+  downloadUrl: string;
+  sizeBytes: number;
+};
+
 const createEmptyForm = (): AssignmentFormValues => ({
   title: '',
   description: '',
@@ -38,6 +45,36 @@ const createEmptyForm = (): AssignmentFormValues => ({
   attachmentUrl: '',
   attachmentName: '',
 });
+
+const formatDateForInput = (value: string) => {
+  if (!value) return '';
+  const isoMatch = value.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/);
+  if (isoMatch) {
+    return value.slice(0, 16);
+  }
+
+  const usMatch = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (usMatch) {
+    const month = String(Number(usMatch[1])).padStart(2, '0');
+    const day = String(Number(usMatch[2])).padStart(2, '0');
+    const year = usMatch[3];
+    let hour = Number(usMatch[4]);
+    const minute = usMatch[5];
+    const period = usMatch[6].toUpperCase();
+    if (period === 'PM' && hour < 12) hour += 12;
+    if (period === 'AM' && hour === 12) hour = 0;
+    return `${year}-${month}-${day}T${String(hour).padStart(2, '0')}:${minute}`;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
 
 function StatCard({ label, value, sub, icon }: { label: string; value: string | number; sub: string; icon: ReactNode }) {
   return (
@@ -68,6 +105,7 @@ export function TeacherAssignmentsPage() {
   const [pendingDelete, setPendingDelete] = useState<AssignmentDto | null>(null);
   const [form, setForm] = useState<AssignmentFormValues>(createEmptyForm());
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
+  const [existingAttachments, setExistingAttachments] = useState<ExistingAttachment[]>([]);
   const [selectedClassName, setSelectedClassName] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
   const [loading, setLoading] = useState(true);
@@ -195,12 +233,47 @@ export function TeacherAssignmentsPage() {
     [subjects, form.classCourseId]
   );
 
-  const openCreateModal = (assignment?: AssignmentDto) => {
+  const openCreateModal = async (assignment?: AssignmentDto) => {
     if (assignment) {
       setEditingAssignment(assignment);
       const assignmentClass = classes.find((c) => c.id === assignment.classCourseId);
       setSelectedClassName(assignmentClass?.name ?? '');
       setSelectedSection(assignmentClass?.section ?? '');
+      let attachmentUrl = assignment.attachmentUrl ?? '';
+      let attachmentName = assignment.attachmentName ?? '';
+
+      let attachments: ExistingAttachment[] = [];
+      try {
+        const fetchedAttachments = await listAttachments('Assignment', assignment.id);
+        attachments = fetchedAttachments.map((item) => ({
+          id: item.id,
+          originalFileName: item.originalFileName,
+          downloadUrl: item.downloadUrl,
+          sizeBytes: item.sizeBytes,
+        }));
+      } catch (error) {
+        console.error('Unable to load attachments for edit form', error);
+      }
+
+      if (attachments.length === 0 && (assignment.attachmentName || assignment.attachmentUrl)) {
+        attachments = [
+          {
+            id: 'assignment-record-attachment',
+            originalFileName: assignment.attachmentName ?? 'Existing attachment',
+            downloadUrl: assignment.attachmentUrl ?? '',
+            sizeBytes: 0,
+          },
+        ];
+      }
+
+      const firstAttachment = attachments[0];
+      if (firstAttachment) {
+        attachmentUrl = firstAttachment.downloadUrl;
+        attachmentName = firstAttachment.originalFileName;
+      }
+
+      setExistingAttachments(attachments);
+
       setForm({
         title: assignment.title,
         description: assignment.description,
@@ -209,10 +282,10 @@ export function TeacherAssignmentsPage() {
         classCourseSection: assignment.classCourseSection,
         subjectId: assignment.subjectId,
         subjectName: assignment.subjectName,
-        deadline: assignment.deadline,
+        deadline: formatDateForInput(assignment.deadline),
         maxMarks: String(assignment.maxMarks),
-        attachmentUrl: assignment.attachmentUrl ?? '',
-        attachmentName: assignment.attachmentName ?? '',
+        attachmentUrl,
+        attachmentName,
       });
     } else {
       const defaultClass = classes[0];
@@ -234,6 +307,7 @@ export function TeacherAssignmentsPage() {
         attachmentName: '',
       });
       setAttachmentFiles([]);
+      setExistingAttachments([]);
     }
     setModalOpen(true);
   };
@@ -247,7 +321,7 @@ export function TeacherAssignmentsPage() {
     setSelectedSection('');
   };
 
-  const handleSubmit = async (status: AssignmentStatus) => {
+  const handleSubmit = async (status?: AssignmentStatus) => {
     if (!form.title.trim() || !form.description.trim() || !form.deadline.trim() || !form.classCourseId || !form.subjectId) {
       return;
     }
@@ -272,10 +346,6 @@ export function TeacherAssignmentsPage() {
         setAssignments((current) => current.map((item) => (item.id === updatedAssignment.id ? updatedAssignment : item)));
         if (attachmentFiles.length > 0) {
           await Promise.all(attachmentFiles.map((file) => uploadAttachment('Assignment', editingAssignment.id, file)));
-        }
-        if (status === 'Published' && updatedAssignment.status === 'Draft') {
-          const publishedAssignment = await publishAssignment(updatedAssignment.id);
-          setAssignments((current) => current.map((item) => (item.id === publishedAssignment.id ? publishedAssignment : item)));
         }
       } else {
         const createdAssignment = await createAssignment(payload);
@@ -695,6 +765,11 @@ export function TeacherAssignmentsPage() {
                   <FileUpload
                     multiple
                     selectedFiles={attachmentFiles}
+                    existingAttachments={existingAttachments}
+                    initialFileUrl={form.attachmentUrl}
+                    initialFileName={form.attachmentName}
+                    onRemoveExistingAttachment={(id) => setExistingAttachments((current) => current.filter((item) => item.id !== id))}
+                    onRenameExistingAttachment={(id, name) => setExistingAttachments((current) => current.map((item) => (item.id === id ? { ...item, originalFileName: name } : item)))}
                     onFileSelected={(file) => {
                       setAttachmentFiles([file]);
                       setForm((current) => ({ ...current, attachmentUrl: '', attachmentName: '' }));
@@ -708,11 +783,20 @@ export function TeacherAssignmentsPage() {
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-b-3xl border-t border-slate-100 bg-slate-50/80 px-7 py-5">
-                <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
-                <div className="flex flex-wrap items-center gap-3">
-                  <Button type="button" variant="secondary" onClick={() => handleSubmit('Draft')}>Save as draft</Button>
-                  <Button type="button" onClick={() => handleSubmit('Published')}>Publish</Button>
-                </div>
+                {editingAssignment ? (
+                  <div className="ml-auto flex items-center gap-3">
+                    <Button type="button" variant="secondary" onClick={closeModal}>Close</Button>
+                    <Button type="button" onClick={() => handleSubmit()}>Update Assignment</Button>
+                  </div>
+                ) : (
+                  <>
+                    <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Button type="button" variant="secondary" onClick={() => handleSubmit('Draft')}>Save as draft</Button>
+                      <Button type="button" onClick={() => handleSubmit('Published')}>Publish</Button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>

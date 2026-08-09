@@ -234,36 +234,36 @@ export function TeacherSubmissionsPage() {
 
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4">
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" onClick={() => setActiveTab('all')} className={`rounded-xl px-4 py-2 text-sm font-semibold ${activeTab === 'all' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+            <button type="button" onClick={() => setActiveTab('all')} className={`rounded px-4 py-2 text-sm font-semibold ${activeTab === 'all' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
               All <span className="ml-1 font-normal opacity-70">{stats.total}</span>
             </button>
-            <button type="button" onClick={() => setActiveTab('pending')} className={`rounded-xl px-4 py-2 text-sm font-semibold ${activeTab === 'pending' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+            <button type="button" onClick={() => setActiveTab('pending')} className={`rounded px-4 py-2 text-sm font-semibold ${activeTab === 'pending' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
               Pending <span className="ml-1 font-normal opacity-70">{stats.pending}</span>
             </button>
-            <button type="button" onClick={() => setActiveTab('graded')} className={`rounded-xl px-4 py-2 text-sm font-semibold ${activeTab === 'graded' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+            <button type="button" onClick={() => setActiveTab('graded')} className={`rounded px-4 py-2 text-sm font-semibold ${activeTab === 'graded' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
               Graded <span className="ml-1 font-normal opacity-70">{stats.graded}</span>
             </button>
-            <button type="button" onClick={() => setActiveTab('needs_revision')} className={`rounded-xl px-4 py-2 text-sm font-semibold ${activeTab === 'needs_revision' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+            <button type="button" onClick={() => setActiveTab('needs_revision')} className={`rounded px-4 py-2 text-sm font-semibold ${activeTab === 'needs_revision' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
               Needs revision <span className="ml-1 font-normal opacity-70">{stats.needsRevision}</span>
             </button>
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2.5">
-            <select value={classFilter} onChange={handleClassChange} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600">
+            <select value={classFilter} onChange={handleClassChange} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600">
               {availableClasses.map((option) => (
                 <option key={option} value={option}>
                   {option}
                 </option>
               ))}
             </select>
-            <select value={sectionFilter} onChange={(event) => setSectionFilter(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600">
+            <select value={sectionFilter} onChange={(event) => setSectionFilter(event.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600">
               {availableSections.map((option) => (
                 <option key={option} value={option}>
                   {option}
                 </option>
               ))}
             </select>
-            <select value={assignmentFilter} onChange={(event) => setAssignmentFilter(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600">
+            <select value={assignmentFilter} onChange={(event) => setAssignmentFilter(event.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600">
               {availableAssignments.map((option) => (
                 <option key={option} value={option}>
                   {option}
@@ -272,7 +272,7 @@ export function TeacherSubmissionsPage() {
             </select>
             <div className="relative min-w-[220px]">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} type="text" placeholder="Search by student…" className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-600 outline-none focus:border-brand-500" />
+              <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} type="text" placeholder="Search by student…" className="w-full rounded border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-600 outline-none focus:border-brand-500" />
             </div>
           </div>
         </div>
@@ -374,7 +374,7 @@ export function TeacherSubmissionsPage() {
             <div className="grid gap-6 overflow-y-auto px-7 py-6 lg:grid-cols-2">
               <div>
                 <p className="mb-2 block text-[13px] font-semibold text-slate-800">Submitted work</p>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="rounded border border-slate-200 bg-slate-50 p-4">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-brand-500">
                       <FileText className="h-5 w-5" />
@@ -397,19 +397,19 @@ export function TeacherSubmissionsPage() {
                 <div>
                   <label className="mb-2 block text-[13px] font-semibold text-slate-800">Marks</label>
                   <div className="flex items-center gap-2">
-                    <input value={marks} onChange={(event) => setMarks(event.target.value)} type="number" placeholder="0" className="w-24 rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100" />
+                    <input value={marks} onChange={(event) => setMarks(event.target.value)} type="number" placeholder="0" className="w-24 rounded border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100" />
                     <span className="text-sm text-slate-400">/ {gradeModal.marks ?? '—'}</span>
                   </div>
                 </div>
 
                 <div>
                   <label className="mb-2 block text-[13px] font-semibold text-slate-800">Feedback for student</label>
-                  <textarea value={feedback} onChange={(event) => setFeedback(event.target.value)} rows={4} placeholder="Add comments on their work…" className="w-full resize-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100" />
+                  <textarea value={feedback} onChange={(event) => setFeedback(event.target.value)} rows={4} placeholder="Add comments on their work…" className="w-full resize-none rounded border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100" />
                 </div>
 
                 <div>
                   <label className="mb-2 block text-[13px] font-semibold text-slate-800">Submission status</label>
-                  <select value={status} onChange={(event) => setStatus(event.target.value)} className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100">
+                  <select value={status} onChange={(event) => setStatus(event.target.value)} className="w-full rounded border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100">
                     <option value="Submitted">Submitted</option>
                     <option value="Late">Late</option>
                     <option value="UnderReview">Under review</option>
@@ -423,10 +423,10 @@ export function TeacherSubmissionsPage() {
             </div>
 
             <div className="flex items-center justify-end gap-3 rounded-b-3xl border-t border-slate-100 bg-slate-50/60 px-7 py-5">
-              <button type="button" onClick={closeGradeModal} className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">
+              <button type="button" onClick={closeGradeModal} className="rounded border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">
                 Cancel
               </button>
-              <button type="button" onClick={handleSaveGrade} className="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">
+              <button type="button" onClick={handleSaveGrade} className="rounded bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">
                 Save &amp; notify student
               </button>
             </div>

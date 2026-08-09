@@ -136,19 +136,15 @@ public class AssignmentAppService : IAssignmentAppService
 
         var newDeadline = NormalizeToUtcNullable(input.Deadline) ?? assignment.Deadline;
 
-        assignment = new Assignment(
-            assignment.Id,
+        assignment.UpdateDetails(
             input.Title ?? assignment.Title,
             input.Description ?? assignment.Description,
             input.ClassCourseId ?? assignment.ClassCourseId,
             input.SubjectId ?? assignment.SubjectId,
-            assignment.TeacherId,
             newDeadline,
             input.MaxMarks ?? assignment.MaxMarks,
-            assignment.Status,
             input.AllowLateSubmission ?? assignment.AllowLateSubmission,
             input.AllowResubmission ?? assignment.AllowResubmission,
-            assignment.CreatedAt,
             input.AttachmentUrl ?? assignment.AttachmentUrl,
             input.AttachmentName ?? assignment.AttachmentName);
 
