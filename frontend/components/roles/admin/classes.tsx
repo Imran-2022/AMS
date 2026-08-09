@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { AppShell } from '../../layout/AppShell';
-import { Button, AmsDeleteComfiramtionModal, AmsPagination } from '../../ui';
+import { Button, AmsDeleteComfiramtionModal, AmsPagination, TeacherAssignmentModal } from '../../ui';
 import {
   createClassCourse,
   updateClassCourse,
@@ -1097,146 +1097,41 @@ export function AdminClassesPage() {
         </div>
       </div>
 
-      <div className={`${activeModal === 'assign' ? 'flex' : 'hidden'} fixed inset-0 z-50 items-center justify-center bg-slate-900/40 p-4`}>
-        <div className="bg-white rounded w-full max-w-lg shadow-2xl">
-          <div className="flex items-start justify-between px-7 pt-6 pb-5 border-b border-slate-100">
-            <h2 className="text-xl font-extrabold text-slate-800">Assign teacher</h2>
-            <button
-              type="button"
-              onClick={closeModal}
-              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-slate-400 transition hover:text-slate-600 focus:outline-none"
-              aria-label="Close modal"
-            >
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-            </button>
-          </div>
-          <form onSubmit={handleAssignTeacher} className="px-7 py-6 space-y-5">
-            <div>
-              <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Class <span className="text-rose-500">*</span></label>
-              <div ref={assignClassMenuRef} className="relative">
-                <button
-                  type="button"
-                  onClick={() => setAssignClassMenuOpen((open) => !open)}
-                  className="relative w-full cursor-pointer rounded border border-slate-300 bg-white px-4 py-2.5 pr-12 text-left text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                >
-                  <span className="block truncate">{selectedAssignClassDefinitionLabel}</span>
-                  <span className="pointer-events-none absolute inset-y-0 right-0 flex w-10 items-center justify-center border-l border-slate-200 bg-slate-50 text-slate-500">
-                    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                      <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd"/>
-                    </svg>
-                  </span>
-                </button>
-
-                {assignClassMenuOpen ? (
-                  <div className="absolute left-0 right-0 z-20 mt-2 overflow-hidden rounded border border-slate-200 bg-white shadow-xl">
-                    <div className="max-h-44 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100">
-                      {classDefinitionOptions.map((option) => (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() => {
-                            const firstSection = classes.find((cls) => cls.classDefinitionId === option.id) ?? classes[0] ?? null;
-                            const firstSubject = firstSection ? subjects.find((subject) => subject.classCourseId === firstSection.id) ?? null : null;
-                            setAssignForm({
-                              ...assignForm,
-                              classDefinitionId: option.id,
-                              classCourseId: firstSection?.id ?? '',
-                              subjectId: firstSubject?.id ?? '',
-                            });
-                            setAssignClassMenuOpen(false);
-                          }}
-                          className={`flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left text-sm transition ${assignForm.classDefinitionId === option.id ? 'bg-brand-50 text-brand-700' : 'text-slate-700 hover:bg-slate-50'}`}
-                        >
-                          <span>{option.label}</span>
-                          {assignForm.classDefinitionId === option.id ? (
-                            <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                              <path fillRule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7.5 7.5a1 1 0 01-1.4 0l-3.5-3.5a1 1 0 011.4-1.4l2.8 2.8 6.8-6.8a1 1 0 011.4 0z" clipRule="evenodd"/>
-                            </svg>
-                          ) : null}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Section <span className="text-rose-500">*</span></label>
-              <div className="relative">
-                <select
-                  value={assignForm.classCourseId}
-                  onChange={(event) => {
-                    const nextClassCourseId = event.target.value;
-                    const firstSubject = subjects.find((subject) => subject.classCourseId === nextClassCourseId) ?? null;
-                    setAssignForm({ ...assignForm, classCourseId: nextClassCourseId, subjectId: firstSubject?.id ?? '' });
-                  }}
-                  required
-                  className="w-full appearance-none rounded border border-slate-300 bg-white px-4 py-2.5 pr-10 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                >
-                  <option value="">Select section</option>
-                  {sectionOptionsForClass.map((option) => (
-                    <option key={option.id} value={option.id}>{option.label}</option>
-                  ))}
-                </select>
-                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-500">
-                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd"/>
-                  </svg>
-                </span>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Subject <span className="text-rose-500">*</span></label>
-              <div className="relative">
-                <select
-                  value={assignForm.subjectId}
-                  onChange={(event) => setAssignForm({ ...assignForm, subjectId: event.target.value })}
-                  required
-                  className="w-full appearance-none rounded border border-slate-300 bg-white px-4 py-2.5 pr-10 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                >
-                  <option value="">Select subject</option>
-                  {subjectSelectOptions.map((option) => (
-                    <option key={option.id} value={option.id}>{option.label}</option>
-                  ))}
-                </select>
-                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-500">
-                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd"/>
-                  </svg>
-                </span>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Teacher <span className="text-rose-500">*</span></label>
-              <div className="relative">
-                <select
-                  value={assignForm.teacherId}
-                  onChange={(event) => setAssignForm({ ...assignForm, teacherId: event.target.value })}
-                  required
-                  className="w-full appearance-none rounded border border-slate-300 bg-white px-4 py-2.5 pr-10 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                >
-                  <option value="">Unassigned</option>
-                  {teacherOptions.map((teacher) => (
-                    <option key={teacher.id} value={teacher.id}>{teacher.label}</option>
-                  ))}
-                </select>
-                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-500">
-                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd"/>
-                  </svg>
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center justify-end gap-3 py-5 border-t border-slate-100 bg-slate-50/60 rounded-b-3xl">
-              <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
-              <Button type="submit">Save assignment</Button>
-            </div>
-          </form>
-        </div>
-      </div>
+      <TeacherAssignmentModal
+        open={activeModal === 'assign'}
+        onClose={closeModal}
+        title="Assign teacher"
+        submitLabel="Save assignment"
+        teachers={teachers.map((teacher) => ({
+          id: teacher.id,
+          fullName: teacher.fullName,
+          subjectSpecialization: teacher.subjectSpecialization,
+        }))}
+        classCourses={classes.map((cls) => ({ id: cls.id, name: cls.name, section: cls.section }))}
+        subjects={subjects.map((subject) => ({ id: subject.id, name: subject.name, code: subject.code, classCourseId: subject.classCourseId }))}
+        assignments={assignments.map((assignment) => ({ subjectId: assignment.subjectId, teacherId: assignment.teacherId }))}
+        initialValues={{
+          teacherId: assignForm.teacherId,
+          classCourseId: assignForm.classCourseId,
+          subjectId: assignForm.subjectId,
+        }}
+        isSubmitting={false}
+        onSubmit={async (values) => {
+          try {
+            await createTeacherAssignment({
+              teacherId: values.teacherId,
+              classCourseId: values.classCourseId,
+              subjectId: values.subjectId,
+            });
+            await loadData();
+            closeModal();
+          } catch (err) {
+            console.error('Teacher assignment failed:', err);
+            const message = err instanceof Error ? err.message : String(err);
+            alert(`Unable to assign the teacher. ${message}`);
+          }
+        }}
+      />
 
       <AmsDeleteComfiramtionModal
         open={activeModal === 'delete' && Boolean(deleteTarget)}

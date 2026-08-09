@@ -56,6 +56,12 @@ select {
   font: inherit;
 }
 
+input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]),
+textarea,
+select {
+  border-radius: 0.25rem;
+}
+
 a {
   color: inherit;
   text-decoration: none;
