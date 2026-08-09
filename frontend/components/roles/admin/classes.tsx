@@ -403,26 +403,40 @@ export function AdminClassesPage() {
     event.preventDefault();
 
     const gradeId = subjectForm.gradeId?.trim();
-    const representativeClass = classes.find((cls) => cls.classDefinitionId === gradeId && (subjectForm.groupId ? cls.groupId === subjectForm.groupId : true)) ?? classes.find((cls) => cls.classDefinitionId === gradeId) ?? classes[0];
-
-    if (!subjectForm.name.trim() || !subjectForm.code.trim() || !gradeId || !representativeClass) {
+    if (!subjectForm.name.trim() || !subjectForm.code.trim() || !gradeId) {
       alert('Please enter a valid subject name, code, and grade before saving.');
+      return;
+    }
+
+    const matchingClasses = classes.filter((cls) => {
+      if (cls.classDefinitionId !== gradeId) return false;
+      if (subjectForm.groupId) return cls.groupId === subjectForm.groupId;
+      return true;
+    });
+
+    if (matchingClasses.length === 0) {
+      alert('No class sections were found for the selected grade and group. Please verify your selection.');
       return;
     }
 
     try {
       if (editingSubject) {
+        const repClass = classes.find((cls) => cls.id === editingSubject.classCourseId) ?? matchingClasses[0];
         await updateSubject(editingSubject.id, {
           name: subjectForm.name,
           code: subjectForm.code,
-          classCourseId: representativeClass.id,
+          classCourseId: repClass.id,
         });
       } else {
-        await createSubject({
-          name: subjectForm.name,
-          code: subjectForm.code,
-          classCourseId: representativeClass.id,
-        });
+        await Promise.all(
+          matchingClasses.map((cls) =>
+            createSubject({
+              name: subjectForm.name,
+              code: subjectForm.code,
+              classCourseId: cls.id,
+            })
+          )
+        );
       }
 
       setSubjectForm({ name: '', code: '', gradeId: classDefinitions[0]?.id ?? '', groupId: '' });
