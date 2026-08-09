@@ -3,6 +3,7 @@ using AMS.Application.Contracts.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using System.Collections.Concurrent;
 using System.IdentityModel.Tokens.Jwt;
@@ -22,6 +23,7 @@ public class AuthController : ControllerBase
     private readonly IUserAppService _userAppService;
     private readonly IConfiguration _configuration;
 
+    [ActivatorUtilitiesConstructor]
     public AuthController(IAuthAppService authAppService, IUserAppService userAppService, IConfiguration? configuration = null)
     {
         _authAppService = authAppService;
