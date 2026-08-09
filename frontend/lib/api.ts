@@ -15,6 +15,21 @@ function getAuthToken() {
   if (typeof window === 'undefined') return null;
   return window.localStorage.getItem('ams-token');
 }
+
+export async function downloadFile(url: string) {
+  const token = getAuthToken();
+  const targetUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+  const response = await fetch(targetUrl, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `Request failed: ${response.status}`);
+  }
+  return response.blob();
+}
 export function logout(redirect = true) {
   if (typeof window === 'undefined') return;
   try {
