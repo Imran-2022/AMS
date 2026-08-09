@@ -30,6 +30,19 @@ export async function downloadFile(url: string) {
   }
   return response.blob();
 }
+
+export async function downloadAttachmentToBrowser(url: string, fileName?: string) {
+  const blob = await downloadFile(url);
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = objectUrl;
+  anchor.download = fileName || 'download';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(objectUrl);
+}
+
 export function logout(redirect = true) {
   if (typeof window === 'undefined') return;
   try {
@@ -40,6 +53,44 @@ export function logout(redirect = true) {
   if (redirect) {
     window.location.href = '/login';
   }
+}
+
+function normalizeDownloadUrl(url?: string) {
+  if (!url) return url;
+  if (/^https?:\/\//i.test(url)) return url;
+  if (url.startsWith('/')) return `${API_BASE_URL}${url}`;
+  return `${API_BASE_URL}/${url}`;
+}
+
+function normalizeApiPayload<T>(payload: T): T {
+  if (!payload || typeof payload !== 'object') return payload;
+
+  if (Array.isArray(payload)) {
+    return payload.map((item) => normalizeApiPayload(item)) as unknown as T;
+  }
+
+  const clone = { ...payload } as any;
+
+  if (typeof clone.downloadUrl === 'string') {
+    clone.downloadUrl = normalizeDownloadUrl(clone.downloadUrl);
+  }
+
+  if (typeof clone.attachmentUrl === 'string') {
+    clone.attachmentUrl = normalizeDownloadUrl(clone.attachmentUrl);
+  }
+
+  if (Array.isArray(clone.attachments)) {
+    clone.attachments = clone.attachments.map((item: unknown) => {
+      if (!item || typeof item !== 'object') return item;
+      const normalized = { ...(item as any) };
+      if (typeof normalized.downloadUrl === 'string') {
+        normalized.downloadUrl = normalizeDownloadUrl(normalized.downloadUrl);
+      }
+      return normalized;
+    });
+  }
+
+  return clone;
 }
 
 export async function request<T>(path: string, init?: RequestInit, retry = false): Promise<ApiResponse<T>> {
@@ -82,7 +133,10 @@ export async function request<T>(path: string, init?: RequestInit, retry = false
   }
 
   const text = await response.text();
-  return text ? (JSON.parse(text) as ApiResponse<T>) : (undefined as unknown as ApiResponse<T>);
+  if (!text) return undefined as unknown as ApiResponse<T>;
+
+  const parsed = JSON.parse(text) as ApiResponse<T>;
+  return normalizeApiPayload(parsed);
 }
 
 export type AssignmentDto = {

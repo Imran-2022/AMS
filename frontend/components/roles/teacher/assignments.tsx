@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BookOpen, ClipboardList, Copy, FileText, Layers, Pencil, Plus, Search, Send, Trash2, Eye } from 'lucide-react';
 import { AppShell } from '../../layout/AppShell';
 import { AmsDeleteComfiramtionModal, AmsPagination, Button, FileUpload } from '../../ui';
-import { getAssignments, getClassCourses, getSubjects, createAssignment, duplicateAssignment as duplicateAssignmentApi, updateAssignment, deleteAssignment, publishAssignment, unpublishAssignment, uploadAttachment, listAttachments, renameAttachment } from '@/lib/api';
+import { getAssignments, getClassCourses, getSubjects, createAssignment, duplicateAssignment as duplicateAssignmentApi, updateAssignment, deleteAssignment, publishAssignment, unpublishAssignment, uploadAttachment, listAttachments, renameAttachment, deleteAttachment } from '@/lib/api';
 import type { AssignmentDto, ClassCourseDto, SubjectDto, CreateAssignmentDto, UpdateAssignmentDto } from '@/lib/api';
 
 type AssignmentStatus = 'Published' | 'Draft';
@@ -106,6 +106,7 @@ export function TeacherAssignmentsPage() {
   const [form, setForm] = useState<AssignmentFormValues>(createEmptyForm());
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
   const [existingAttachments, setExistingAttachments] = useState<ExistingAttachment[]>([]);
+  const [removedAttachmentIds, setRemovedAttachmentIds] = useState<string[]>([]);
   const [selectedClassName, setSelectedClassName] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
   const [loading, setLoading] = useState(true);
@@ -273,6 +274,7 @@ export function TeacherAssignmentsPage() {
       }
 
       setExistingAttachments(attachments);
+      setRemovedAttachmentIds([]);
 
       setForm({
         title: assignment.title,
@@ -308,6 +310,7 @@ export function TeacherAssignmentsPage() {
       });
       setAttachmentFiles([]);
       setExistingAttachments([]);
+      setRemovedAttachmentIds([]);
     }
     setModalOpen(true);
   };
@@ -317,6 +320,8 @@ export function TeacherAssignmentsPage() {
     setEditingAssignment(null);
     setForm(createEmptyForm());
     setAttachmentFiles([]);
+    setExistingAttachments([]);
+    setRemovedAttachmentIds([]);
     setSelectedClassName('');
     setSelectedSection('');
   };
@@ -342,6 +347,11 @@ export function TeacherAssignmentsPage() {
       } as CreateAssignmentDto;
 
       if (editingAssignment) {
+        const realRemovedIds = removedAttachmentIds.filter((id) => !id.startsWith('assignment-record-attachment'));
+        if (realRemovedIds.length > 0) {
+          await Promise.all(realRemovedIds.map((id) => deleteAttachment(id)));
+        }
+
         const updatedAssignment = await updateAssignment(editingAssignment.id, payload as UpdateAssignmentDto);
         setAssignments((current) => current.map((item) => (item.id === updatedAssignment.id ? updatedAssignment : item)));
         if (attachmentFiles.length > 0) {
@@ -763,7 +773,21 @@ export function TeacherAssignmentsPage() {
                     existingAttachments={existingAttachments}
                     initialFileUrl={form.attachmentUrl}
                     initialFileName={form.attachmentName}
-                    onRemoveExistingAttachment={(id) => setExistingAttachments((current) => current.filter((item) => item.id !== id))}
+                    onRemoveExistingAttachment={(id) => {
+                      const attachment = existingAttachments.find((item) => item.id === id);
+                      const next = existingAttachments.filter((item) => item.id !== id);
+
+                      setExistingAttachments(next);
+                      setRemovedAttachmentIds((current) => (current.includes(id) ? current : [...current, id]));
+
+                      if (attachment && form.attachmentUrl === attachment.downloadUrl) {
+                        setForm((current) => ({ ...current, attachmentUrl: '', attachmentName: '' }));
+                      }
+
+                      if (next.length === 0) {
+                        setForm((current) => ({ ...current, attachmentUrl: '', attachmentName: '' }));
+                      }
+                    }}
                     onRenameExistingAttachment={async (id, name) => {
                       const attachment = existingAttachments.find((item) => item.id === id);
                       if (!attachment) return;

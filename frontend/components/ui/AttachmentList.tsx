@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { listAttachments } from '@/lib/api';
+import { listAttachments, downloadAttachmentToBrowser } from '@/lib/api';
 import type { AttachmentDto } from '@/lib/api';
 
 type AttachmentListProps = {
@@ -47,15 +47,17 @@ export function AttachmentList({ ownerType, ownerId }: AttachmentListProps) {
   return (
     <div className="space-y-2">
       {attachments.map((attachment) => (
-        <a
+        <button
           key={attachment.id}
-          href={attachment.downloadUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="block rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-200"
+          type="button"
+          onClick={(event) => {
+            event.preventDefault();
+            void downloadAttachmentToBrowser(attachment.downloadUrl, attachment.originalFileName);
+          }}
+          className="block w-full rounded-2xl bg-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-200"
         >
           {attachment.originalFileName}
-        </a>
+        </button>
       ))}
     </div>
   );
