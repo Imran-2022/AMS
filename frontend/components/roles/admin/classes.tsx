@@ -23,6 +23,15 @@ import { createTeacherAssignment, deleteTeacherAssignment, getTeacherAssignments
 import type { ClassCourseDto, SubjectDto, UserDto } from '@/lib/api';
 import type { TeacherSubjectAssignmentDto } from '@/lib/api/teacherAssignments';
 
+function isHigherSecondaryClassName(className?: string) {
+  if (!className) return false;
+
+  const normalized = className.trim().toLowerCase();
+  const numericValue = Number.parseInt(normalized.replace(/[^0-9]/g, ''), 10);
+
+  return numericValue >= 9 && numericValue <= 12 || ['nine', 'ten', 'eleven', 'twelve', 'class 9', 'class 10', 'class 11', 'class 12'].includes(normalized);
+}
+
 export function AdminClassesPage() {
   const [classes, setClasses] = useState<ClassCourseDto[]>([]);
   const [subjects, setSubjects] = useState<SubjectDto[]>([]);
@@ -36,6 +45,7 @@ export function AdminClassesPage() {
   const [classDefinitions, setClassDefinitions] = useState<{ id: string; name: string }[]>([]);
   const [academicYears, setAcademicYears] = useState<{ id: string; name: string; isActive: boolean }[]>([]);
   const [availableGroups, setAvailableGroups] = useState<{ id: string; name: string }[]>([]);
+  const [groupNameMap, setGroupNameMap] = useState<Record<string, string>>({});
   const [editingClass, setEditingClass] = useState<ClassCourseDto | null>(null);
   const [subjectForm, setSubjectForm] = useState({ name: '', code: '', gradeId: '' });
   const [editingSubject, setEditingSubject] = useState<SubjectDto | null>(null);
@@ -100,6 +110,15 @@ export function AdminClassesPage() {
     try {
       const defs = await getClassDefinitions();
       setClassDefinitions(defs);
+      try {
+        const groupsByDef = await Promise.all(defs.map(async (d) => ({ id: d.id, groups: await getGroupsForClass(d.id) })));
+        const map: Record<string, string> = {};
+        groupsByDef.forEach((entry) => entry.groups.forEach((g) => (map[g.id] = g.name)));
+        setGroupNameMap(map);
+      } catch (err) {
+        console.error('Failed to load groups for class definitions', err);
+        setGroupNameMap({});
+      }
       if (defs.length && !classForm.classDefinitionId) {
         setClassForm((c) => ({ ...c, classDefinitionId: defs[0].id }));
       }
@@ -197,6 +216,34 @@ export function AdminClassesPage() {
       // For simplicity, set subjects/classes as before and compute counts later
       // Save enrollmentCounts to a local state? we'll compute via useMemo from classes and apiEnrollments stored in a ref — but to keep minimal, set a new state
       setClassStudentCountsState(enrollmentCounts);
+      // fetch groups for the currently selected class definition (if any)
+      if (classForm.classDefinitionId) {
+        try {
+          const groups = await getGroupsForClass(classForm.classDefinitionId);
+          // sort preferred order: Science, Arts, Commerce
+          const preferred = ['Science', 'Arts', 'Commerce'];
+          groups.sort((a, b) => Math.max(0, preferred.indexOf(a.name)) - Math.max(0, preferred.indexOf(b.name)));
+          setAvailableGroups(groups);
+          // ensure groupNameMap updated
+          setGroupNameMap((m) => {
+            const next = { ...m };
+            groups.forEach((g) => (next[g.id] = g.name));
+            return next;
+          });
+          // default select Science when opening/refreshing groups
+          const science = groups.find((g) => g.name.toLowerCase() === 'science');
+          if (science && !classForm.groupId) {
+            setClassForm((c) => ({ ...c, groupId: science.id }));
+          } else if (!groups.some((g) => g.id === classForm.groupId)) {
+            setClassForm((c) => ({ ...c, groupId: '' }));
+          }
+        } catch (err) {
+          console.error('Failed to load groups in loadData', err);
+          setAvailableGroups([]);
+        }
+      } else {
+        setAvailableGroups([]);
+      }
     } catch (err) {
       console.error(err);
       setError('Unable to load class data. Please refresh the page.');
@@ -208,6 +255,23 @@ export function AdminClassesPage() {
       setEditingClass(null);
       const activeYear = academicYears.find(y => y.isActive)?.id ?? academicYears[0]?.id ?? '';
       setClassForm({ classDefinitionId: classDefinitions[0]?.id ?? '', groupId: '', name: '', section: '', year: activeYear });
+      // fetch groups for the default class definition immediately to ensure dropdown is fresh
+      (async () => {
+        try {
+          const defId = classDefinitions[0]?.id ?? '';
+          if (defId) {
+            const groups = await getGroupsForClass(defId);
+            setAvailableGroups(groups);
+            if (!groups.some((g) => g.id === (classForm.groupId ?? ''))) {
+              setClassForm((c) => ({ ...c, groupId: '' }));
+            }
+          }
+        } catch (err) {
+          console.error('Failed to load groups when opening modal', err);
+          setAvailableGroups([]);
+          setClassForm((c) => ({ ...c, groupId: '' }));
+        }
+      })();
     }
 
     if (modal === 'subject') {
@@ -260,6 +324,11 @@ export function AdminClassesPage() {
 
   async function handleCreateClass(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (requiresGroupSelection && !classForm.groupId) {
+      alert('Please select a group for this higher secondary class.');
+      return;
+    }
 
     try {
       const yearName = academicYears.find(y => y.id === classForm.year)?.name || '';
@@ -456,9 +525,9 @@ export function AdminClassesPage() {
     [classDefinitions]
   );
 
-  const selectedClassDefinitionLabel = classForm.classDefinitionId
-    ? classDefinitions.find((definition) => definition.id === classForm.classDefinitionId)?.name ?? 'Select class'
-    : 'Select class';
+  const selectedClassDefinition = classDefinitions.find((definition) => definition.id === classForm.classDefinitionId);
+  const selectedClassDefinitionLabel = selectedClassDefinition?.name ?? 'Select class';
+  const requiresGroupSelection = isHigherSecondaryClassName(selectedClassDefinition?.name);
 
   const selectedAssignClassDefinitionLabel = assignForm.classDefinitionId
     ? classDefinitions.find((definition) => definition.id === assignForm.classDefinitionId)?.name ?? 'Select class'
@@ -531,7 +600,7 @@ export function AdminClassesPage() {
               <div key={cls.id} className="bg-white rounded border border-slate-200 p-5">
                   <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-base font-bold text-slate-800">{cls.name} — {cls.section}</p>
+                    <p className="text-base font-bold text-slate-800">{cls.name} — {cls.section}{cls.groupId ? `(${groupNameMap[cls.groupId] ?? ''})` : ''}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-[11.5px] font-bold text-emerald-600">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -810,16 +879,17 @@ export function AdminClassesPage() {
                 </div>
               </div>
 
-              {availableGroups.length > 0 ? (
+              {requiresGroupSelection || availableGroups.length > 0 ? (
                 <div>
-                  <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Group</label>
+                  <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Group {requiresGroupSelection ? <span className="text-rose-500">*</span> : null}</label>
                   <div className="relative">
                     <select
                       value={classForm.groupId}
                       onChange={(event) => setClassForm({ ...classForm, groupId: event.target.value })}
+                      required={requiresGroupSelection}
                       className="w-full appearance-none rounded border border-slate-300 bg-white px-4 py-2.5 pr-10 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                     >
-                      <option value="">Unassigned</option>
+                      <option value="">{requiresGroupSelection ? 'Select group' : 'Unassigned'}</option>
                       {availableGroups.map((g) => (
                         <option key={g.id} value={g.id}>{g.name}</option>
                       ))}
@@ -830,6 +900,9 @@ export function AdminClassesPage() {
                       </svg>
                     </span>
                   </div>
+                  {requiresGroupSelection ? (
+                    <p className="mt-2 text-xs text-slate-500">Select Science, Arts, or Commerce for this higher secondary class.</p>
+                  ) : null}
                 </div>
               ) : null}
 

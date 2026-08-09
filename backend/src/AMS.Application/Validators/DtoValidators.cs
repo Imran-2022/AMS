@@ -149,6 +149,15 @@ public class CreateClassCourseDtoValidator : AbstractValidator<CreateClassCourse
         RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Section).NotEmpty().MaximumLength(50);
         RuleFor(x => x.AcademicYear).NotEmpty().MaximumLength(50);
+        RuleFor(x => x.GroupId)
+            .NotEmpty()
+            .When(x => x.ClassDefinitionId is not null && IsHigherSecondaryClass(x.ClassDefinitionId.Value))
+            .WithMessage("Please select a group for this higher secondary class.");
+    }
+
+    private static bool IsHigherSecondaryClass(Guid classDefinitionId)
+    {
+        return false;
     }
 }
 

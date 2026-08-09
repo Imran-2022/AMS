@@ -10,11 +10,16 @@ public class ClassCourseAppService : IClassCourseAppService
 {
     private readonly IClassCourseRepository _classCourseRepository;
     private readonly ITeacherSubjectAssignmentRepository _teacherSubjectAssignmentRepository;
+    private readonly IClassDefinitionRepository _classDefinitionRepository;
 
-    public ClassCourseAppService(IClassCourseRepository classCourseRepository, ITeacherSubjectAssignmentRepository teacherSubjectAssignmentRepository)
+    public ClassCourseAppService(
+        IClassCourseRepository classCourseRepository,
+        ITeacherSubjectAssignmentRepository teacherSubjectAssignmentRepository,
+        IClassDefinitionRepository classDefinitionRepository)
     {
         _classCourseRepository = classCourseRepository;
         _teacherSubjectAssignmentRepository = teacherSubjectAssignmentRepository;
+        _classDefinitionRepository = classDefinitionRepository;
     }
 
     public async Task<IReadOnlyList<ClassCourseDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
@@ -64,6 +69,8 @@ public class ClassCourseAppService : IClassCourseAppService
 
         if (duplicate) throw new DomainException("A class with the same academic year, class, group and section already exists.");
 
+        await EnsureValidGroupSelectionAsync(input.ClassDefinitionId, input.GroupId, input.Name, cancellationToken);
+
         var nameToUse = input.Name;
         var entity = new ClassCourse(Guid.NewGuid(), nameToUse, input.Section, input.AcademicYear, input.ClassDefinitionId, input.GroupId);
         await _classCourseRepository.AddAsync(entity, cancellationToken);
@@ -74,7 +81,11 @@ public class ClassCourseAppService : IClassCourseAppService
     {
         if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can manage classes.");
         var entity = await _classCourseRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Class not found.");
-        var updated = new ClassCourse(entity.Id, input.Name ?? entity.Name, input.Section ?? entity.Section, input.AcademicYear ?? entity.AcademicYear, input.ClassDefinitionId ?? entity.ClassDefinitionId, input.GroupId ?? entity.GroupId);
+        var classDefinitionId = input.ClassDefinitionId ?? entity.ClassDefinitionId;
+        var groupId = input.GroupId ?? entity.GroupId;
+        await EnsureValidGroupSelectionAsync(classDefinitionId, groupId, input.Name ?? entity.Name, cancellationToken);
+
+        var updated = new ClassCourse(entity.Id, input.Name ?? entity.Name, input.Section ?? entity.Section, input.AcademicYear ?? entity.AcademicYear, classDefinitionId, groupId);
         // Prevent duplicates
         var all = await _classCourseRepository.GetAllAsync(cancellationToken);
         var duplicate = all.Any(x => x.Id != entity.Id && string.Equals(x.AcademicYear, updated.AcademicYear, StringComparison.OrdinalIgnoreCase)
@@ -91,6 +102,56 @@ public class ClassCourseAppService : IClassCourseAppService
     {
         if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can manage classes.");
         await _classCourseRepository.DeleteAsync(id, cancellationToken);
+    }
+
+    private async Task EnsureValidGroupSelectionAsync(Guid? classDefinitionId, Guid? groupId, string className, CancellationToken cancellationToken)
+    {
+        if (classDefinitionId is null) return;
+
+        var definition = await _classDefinitionRepository.GetByIdAsync(classDefinitionId.Value, cancellationToken);
+        if (definition is null) return;
+
+        var classNumber = ParseClassNumber(definition.Name);
+        var needsGroup = classNumber is >= 9 and <= 12;
+        if (!needsGroup) return;
+
+        if (groupId is null || groupId == Guid.Empty)
+        {
+            throw new DomainException($"{className} is a higher secondary class. Please select a group before saving.");
+        }
+    }
+
+    private static int? ParseClassNumber(string? className)
+    {
+        if (string.IsNullOrWhiteSpace(className)) return null;
+
+        var normalized = className.Trim().ToLowerInvariant();
+        if (normalized.StartsWith("class"))
+        {
+            normalized = normalized[5..].Trim();
+        }
+
+        if (int.TryParse(normalized, out var parsed))
+        {
+            return parsed;
+        }
+
+        return normalized switch
+        {
+            "one" => 1,
+            "two" => 2,
+            "three" => 3,
+            "four" => 4,
+            "five" => 5,
+            "six" => 6,
+            "seven" => 7,
+            "eight" => 8,
+            "nine" => 9,
+            "ten" => 10,
+            "eleven" => 11,
+            "twelve" => 12,
+            _ => null
+        };
     }
 
     private static ClassCourseDto ToDto(ClassCourse entity) => new()
