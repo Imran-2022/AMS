@@ -286,7 +286,7 @@ export function StudentAssignmentsPage() {
     setModalType('submit');
     setComment(assignment.submission?.contentText ?? '');
     setSelectedFile(null);
-    setUploadedFileName(assignment.submission?.fileName ?? '');
+    setUploadedFileName(assignment.submission?.attachments?.[0]?.originalFileName ?? assignment.submission?.fileName ?? '');
   };
 
   const openAssignmentView = (assignment: AssignmentDto & { studentStatus?: string; submission?: SubmissionDto | null }) => {

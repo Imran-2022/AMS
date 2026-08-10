@@ -15,6 +15,7 @@ public class SubmissionAppService : ISubmissionAppService
     private readonly IClassCourseRepository _classCourseRepository;
     private readonly Microsoft.AspNetCore.Authorization.IAuthorizationService _authorizationService;
     private readonly AMS.Application.Contracts.ICurrentUserService _currentUser;
+    private readonly IAttachmentAppService _attachmentAppService;
 
     public SubmissionAppService(
         ISubmissionRepository submissionRepository,
@@ -23,7 +24,8 @@ public class SubmissionAppService : ISubmissionAppService
         IUserRepository userRepository,
         IClassCourseRepository classCourseRepository,
         Microsoft.AspNetCore.Authorization.IAuthorizationService authorizationService,
-        AMS.Application.Contracts.ICurrentUserService currentUser)
+        AMS.Application.Contracts.ICurrentUserService currentUser,
+        IAttachmentAppService attachmentAppService)
     {
         _submissionRepository = submissionRepository;
         _assignmentRepository = assignmentRepository;
@@ -32,6 +34,7 @@ public class SubmissionAppService : ISubmissionAppService
         _classCourseRepository = classCourseRepository;
         _authorizationService = authorizationService;
         _currentUser = currentUser;
+        _attachmentAppService = attachmentAppService;
     }
 
     public async Task<IReadOnlyList<SubmissionDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
@@ -210,6 +213,7 @@ public class SubmissionAppService : ISubmissionAppService
         var assignment = await _assignmentRepository.GetByIdAsync(submission.AssignmentId, cancellationToken) ?? throw new NotFoundException("Assignment not found.");
         var student = await _userRepository.GetByIdAsync(submission.StudentId, cancellationToken) ?? throw new NotFoundException("Student not found.");
         var classCourse = await _classCourseRepository.GetByIdAsync(assignment.ClassCourseId, cancellationToken) ?? throw new NotFoundException("Class/course not found.");
+        var attachments = await _attachmentAppService.ListAsync("Submission", submission.Id);
 
         var initials = string.Concat(student.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => x[0])).ToUpperInvariant();
 
@@ -235,7 +239,8 @@ public class SubmissionAppService : ISubmissionAppService
             AssignmentTitle = assignment.Title,
             MaxMarks = assignment.MaxMarks,
             ClassCourseName = classCourse.Name,
-            ClassCourseSection = classCourse.Section
+            ClassCourseSection = classCourse.Section,
+            Attachments = attachments
         };
     }
 }

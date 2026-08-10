@@ -196,6 +196,7 @@ export type SubmissionDto = {
   assignmentTitle: string;
   classCourseName: string;
   classCourseSection: string;
+  attachments?: AttachmentDto[];
 };
 
 export type UserDto = {
