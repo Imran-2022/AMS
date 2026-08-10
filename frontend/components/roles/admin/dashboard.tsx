@@ -205,7 +205,7 @@ export function AdminDashboardPage() {
               await loadDashboard();
             } catch (err) {
               console.error(err);
-              alert('Unable to create student. Please check the data and try again.');
+              alert(err instanceof Error ? err.message : 'Unable to create student. Please check the data and try again.');
             } finally {
               setStudentModalSubmitting(false);
             }

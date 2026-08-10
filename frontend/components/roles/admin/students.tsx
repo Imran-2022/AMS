@@ -195,7 +195,7 @@ export function AdminStudentsPage() {
       resetSelection();
     } catch (err) {
       console.error(err);
-      alert('Unable to save student. Please check the form and try again.');
+      alert(err instanceof Error ? err.message : 'Unable to save student. Please check the form and try again.');
     } finally {
       setStudentModalSubmitting(false);
     }

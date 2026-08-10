@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui';
 import { getSubmission, downloadAttachmentToBrowser, type SubmissionDto } from '@/lib/api';
@@ -90,8 +91,7 @@ export default function StudentSubmissionDetailPage() {
 
   return (
     <AppShell role="Student" breadcrumb="Student / My Submission">
-      <div className="min-h-screen bg-[#F6F7FB]">
-        <main className="p-6 space-y-5">
+      <div className="space-y-5">
           <div className="flex items-start justify-between flex-wrap gap-3">
             <div>
               <p className="text-[11px] font-bold tracking-[0.06em] text-brand-600">MY SUBMISSION</p>
@@ -109,13 +109,13 @@ export default function StudentSubmissionDetailPage() {
             <Button
               type="button"
               variant="secondary"
-              onClick={() => router.push('/roles/student/submissions')}
-              className="flex cursor-pointer items-center gap-2 border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+              onClick={() => router.back()}
+              className="!gap-1.5 !px-2.5 !py-1.5 !text-xs !whitespace-nowrap"
             >
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg aria-hidden="true" className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m15 18-6-6 6-6" />
               </svg>
-              Back to submissions
+              Back
             </Button>
           </div>
 
@@ -214,18 +214,23 @@ export default function StudentSubmissionDetailPage() {
               </div>
 
               <div className="space-y-5">
-                <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                <Link
+                  href={`/roles/student/assignments/${submission.assignmentId}`}
+                  className="block cursor-pointer rounded-2xl border border-slate-200 bg-white p-5"
+                >
                   <p className="mb-3 text-[11px] font-bold tracking-[0.06em] text-slate-400">ASSIGNMENT</p>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => router.push(`/roles/student/assignments/${submission.assignmentId}`)}
-                    className="block cursor-pointer text-left text-base font-bold text-slate-800 transition hover:text-brand-600"
-                  >
-                    {submission.assignmentTitle}
-                  </Button>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-base font-bold text-slate-800 transition hover:text-brand-600">
+                      {submission.assignmentTitle}
+                    </p>
+                    <span className="shrink-0 text-slate-400" aria-hidden="true">
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="m9 18 6-6-6-6" />
+                      </svg>
+                    </span>
+                  </div>
                   <p className="mt-0.5 text-sm text-slate-400">{submission.classCourseName}{submission.classCourseSection ? ` · ${submission.classCourseSection}` : ''}</p>
-                </div>
+                </Link>
 
                 <div className="rounded-2xl border border-slate-200 bg-white p-5">
                   <p className="mb-3 text-[11px] font-bold tracking-[0.06em] text-slate-400">SUBMITTED AT</p>
@@ -244,7 +249,6 @@ export default function StudentSubmissionDetailPage() {
               </div>
             </div>
           ) : null}
-        </main>
       </div>
     </AppShell>
   );

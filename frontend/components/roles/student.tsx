@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '../layout/AppShell';
 import { Button, Card, PageHeader, StatusBadge, Metric, FileUpload } from '../ui';
@@ -21,6 +22,7 @@ export function StudentDashboardPage() {
   const [assignments, setAssignments] = useState<AssignmentDto[]>([]);
   const [submissions, setSubmissions] = useState<SubmissionDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     async function load() {
@@ -47,31 +49,43 @@ export function StudentDashboardPage() {
 
   const assignmentRows = useMemo(() => {
     const submissionMap = new Map(submissions.map((submission) => [submission.assignmentId, submission]));
-    return assignments.slice(0, 4).map((assignment) => {
-      const submission = submissionMap.get(assignment.id);
-      const hasSubmitted = Boolean(submission);
-      const status = hasSubmitted ? (submission?.status === 'Graded' ? 'Graded' : 'Submitted') : 'Not submitted';
-      return {
-        id: assignment.id,
-        title: assignment.title,
-        subject: assignment.subjectName,
-        deadline: assignment.deadline,
-        status,
-      };
-    });
+    return assignments
+      .filter((assignment) => new Date(assignment.deadline) > new Date())
+      .filter((assignment) => !submissionMap.has(assignment.id))
+      .slice(0, 4)
+      .map((assignment) => {
+        return {
+          id: assignment.id,
+          title: assignment.title,
+          subject: assignment.subjectName,
+          deadline: assignment.deadline,
+        };
+      });
   }, [assignments, submissions]);
 
-  const pendingCount = assignmentRows.filter((item) => item.status === 'Not submitted').length;
-  const submittedCount = assignmentRows.filter((item) => item.status !== 'Not submitted').length;
+  const pendingCount = assignments
+    .filter((assignment) => new Date(assignment.deadline) > new Date())
+    .filter((assignment) => !submissions.some((submission) => submission.assignmentId === assignment.id)).length;
   const gradedCount = submissions.filter((item) => item.status === 'Graded').length;
   const averageGrade = gradedCount && submissions.some((item) => typeof item.marks === 'number')
     ? Math.round(submissions.filter((item) => typeof item.marks === 'number').reduce((sum, item) => sum + ((item.marks ?? 0) / 100) * 100, 0) / gradedCount)
     : 0;
-  const completedCount = assignmentRows.filter((item) => item.status !== 'Not submitted').length;
-  const totalCount = Math.max(assignmentRows.length, 1);
-  const progress = Math.min(100, Math.max(0, Math.round((completedCount / totalCount) * 100)));
+  const totalAssignmentCount = assignments.length;
+  const submittedAssignmentCount = assignments.filter((assignment) =>
+    submissions.some((submission) => submission.assignmentId === assignment.id)
+  ).length;
+  const notSubmittedAssignmentCount = Math.max(0, totalAssignmentCount - submittedAssignmentCount);
+  const progress = totalAssignmentCount
+    ? Math.round((submittedAssignmentCount / totalAssignmentCount) * 100)
+    : 0;
 
   const dashboardStats = stats ?? {
+    studentName: '',
+    studentId: '',
+    role: 'Student',
+    className: '',
+    classSection: '',
+    academicYear: '',
     enrolledClassesCount: 0,
     activeAssignmentsCount: 0,
     submittedCount: 0,
@@ -82,13 +96,17 @@ export function StudentDashboardPage() {
   return (
     <AppShell role="Student" breadcrumb="Student / Dashboard">
       <div className="space-y-6">
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+        <div>
           <div>
-            <p className="text-xs font-bold text-brand-600 mb-1">STUDENT PORTAL</p>
-            <h1 className="text-2xl font-extrabold text-slate-800">You have {pendingCount} assignment{pendingCount === 1 ? '' : 's'} due this week.</h1>
-            <p className="text-sm text-slate-400 mt-1">{dashboardStats.enrolledClassesCount} enrolled class{dashboardStats.enrolledClassesCount === 1 ? '' : 'es'} · {dashboardStats.activeAssignmentsCount} active assignments</p>
+            <p className="text-base font-semibold text-slate-800">
+              <span className="text-xs font-bold text-brand-600">STUDENT PORTAL</span>
+              <span className="mx-2 text-slate-400">/</span>
+              <span className="uppercase text-xs font-bold text-brand-600">{dashboardStats.studentName || 'Student'}</span>
+            </p>
+            <p className="text-sm text-slate-400 mt-1">
+              Class: {dashboardStats.className || 'Not assigned'}{dashboardStats.classSection ? ` / ${dashboardStats.classSection}` : ''} · Academic year: {dashboardStats.academicYear || 'Not available'}
+            </p>
           </div>
-          <Button className="px-5 py-2.5 bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700">View assignments</Button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -126,29 +144,28 @@ export function StudentDashboardPage() {
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
             <div className="flex items-center justify-between mb-5">
               <p className="text-base font-bold text-slate-800">Upcoming deadlines</p>
-              <span className="badge bg-brand-50 text-brand-600">{pendingCount} pending</span>
+              <span className="badge bg-brand-50 text-brand-600">{pendingCount} not submitted</span>
             </div>
             <div className="space-y-4">
               {loading ? (
                 <p className="text-sm text-slate-500">Loading assignments…</p>
               ) : assignmentRows.length ? (
                 assignmentRows.map((item) => (
-                  <div key={item.id} className={`border border-slate-100 rounded-xl p-4 ${item.status === 'Graded' ? 'opacity-70' : ''}`}>
+                  <Link
+                    href={`/roles/student/assignments/${item.id}`}
+                    key={item.id}
+                    className="block cursor-pointer border border-slate-100 rounded-xl p-4"
+                  >
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <p className="text-sm font-bold text-slate-800">{item.title}</p>
                         <p className="text-xs text-slate-400 mt-0.5">{item.subject}</p>
                       </div>
-                      <span className={`badge ${item.status === 'Not submitted' ? 'bg-rose-50 text-rose-600' : item.status === 'Submitted' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                        <span className={`badge-dot ${item.status === 'Not submitted' ? 'bg-rose-500' : item.status === 'Submitted' ? 'bg-amber-500' : 'bg-emerald-500'}`} />
-                        {item.status === 'Not submitted' ? 'Due soon' : item.status === 'Submitted' ? 'In progress' : 'Submitted'}
-                      </span>
                     </div>
                     <div className="flex items-center justify-between mt-3">
                       <span className="text-[11px] font-mono text-slate-400 bg-slate-50 px-2 py-1 rounded">Due: {new Date(item.deadline).toLocaleString()}</span>
-                      <Button className="px-3.5 py-1.5 bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700">Submit work</Button>
                     </div>
-                  </div>
+                  </Link>
                 ))
               ) : (
                 <p className="text-sm text-slate-500">No assignments available.</p>
@@ -161,13 +178,17 @@ export function StudentDashboardPage() {
               <p className="text-sm font-bold text-slate-800 mb-4">Recent grades & feedback</p>
               <div className="space-y-3">
                 {submissions.filter((item) => item.status === 'Graded' && item.feedback).slice(0, 3).map((submission) => (
-                  <div key={submission.id} className="border border-slate-100 rounded-xl p-3.5">
+                  <Link
+                    key={submission.id}
+                    href={`/roles/student/submissions/${submission.id}`}
+                    className="block border border-slate-100 rounded-xl p-3.5"
+                  >
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-semibold text-slate-700">{submission.assignmentTitle}</p>
-                      <span className="text-sm font-bold text-emerald-600">{submission.marks ?? 0}</span>
+                      <span className="text-sm font-bold text-emerald-600">{submission.marks ?? 0} / {submission.maxMarks ?? 100}</span>
                     </div>
                     <p className="text-xs text-slate-400 mt-1.5">{submission.feedback}</p>
-                  </div>
+                  </Link>
                 ))}
                 {!submissions.some((item) => item.status === 'Graded' && item.feedback) && (
                   <p className="text-sm text-slate-500">No graded feedback yet.</p>
@@ -193,8 +214,8 @@ export function StudentDashboardPage() {
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm text-slate-600"><span className="font-bold text-slate-800">{completedCount}</span> of {totalCount} assignment{totalCount === 1 ? '' : 's'} completed</p>
-                  <p className="text-xs text-slate-400 mt-1">{dashboardStats.upcomingDeadlinesCount} due soon</p>
+                  <p className="text-sm text-slate-600"><span className="font-bold text-slate-800">{submittedAssignmentCount}</span> of {totalAssignmentCount} assignment{totalAssignmentCount === 1 ? '' : 's'} submitted</p>
+                  <p className="text-xs text-slate-400 mt-1">{notSubmittedAssignmentCount} not submitted</p>
                 </div>
               </div>
             </div>

@@ -82,8 +82,16 @@ public class DashboardAppService : IDashboardAppService
 
     public async Task<StudentDashboardStatsDto> GetStudentStatsAsync(Guid studentId)
     {
+        var student = await _userRepository.GetByIdAsync(studentId) ?? throw new DomainException("Student not found.");
         var enrollments = await _enrollmentRepository.GetByStudentAsync(studentId);
         var submissions = await _submissionRepository.GetByStudentAsync(studentId);
+
+        var enrolledClasses = new List<Domain.Entities.ClassCourse>();
+        foreach (var enrollment in enrollments)
+        {
+            var classCourse = await _classCourseRepository.GetByIdAsync(enrollment.ClassCourseId);
+            if (classCourse is not null) enrolledClasses.Add(classCourse);
+        }
 
         var enrolledClassIds = enrollments.Select(e => e.ClassCourseId).Distinct().ToList();
         var allAssignments = new List<Domain.Entities.Assignment>();
@@ -102,6 +110,12 @@ public class DashboardAppService : IDashboardAppService
 
         return new StudentDashboardStatsDto
         {
+            StudentName = student.FullName,
+            StudentId = student.StudentId,
+            Role = student.Role.ToString(),
+            ClassName = enrolledClasses.FirstOrDefault()?.Name ?? string.Empty,
+            ClassSection = enrolledClasses.FirstOrDefault()?.Section ?? string.Empty,
+            AcademicYear = enrolledClasses.FirstOrDefault()?.AcademicYear ?? string.Empty,
             EnrolledClassesCount = enrollments.Count,
             ActiveAssignmentsCount = allAssignments.Count,
             SubmittedCount = submitted,
