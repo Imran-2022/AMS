@@ -102,9 +102,14 @@ export default function StudentAssignmentDetailPage() {
     (assignment?.allowResubmission || submission.status === 'ResubmissionRequested')
   );
   const canSubmit = Boolean(assignment) && (!submission || canResubmit);
+  const canSubmitForm = canSubmit && comment.trim().length > 0;
 
   async function handleSubmit() {
     if (!assignment || !canSubmit) return;
+    if (!comment.trim()) {
+      setError('Description is required.');
+      return;
+    }
     try {
       setSubmitting(true);
       const nextSubmission = submission
@@ -281,7 +286,7 @@ export default function StudentAssignmentDetailPage() {
                   </div>
                   <div>
                     <label htmlFor="submission-description" className="mb-2 block text-[13px] font-semibold text-slate-800">
-                      Description <span className="font-normal text-slate-400">(optional)</span>
+                      Description <span className="text-rose-500">*</span>
                     </label>
                     <textarea
                       id="submission-description"
@@ -295,7 +300,7 @@ export default function StudentAssignmentDetailPage() {
                 </div>
                 <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/70 px-6 py-4">
                   <Button type="button" variant="secondary" onClick={() => setSubmitOpen(false)}>Cancel</Button>
-                  <Button type="button" disabled={submitting} onClick={() => void handleSubmit()}>
+                  <Button type="button" disabled={submitting || !canSubmitForm} onClick={() => void handleSubmit()}>
                     {submitting ? (submission ? 'Re-submitting...' : 'Submitting...') : (submission ? 'Re-submit' : 'Submit')}
                   </Button>
                 </div>

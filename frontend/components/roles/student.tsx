@@ -59,6 +59,7 @@ export function StudentDashboardPage() {
           title: assignment.title,
           subject: assignment.subjectName,
           deadline: assignment.deadline,
+          maxMarks: assignment.maxMarks,
         };
       });
   }, [assignments, submissions]);
@@ -123,7 +124,7 @@ export function StudentDashboardPage() {
               <p className="text-[11px] font-bold text-slate-400">DUE THIS WEEK</p>
             </div>
             <p className="text-2xl font-extrabold text-slate-800">{dashboardStats.upcomingDeadlinesCount}</p>
-            <p className="text-xs text-slate-400 mt-1">Upcoming deadlines</p>
+            <p className="text-xs text-slate-400 mt-1">Upcoming Deadlines</p>
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-4">
@@ -151,7 +152,7 @@ export function StudentDashboardPage() {
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6 items-start">
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
             <div className="flex items-center justify-between mb-5">
-              <p className="text-base font-bold text-slate-800">Upcoming deadlines</p>
+              <p className="text-base font-bold text-slate-800">Upcoming Deadlines</p>
               <span className="badge bg-brand-50 text-brand-600">{pendingCount} not submitted</span>
             </div>
             <div className="space-y-4">
@@ -165,13 +166,16 @@ export function StudentDashboardPage() {
                     className="block cursor-pointer border border-slate-100 rounded-xl p-4"
                   >
                     <div className="flex items-start justify-between gap-4">
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-sm font-bold text-slate-800">{item.title}</p>
                         <p className="text-xs text-slate-400 mt-0.5">{item.subject}</p>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between mt-3">
-                      <span className="text-[11px] font-mono text-slate-400 bg-slate-50 px-2 py-1 rounded">Due: {new Date(item.deadline).toLocaleString()}</span>
+                      <div className="shrink-0 flex flex-col items-end gap-1 text-right">
+                        <p className="text-xs font-semibold text-amber-600">Max marks: {item.maxMarks}</p>
+                        <p className="text-xs font-semibold text-slate-600">
+                          Due {new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(item.deadline))}
+                        </p>
+                      </div>
                     </div>
                   </Link>
                 ))
@@ -192,7 +196,7 @@ export function StudentDashboardPage() {
 
           <div className="space-y-4">
             <div className="bg-white rounded-2xl border border-slate-200 p-5">
-              <p className="text-sm font-bold text-slate-800 mb-4">Recent grades & feedback</p>
+              <p className="text-sm font-bold text-slate-800 mb-4">Recent Grades & Feedback</p>
               <div className="space-y-3">
                 {submissions.filter((item) => item.status === 'Graded' && item.feedback).slice(0, 3).map((submission) => (
                   <Link
@@ -361,6 +365,10 @@ export function StudentAssignmentsPage() {
 
   async function submitAssignment() {
     if (!selectedAssignment) return;
+    if (!comment.trim()) {
+      alert('Description is required.');
+      return;
+    }
     try {
       setLoading(true);
       let submission: SubmissionDto;
@@ -591,7 +599,7 @@ export function StudentAssignmentsPage() {
                   </div>
 
                   <div>
-                    <label className="mb-2 block text-[13px] font-semibold text-slate-800">Description <span className="font-normal text-slate-400">(optional)</span></label>
+                    <label className="mb-2 block text-[13px] font-semibold text-slate-800">Description <span className="text-rose-500">*</span></label>
                     <textarea
                       rows={4}
                       value={comment}
@@ -607,7 +615,7 @@ export function StudentAssignmentsPage() {
                 <Button type="button" variant="secondary" onClick={closeModal} className="border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                   Cancel
                 </Button>
-                <Button type="button" onClick={submitAssignment} className="bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700">
+                <Button type="button" disabled={!comment.trim()} onClick={submitAssignment} className="bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700">
                   {selectedAssignment.submission ? 'Re-submit' : 'Submit'}
                 </Button>
               </div>
