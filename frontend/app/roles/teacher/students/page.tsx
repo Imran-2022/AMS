@@ -160,7 +160,7 @@ export default function StudentsPage(){
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-[11px] font-bold text-slate-400">{classCounts[0]?.className ?? 'CLASS 1'}</p>
+            <p className="text-[11px] font-bold text-slate-400">{isLoading ? 'CLASS' : (classCounts[0]?.className ?? 'NO CLASS')}</p>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 7h18"/><path d="M12 4v16"/><path d="M6 11h12"/></svg>
             </div>
@@ -168,16 +168,16 @@ export default function StudentsPage(){
           <p className="text-2xl font-extrabold text-slate-800">{isLoading ? '—' : (classCounts[0]?.count ?? 0)}</p>
           <p className="mt-1 text-xs text-slate-400">Students in this class</p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        {classCounts[1] || isLoading ? <div className="rounded-2xl border border-slate-200 bg-white p-5">
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-[11px] font-bold text-slate-400">{classCounts[1]?.className ?? 'CLASS 2'}</p>
+            <p className="text-[11px] font-bold text-slate-400">{isLoading ? 'CLASS' : classCounts[1]?.className}</p>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19h16"/><path d="M5 15h14"/><path d="M7 11h10"/></svg>
             </div>
           </div>
           <p className="text-2xl font-extrabold text-slate-800">{isLoading ? '—' : (classCounts[1]?.count ?? 0)}</p>
           <p className="mt-1 text-xs text-slate-400">Students in this class</p>
-        </div>
+        </div> : null}
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
           <div className="mb-4 flex items-center justify-between">
             <p className="text-[11px] font-bold text-slate-400">NEEDS ATTENTION</p>
