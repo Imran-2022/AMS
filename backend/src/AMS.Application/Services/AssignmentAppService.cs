@@ -15,6 +15,7 @@ public class AssignmentAppService : IAssignmentAppService
     private readonly IUserRepository _userRepository;
     private readonly IClassCourseRepository _classCourseRepository;
     private readonly ISubjectRepository _subjectRepository;
+    private readonly IAttachmentAppService _attachmentAppService;
 
     public AssignmentAppService(
         IAssignmentRepository assignmentRepository,
@@ -23,7 +24,8 @@ public class AssignmentAppService : IAssignmentAppService
         ISubmissionRepository submissionRepository,
         IUserRepository userRepository,
         IClassCourseRepository classCourseRepository,
-        ISubjectRepository subjectRepository)
+        ISubjectRepository subjectRepository,
+        IAttachmentAppService attachmentAppService)
     {
         _assignmentRepository = assignmentRepository;
         _teacherSubjectAssignmentRepository = teacherSubjectAssignmentRepository;
@@ -32,6 +34,7 @@ public class AssignmentAppService : IAssignmentAppService
         _userRepository = userRepository;
         _classCourseRepository = classCourseRepository;
         _subjectRepository = subjectRepository;
+        _attachmentAppService = attachmentAppService;
     }
 
     public async Task<IReadOnlyList<AssignmentDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
@@ -133,19 +136,15 @@ public class AssignmentAppService : IAssignmentAppService
 
         var newDeadline = NormalizeToUtcNullable(input.Deadline) ?? assignment.Deadline;
 
-        assignment = new Assignment(
-            assignment.Id,
+        assignment.UpdateDetails(
             input.Title ?? assignment.Title,
             input.Description ?? assignment.Description,
             input.ClassCourseId ?? assignment.ClassCourseId,
             input.SubjectId ?? assignment.SubjectId,
-            assignment.TeacherId,
             newDeadline,
             input.MaxMarks ?? assignment.MaxMarks,
-            assignment.Status,
             input.AllowLateSubmission ?? assignment.AllowLateSubmission,
             input.AllowResubmission ?? assignment.AllowResubmission,
-            assignment.CreatedAt,
             input.AttachmentUrl ?? assignment.AttachmentUrl,
             input.AttachmentName ?? assignment.AttachmentName);
 
@@ -153,10 +152,38 @@ public class AssignmentAppService : IAssignmentAppService
         return await ToDtoAsync(assignment, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<AssignmentDto> DuplicateAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
+    {
+        var existingAssignment = await _assignmentRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Assignment not found.");
+        EnsureCanManage(existingAssignment, currentUserId, currentUserRole);
+
+        var duplicateAssignment = new Assignment(
+            Guid.NewGuid(),
+            existingAssignment.Title + " (Copy)",
+            existingAssignment.Description,
+            existingAssignment.ClassCourseId,
+            existingAssignment.SubjectId,
+            existingAssignment.TeacherId,
+            existingAssignment.Deadline,
+            existingAssignment.MaxMarks,
+            AssignmentStatus.Draft,
+            existingAssignment.AllowLateSubmission,
+            existingAssignment.AllowResubmission,
+            DateTime.UtcNow,
+            existingAssignment.AttachmentUrl,
+            existingAssignment.AttachmentName);
+
+        await _assignmentRepository.AddAsync(duplicateAssignment, cancellationToken);
+        await _attachmentAppService.CloneAttachmentsAsync("Assignment", existingAssignment.Id, "Assignment", duplicateAssignment.Id);
+
+        return await ToDtoAsync(duplicateAssignment, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task DeleteAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
     {
         var assignment = await _assignmentRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Assignment not found.");
         EnsureCanManage(assignment, currentUserId, currentUserRole);
+        await _attachmentAppService.DeleteByOwnerAsync("Assignment", id);
         await _assignmentRepository.DeleteAsync(id, cancellationToken);
     }
 
@@ -195,9 +222,12 @@ public class AssignmentAppService : IAssignmentAppService
     {
         var classCourse = await _classCourseRepository.GetByIdAsync(assignment.ClassCourseId, cancellationToken) ?? throw new NotFoundException("Class/course not found.");
         var subject = await _subjectRepository.GetByIdAsync(assignment.SubjectId, cancellationToken) ?? throw new NotFoundException("Subject not found.");
+        var teacher = await _userRepository.GetByIdAsync(assignment.TeacherId, cancellationToken);
 
         var submissions = await _submissionRepository.GetByAssignmentAsync(assignment.Id, cancellationToken).ConfigureAwait(false);
         var enrollments = await _studentEnrollmentRepository.GetByClassCourseAsync(assignment.ClassCourseId, cancellationToken).ConfigureAwait(false);
+
+        var attachments = await _attachmentAppService.ListAsync("Assignment", assignment.Id);
 
         return new AssignmentDto
         {
@@ -218,8 +248,10 @@ public class AssignmentAppService : IAssignmentAppService
             ClassCourseName = classCourse.Name,
             ClassCourseSection = classCourse.Section,
             SubjectName = subject.Name,
+            TeacherName = teacher?.FullName ?? string.Empty,
             SubmittedCount = submissions.Count,
-            TotalStudents = enrollments.Count
+            TotalStudents = enrollments.Count,
+            Attachments = attachments
         };
     }
 }

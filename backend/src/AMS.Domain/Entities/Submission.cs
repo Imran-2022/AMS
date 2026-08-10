@@ -55,6 +55,11 @@ public class Submission
         Status = SubmissionStatus.ResubmissionRequested;
     }
 
+    public void UpdateStatus(SubmissionStatus status)
+    {
+        Status = status;
+    }
+
     public void Resubmit(string contentText, string? fileUrl, string? fileName, DateTime now, DateTime deadline, bool allowLateSubmission)
     {
         if (now > deadline && !allowLateSubmission)
@@ -69,6 +74,10 @@ public class Submission
         ResubmissionCount++;
         IsLate = now > deadline;
         Status = IsLate ? SubmissionStatus.Late : SubmissionStatus.Resubmitted;
+        Marks = null;
+        Feedback = null;
+        GradedByTeacherId = null;
+        GradedAt = null;
     }
 
     public void EditBeforeDeadline(string contentText, string? fileUrl, string? fileName, DateTime now, DateTime deadline, bool allowLateSubmission)

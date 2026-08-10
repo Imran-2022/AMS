@@ -51,6 +51,25 @@ public class Assignment
         AttachmentName = attachmentName;
     }
 
+    public void UpdateDetails(string title, string description, Guid classCourseId, Guid subjectId, DateTime deadline,
+        int maxMarks, bool allowLateSubmission, bool allowResubmission, string? attachmentUrl, string? attachmentName)
+    {
+        if (string.IsNullOrWhiteSpace(title)) throw new DomainException("Title is required.");
+        if (maxMarks <= 0) throw new DomainException("Max marks must be positive.");
+        if (deadline == default) throw new DomainException("Deadline is required.");
+
+        Title = title;
+        Description = description ?? string.Empty;
+        ClassCourseId = classCourseId;
+        SubjectId = subjectId;
+        Deadline = deadline;
+        MaxMarks = maxMarks;
+        AllowLateSubmission = allowLateSubmission;
+        AllowResubmission = allowResubmission;
+        AttachmentUrl = attachmentUrl;
+        AttachmentName = attachmentName;
+    }
+
     public void Publish()
     {
         Status = AssignmentStatus.Published;

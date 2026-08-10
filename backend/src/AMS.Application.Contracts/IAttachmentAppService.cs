@@ -6,6 +6,9 @@ public interface IAttachmentAppService
 {
     Task<AttachmentDto> AddAsync(string ownerType, Guid ownerId, Stream fileStream, string fileName, string contentType, Guid uploadedBy);
     Task<IReadOnlyList<AttachmentDto>> ListAsync(string ownerType, Guid ownerId);
+    Task<AttachmentDto> RenameAsync(Guid id, string newOriginalFileName);
+    Task CloneAttachmentsAsync(string ownerType, Guid sourceOwnerId, string destinationOwnerType, Guid destinationOwnerId);
     Task DeleteAsync(Guid id);
+    Task DeleteByOwnerAsync(string ownerType, Guid ownerId);
     Task<Stream?> OpenStreamAsync(string storedFileName);
 }

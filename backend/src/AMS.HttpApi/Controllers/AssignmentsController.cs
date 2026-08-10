@@ -86,6 +86,16 @@ public class AssignmentsController : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("{id:guid}/duplicate")]
+    [Authorize(Policy = "TeachersOrAdmins")]
+    public async Task<ActionResult<AssignmentDto>> Duplicate(Guid id)
+    {
+        var currentUserId = _currentUser.UserId;
+        var currentUserRole = _currentUser.Role;
+        var assignment = await _assignmentAppService.DuplicateAsync(id, currentUserId, currentUserRole);
+        return CreatedAtAction(nameof(GetById), new { id = assignment.Id }, assignment);
+    }
+
     [HttpPatch("{id:guid}/publish")]
     [Authorize(Policy = "TeachersOrAdmins")]
     public async Task<ActionResult<AssignmentDto>> Publish(Guid id)

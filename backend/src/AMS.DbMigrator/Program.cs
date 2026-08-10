@@ -167,7 +167,7 @@ if (classCourse.Count == 0)
 
         if (teacher is not null && student is not null)
         {
-            var assignment = new Assignment(Guid.NewGuid(), "Algebra Basics", "Complete the algebra worksheet.", oneCourse.Id, math.Id, teacher.Id, DateTime.UtcNow.AddDays(7), 100, AssignmentStatus.Published, true, false, DateTime.UtcNow);
+            var assignment = new Assignment(Guid.NewGuid(), "Algebra Basics", "Complete the algebra worksheet.", oneCourse.Id, math.Id, teacher.Id, DateTime.UtcNow.AddDays(7), 100, AssignmentStatus.Published, false, true, DateTime.UtcNow);
             await assignmentRepo.AddAsync(assignment, CancellationToken.None);
 
             var submission = new Submission(Guid.NewGuid(), assignment.Id, student.Id, "Completed worksheet.", null, DateTime.UtcNow, false, SubmissionStatus.Submitted);
