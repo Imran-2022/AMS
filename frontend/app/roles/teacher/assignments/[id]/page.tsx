@@ -116,7 +116,7 @@ export default function TeacherAssignmentDetailPage() {
                   <div className="space-y-2.5">
                     {(assignment?.attachments ?? []).length > 0 ? (
                       (assignment?.attachments ?? []).map((attachment) => (
-                        <button key={attachment.id} type="button" onClick={() => void downloadAttachmentToBrowser(attachment.downloadUrl, attachment.originalFileName)} className="flex w-full items-center gap-3 p-3 rounded-xl border border-slate-100 hover:bg-slate-50 text-left">
+                        <button key={attachment.id} type="button" onClick={() => void downloadAttachmentToBrowser(attachment.downloadUrl, attachment.originalFileName)} className="flex w-full cursor-pointer items-center gap-3 p-3 rounded-xl border border-slate-100 hover:bg-slate-50 text-left">
                           <div className="w-9 h-9 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center shrink-0">
                             <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
                           </div>
@@ -143,7 +143,7 @@ export default function TeacherAssignmentDetailPage() {
                     <span className="text-slate-400">of {assignment?.totalStudents ?? 0} students</span>
                   </div>
                   <div className="progress-track">
-                    <div className="progress-fill bg-slate-300" style={{ width: `${submissionPercent}%` }} />
+                    <div className="progress-fill bg-brand-600" style={{ width: `${submissionPercent}%` }} />
                   </div>
                   <p className="text-xs text-slate-400 mt-2">
                     {assignment?.submittedCount ? `${assignment.submittedCount} submission${assignment.submittedCount === 1 ? '' : 's'} current` : 'No submissions yet — nothing to grade until a student turns in work.'}
