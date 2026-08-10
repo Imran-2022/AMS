@@ -118,6 +118,8 @@ export function TeacherAssignmentsPage() {
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
   const [pageIndex, setPageIndex] = useState(0);
 
+  const selectedClassCourseId = searchParams.get('classCourseId');
+
   useEffect(() => {
     const handleClick = () => setOpenMenuId(null);
     window.addEventListener('click', handleClick);
@@ -161,6 +163,15 @@ export function TeacherAssignmentsPage() {
     }
   }, [classes, subjects, form.classCourseId, modalOpen]);
 
+  const selectedClassLabel = useMemo(() => {
+    const selectedClass = classes.find((classCourse) => classCourse.id === selectedClassCourseId);
+    return selectedClass ? `${selectedClass.name} — ${selectedClass.section}` : null;
+  }, [classes, selectedClassCourseId]);
+
+  useEffect(() => {
+    setClassFilter(selectedClassLabel ?? 'All classes');
+  }, [selectedClassLabel]);
+
   const visibleAssignments = useMemo(() => {
     return assignments.filter((assignment) => {
       const matchesFilter =
@@ -182,7 +193,7 @@ export function TeacherAssignmentsPage() {
 
   useEffect(() => {
     setPageIndex(0);
-  }, [filter, classFilter, sectionFilter, subjectFilter, searchTerm]);
+  }, [filter, classFilter, sectionFilter, subjectFilter, searchTerm, searchParams]);
 
   const pagedAssignments = useMemo(() => {
     const start = pageIndex * pageSize;
@@ -202,10 +213,11 @@ export function TeacherAssignmentsPage() {
     };
   }, [assignments]);
 
-  const availableClasses = useMemo(
-    () => ['All classes', ...Array.from(new Set(assignments.map((assignment) => `${assignment.classCourseName} — ${assignment.classCourseSection}`)))],
-    [assignments]
-  );
+  const availableClasses = useMemo(() => {
+    const classNames = assignments.map((assignment) => `${assignment.classCourseName} — ${assignment.classCourseSection}`);
+    if (selectedClassLabel) classNames.push(selectedClassLabel);
+    return ['All classes', ...Array.from(new Set(classNames))];
+  }, [assignments, selectedClassLabel]);
 
   const availableSections = useMemo(
     () => ['All sections', ...Array.from(new Set(assignments.map((assignment) => assignment.classCourseSection)))],

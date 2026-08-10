@@ -345,6 +345,13 @@ export type SubjectDto = {
   classCourseId: string;
 };
 
+export type StudentEnrollmentDto = {
+  studentId: string;
+  studentName: string;
+  classCourseId: string;
+  classCourseName: string;
+};
+
 export type CreateSubjectDto = {
   name: string;
   code: string;
@@ -480,6 +487,10 @@ export async function toggleUserStatus(id: string) {
 
 export async function getClassCourses() {
   return request<ClassCourseDto[]>(`/api/classes`);
+}
+
+export async function getEnrollments() {
+  return request<StudentEnrollmentDto[]>(`/api/enrollments`);
 }
 
 export async function getAcademicYears() {
