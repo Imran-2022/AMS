@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { AppShell } from '@/components/layout/AppShell';
+import { Button } from '@/components/ui';
 import { getSubmission, downloadAttachmentToBrowser, type SubmissionDto } from '@/lib/api';
 
 function normalizeFeedbackText(value?: string | null) {
@@ -89,8 +91,7 @@ export default function StudentSubmissionDetailPage() {
 
   return (
     <AppShell role="Student" breadcrumb="Student / My Submission">
-      <div className="min-h-screen bg-[#F6F7FB]">
-        <main className="p-6 space-y-5">
+      <div className="space-y-5">
           <div className="flex items-start justify-between flex-wrap gap-3">
             <div>
               <p className="text-[11px] font-bold tracking-[0.06em] text-brand-600">MY SUBMISSION</p>
@@ -105,16 +106,17 @@ export default function StudentSubmissionDetailPage() {
               </div>
             </div>
 
-            <button
+            <Button
               type="button"
-              onClick={() => router.push('/roles/student/submissions')}
-              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+              variant="secondary"
+              onClick={() => router.back()}
+              className="!h-11 !gap-2 !px-4 !py-2 !text-sm !whitespace-nowrap"
             >
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg aria-hidden="true" className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m15 18-6-6 6-6" />
               </svg>
-              Back to submissions
-            </button>
+              Back
+            </Button>
           </div>
 
           {error ? (
@@ -134,14 +136,16 @@ export default function StudentSubmissionDetailPage() {
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-white p-6">
-                  <p className="mb-3 text-[11px] font-bold tracking-[0.06em] text-slate-400">ATTACHMENT</p>
-                  {submission.attachments?.length ? (
-                    submission.attachments.map((attachment) => (
-                    <button
+                  <p className="mb-3 text-[11px] font-bold tracking-[0.06em] text-slate-400">ATTACHMENTS</p>
+                  <div className="space-y-2.5">
+                    {submission.attachments?.length ? (
+                      submission.attachments.map((attachment) => (
+                    <Button
                       key={attachment.id}
                       type="button"
+                      variant="ghost"
                       onClick={() => void downloadAttachmentToBrowser(attachment.downloadUrl, attachment.originalFileName)}
-                      className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-100 p-3 text-left transition hover:bg-slate-50"
+                      className="flex w-full cursor-pointer items-center gap-3 border border-slate-100 p-3 text-left transition hover:bg-slate-50"
                     >
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-500">
                         <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
@@ -151,13 +155,14 @@ export default function StudentSubmissionDetailPage() {
                         <p className="text-[11px] text-slate-400">{attachment.contentType} · {Math.max(1, Math.round(attachment.sizeBytes / 1024))} KB</p>
                       </div>
                       <svg className="h-4 w-4 shrink-0 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-                    </button>
-                    ))
-                  ) : submission.fileName ? (
-                    <button
+                    </Button>
+                      ))
+                    ) : submission.fileName ? (
+                    <Button
                       type="button"
+                      variant="ghost"
                       onClick={() => submission.fileUrl ? void downloadAttachmentToBrowser(submission.fileUrl, submission.fileName ?? 'submission-file') : undefined}
-                      className="flex items-center gap-3 rounded-xl border border-slate-100 p-3 text-left transition hover:bg-slate-50"
+                      className="flex w-full cursor-pointer items-center gap-3 border border-slate-100 p-3 text-left transition hover:bg-slate-50"
                     >
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-500">
                         <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -174,9 +179,9 @@ export default function StudentSubmissionDetailPage() {
                         <polyline points="7 10 12 15 17 10" />
                         <line x1="12" y1="15" x2="12" y2="3" />
                       </svg>
-                    </button>
-                  ) : (
-                    <div className="flex items-center gap-3 text-slate-400">
+                    </Button>
+                    ) : (
+                      <div className="flex items-center gap-3 text-slate-400">
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-50">
                         <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M21.44 11.05 12.25 20.24a5 5 0 0 1-7.07-7.07l9.19-9.19a3 3 0 0 1 4.24 4.24l-9.2 9.19a1 1 0 0 1-1.41-1.41l8.49-8.49" />
@@ -184,7 +189,8 @@ export default function StudentSubmissionDetailPage() {
                       </div>
                       <p className="text-sm">No file uploaded for this submission.</p>
                     </div>
-                  )}
+                    )}
+                  </div>
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-white p-6">
@@ -210,17 +216,23 @@ export default function StudentSubmissionDetailPage() {
               </div>
 
               <div className="space-y-5">
-                <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                <Link
+                  href={`/roles/student/assignments/${submission.assignmentId}`}
+                  className="block cursor-pointer rounded-2xl border border-slate-200 bg-white p-5"
+                >
                   <p className="mb-3 text-[11px] font-bold tracking-[0.06em] text-slate-400">ASSIGNMENT</p>
-                  <button
-                    type="button"
-                    onClick={() => router.push(`/roles/student/assignments/${submission.assignmentId}`)}
-                    className="block text-left text-base font-bold text-slate-800 transition hover:text-brand-600"
-                  >
-                    {submission.assignmentTitle}
-                  </button>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-base font-bold text-slate-800 transition hover:text-brand-600">
+                      {submission.assignmentTitle}
+                    </p>
+                    <span className="shrink-0 text-slate-400" aria-hidden="true">
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="m9 18 6-6-6-6" />
+                      </svg>
+                    </span>
+                  </div>
                   <p className="mt-0.5 text-sm text-slate-400">{submission.classCourseName}{submission.classCourseSection ? ` · ${submission.classCourseSection}` : ''}</p>
-                </div>
+                </Link>
 
                 <div className="rounded-2xl border border-slate-200 bg-white p-5">
                   <p className="mb-3 text-[11px] font-bold tracking-[0.06em] text-slate-400">SUBMITTED AT</p>
@@ -239,7 +251,6 @@ export default function StudentSubmissionDetailPage() {
               </div>
             </div>
           ) : null}
-        </main>
       </div>
     </AppShell>
   );

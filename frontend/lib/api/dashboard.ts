@@ -19,6 +19,13 @@ export interface TeacherDashboardStats {
 }
 
 export interface StudentDashboardStats {
+  studentName: string;
+  studentId: string;
+  role: string;
+  className: string;
+  classSection: string;
+  groupName?: string;
+  academicYear: string;
   enrolledClassesCount: number;
   activeAssignmentsCount: number;
   submittedCount: number;

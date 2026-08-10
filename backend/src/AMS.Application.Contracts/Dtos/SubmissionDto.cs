@@ -23,6 +23,7 @@ public class SubmissionDto
     public int MaxMarks { get; set; }
     public string ClassCourseName { get; set; } = string.Empty;
     public string ClassCourseSection { get; set; } = string.Empty;
+    public string? GroupName { get; set; }
     public IReadOnlyList<AttachmentDto> Attachments { get; set; } = Array.Empty<AttachmentDto>();
 }
 

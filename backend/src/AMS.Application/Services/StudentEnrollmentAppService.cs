@@ -84,6 +84,16 @@ public class StudentEnrollmentAppService : IEnrollmentAppService
         var existing = await _enrollmentRepository.GetAsync(input.StudentId, input.ClassCourseId, cancellationToken);
         if (existing is not null) throw new ValidationException("Student is already enrolled in this class.");
 
+        var studentEnrollments = await _enrollmentRepository.GetByStudentAsync(input.StudentId, cancellationToken);
+        foreach (var studentEnrollment in studentEnrollments)
+        {
+            var enrolledClass = await _classCourseRepository.GetByIdAsync(studentEnrollment.ClassCourseId, cancellationToken);
+            if (enrolledClass is not null && string.Equals(enrolledClass.AcademicYear, classCourse.AcademicYear, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ValidationException("A student can only be enrolled in one class per academic year.");
+            }
+        }
+
         var enrollment = new StudentEnrollment(input.StudentId, input.ClassCourseId);
         await _enrollmentRepository.AddAsync(enrollment, cancellationToken);
 
