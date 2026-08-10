@@ -1,46 +1,133 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { AppShell } from '../../layout/AppShell';
 import { Button } from '../../ui/Button';
-import { getAssignments, getClassCourses, getSubjects } from '@/lib/api';
+import { getAssignments, getClassCourses, getSubjects, createAssignment, publishAssignment, uploadAttachment } from '@/lib/api';
 import { getTeacherDashboardStats, type TeacherDashboardStats } from '@/lib/api/dashboard';
-import type { AssignmentDto, ClassCourseDto, SubjectDto } from '@/lib/api';
+import type { AssignmentDto, ClassCourseDto, SubjectDto, CreateAssignmentDto } from '@/lib/api';
+import { TeacherAssignmentCreateModal } from './AssignmentCreateModal';
 
 export function TeacherDashboardPage() {
+  const router = useRouter();
   const [stats, setStats] = useState<TeacherDashboardStats | null>(null);
   const [classes, setClasses] = useState<ClassCourseDto[]>([]);
   const [subjects, setSubjects] = useState<SubjectDto[]>([]);
   const [assignments, setAssignments] = useState<AssignmentDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
 
   const greeting = new Date().getHours() < 12 ? 'GOOD MORNING' : new Date().getHours() < 18 ? 'GOOD AFTERNOON' : 'GOOD EVENING';
 
-  useEffect(() => {
-    async function loadDashboard() {
-      setLoadError(null);
-      setLoading(true);
-      try {
-        const [dashboardStats, apiClasses, apiSubjects, apiAssignments] = await Promise.all([
-          getTeacherDashboardStats(),
-          getClassCourses(),
-          getSubjects(),
-          getAssignments()
-        ]);
+  const goToSubmissions = () => {
+    router.push('/roles/teacher/submissions');
+  };
 
-        setStats(dashboardStats);
-        setClasses(apiClasses);
-        setSubjects(apiSubjects);
-        setAssignments(apiAssignments);
-      } catch (err) {
-        console.error(err);
-        setLoadError('Unable to load dashboard data. Please refresh the page.');
-      } finally {
-        setLoading(false);
-      }
+  const goToAssignments = () => {
+    router.push('/roles/teacher/assignments');
+  };
+
+  const handleCreateAssignmentClick = () => {
+    setCreateModalOpen(true);
+  };
+
+  const closeCreateModal = () => {
+    setCreateModalOpen(false);
+  };
+
+  async function loadDashboard() {
+    setLoadError(null);
+    setLoading(true);
+    try {
+      const [dashboardStats, apiClasses, apiSubjects, apiAssignments] = await Promise.all([
+        getTeacherDashboardStats(),
+        getClassCourses(),
+        getSubjects(),
+        getAssignments()
+      ]);
+
+      setStats(dashboardStats);
+      setClasses(apiClasses);
+      setSubjects(apiSubjects);
+      setAssignments(apiAssignments);
+    } catch (err) {
+      console.error(err);
+      setLoadError('Unable to load dashboard data. Please refresh the page.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handleSaveDraft = async (payload: {
+    title: string;
+    description: string;
+    classCourseId: string;
+    subjectId: string;
+    deadline: string;
+    maxMarks: number;
+    attachmentFiles?: File[];
+  }) => {
+    const dto: CreateAssignmentDto = {
+      title: payload.title,
+      description: payload.description,
+      classCourseId: payload.classCourseId,
+      subjectId: payload.subjectId,
+      deadline: payload.deadline,
+      maxMarks: payload.maxMarks,
+      allowLateSubmission: false,
+      allowResubmission: false,
+    };
+
+    const created = await createAssignment(dto);
+
+    if (payload.attachmentFiles?.length) {
+      await Promise.all(payload.attachmentFiles.map((file) => uploadAttachment('Assignment', created.id, file)));
     }
 
+    await loadDashboard();
+  };
+
+  const handlePublish = async (payload: {
+    title: string;
+    description: string;
+    classCourseId: string;
+    subjectId: string;
+    deadline: string;
+    maxMarks: number;
+    attachmentFiles?: File[];
+  }) => {
+    const dto: CreateAssignmentDto = {
+      title: payload.title,
+      description: payload.description,
+      classCourseId: payload.classCourseId,
+      subjectId: payload.subjectId,
+      deadline: payload.deadline,
+      maxMarks: payload.maxMarks,
+      allowLateSubmission: false,
+      allowResubmission: false,
+    };
+
+    const created = await createAssignment(dto);
+
+    if (payload.attachmentFiles?.length) {
+      await Promise.all(payload.attachmentFiles.map((file) => uploadAttachment('Assignment', created.id, file)));
+    }
+
+    await publishAssignment(created.id);
+    await loadDashboard();
+  };
+
+  const goToAssignmentDetail = (assignmentId: string) => {
+    router.push(`/roles/teacher/assignments/${assignmentId}`);
+  };
+
+  const goToClasses = () => {
+    router.push('/roles/teacher/classes');
+  };
+
+  useEffect(() => {
     void loadDashboard();
   }, []);
 
@@ -79,8 +166,8 @@ export function TeacherDashboardPage() {
             <p className="text-sm text-slate-400 mt-1">Review performance and keep your classes on track.</p>
           </div>
           <div className="flex gap-3">
-            <Button type="button" variant="secondary">Grade submissions</Button>
-            <Button type="button" variant="primary">
+            <Button type="button" variant="secondary" onClick={goToSubmissions}>Grade submissions</Button>
+            <Button type="button" variant="primary" onClick={handleCreateAssignmentClick}>
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
@@ -137,22 +224,22 @@ export function TeacherDashboardPage() {
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
             <div className="px-5 py-4 flex items-center justify-between border-b border-slate-100">
               <div>
-                <p className="text-sm font-bold text-slate-700">Most urgent assignments</p>
+                <p className="text-sm font-bold text-slate-700">Most Recent assignments</p>
                 <p className="text-xs text-slate-400 mt-0.5">Published assignments due soon.</p>
               </div>
-              <button className="text-xs font-semibold text-brand-600 hover:text-brand-700">View assignments →</button>
+              <button type="button" className="cursor-pointer text-xs font-semibold text-brand-600 hover:text-brand-700" onClick={() => goToAssignments()}>View assignments →</button>
             </div>
             <div className="divide-y divide-slate-100">
               {assignments.filter((assignment) => assignment.status === 'Published').slice(0, 5).map((assignment) => (
-                <div key={assignment.id} className="px-5 py-4">
+                <button key={assignment.id} type="button" className="cursor-pointer block w-full text-left px-5 py-4 transition hover:bg-slate-50 focus:bg-slate-50 focus:outline-none" onClick={() => goToAssignmentDetail(assignment.id)}>
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="text-sm font-semibold text-slate-800">{assignment.title}</p>
                       <p className="text-xs text-slate-400 mt-1">{assignment.classCourseName} · {assignment.subjectName}</p>
                     </div>
-                    <span className="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-semibold text-rose-600">{new Date(assignment.deadline).toLocaleDateString()}</span>
+                    <span className="inline-flex items-center rounded bg-rose-100 px-2.5 py-1 text-[11px] font-semibold text-rose-600">{new Date(assignment.deadline).toLocaleDateString()}</span>
                   </div>
-                </div>
+                </button>
               ))}
               {assignments.filter((assignment) => assignment.status === 'Published').length === 0 && (
                 <div className="px-5 py-6 text-sm text-slate-500">No published assignments available yet.</div>
@@ -161,8 +248,13 @@ export function TeacherDashboardPage() {
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
-            <p className="text-sm font-bold text-slate-700 mb-1">My classes</p>
-            <p className="text-xs text-slate-400 mb-4">Classes and subjects assigned to you.</p>
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div>
+                <p className="text-sm font-bold text-slate-700 mb-1">My classes</p>
+                <p className="text-xs text-slate-400">Classes and subjects assigned to you.</p>
+              </div>
+              <button type="button" className="cursor-pointer text-xs font-semibold text-brand-600 hover:text-brand-700" onClick={goToClasses}>View classes →</button>
+            </div>
             <div className="space-y-4">
               {classesWithSubjects.map((cls) => (
                 <div key={cls.id} className="rounded-2xl border border-slate-100 p-4">
@@ -190,6 +282,15 @@ export function TeacherDashboardPage() {
         {loadError && (
           <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-rose-700">{loadError}</div>
         )}
+
+        <TeacherAssignmentCreateModal
+          open={createModalOpen}
+          onClose={closeCreateModal}
+          classes={classes}
+          subjects={subjects}
+          onSaveDraft={handleSaveDraft}
+          onPublish={handlePublish}
+        />
       </div>
     </AppShell>
   );

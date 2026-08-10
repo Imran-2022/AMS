@@ -1,6 +1,7 @@
 "use client";
 
 import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BookOpen, ClipboardList, Copy, FileText, Layers, Pencil, Plus, Search, Send, Trash2, Eye } from 'lucide-react';
 import { AppShell } from '../../layout/AppShell';
@@ -90,6 +91,8 @@ function StatCard({ label, value, sub, icon }: { label: string; value: string | 
 }
 
 export function TeacherAssignmentsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [assignments, setAssignments] = useState<AssignmentDto[]>([]);
   const [classes, setClasses] = useState<ClassCourseDto[]>([]);
   const [subjects, setSubjects] = useState<SubjectDto[]>([]);
@@ -234,6 +237,12 @@ export function TeacherAssignmentsPage() {
     [subjects, form.classCourseId]
   );
 
+  useEffect(() => {
+    if (searchParams.get('create') === '1' && !modalOpen) {
+      void openCreateModal();
+    }
+  }, [searchParams, modalOpen]);
+
   const openCreateModal = async (assignment?: AssignmentDto) => {
     if (assignment) {
       setEditingAssignment(assignment);
@@ -324,6 +333,10 @@ export function TeacherAssignmentsPage() {
     setRemovedAttachmentIds([]);
     setSelectedClassName('');
     setSelectedSection('');
+
+    if (searchParams.get('create') === '1') {
+      router.replace('/roles/teacher/assignments');
+    }
   };
 
   const handleSubmit = async (status?: AssignmentStatus) => {
