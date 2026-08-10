@@ -148,6 +148,7 @@ export type AssignmentDto = {
   classCourseId: string;
   classCourseName: string;
   classCourseSection: string;
+  groupName?: string;
   subjectId: string;
   subjectName: string;
   teacherId: string;
@@ -196,6 +197,7 @@ export type SubmissionDto = {
   assignmentTitle: string;
   classCourseName: string;
   classCourseSection: string;
+  groupName?: string;
   attachments?: AttachmentDto[];
 };
 

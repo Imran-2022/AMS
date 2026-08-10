@@ -67,8 +67,16 @@ export function StudentDashboardPage() {
     .filter((assignment) => new Date(assignment.deadline) > new Date())
     .filter((assignment) => !submissions.some((submission) => submission.assignmentId === assignment.id)).length;
   const gradedCount = submissions.filter((item) => item.status === 'Graded').length;
-  const averageGrade = gradedCount && submissions.some((item) => typeof item.marks === 'number')
-    ? Math.round(submissions.filter((item) => typeof item.marks === 'number').reduce((sum, item) => sum + ((item.marks ?? 0) / 100) * 100, 0) / gradedCount)
+  const gradedSubmissions = submissions.filter((item) =>
+    item.status === 'Graded' &&
+    typeof item.marks === 'number' &&
+    typeof item.maxMarks === 'number' &&
+    item.maxMarks > 0
+  );
+  const totalEarnedMarks = gradedSubmissions.reduce((sum, item) => sum + (item.marks ?? 0), 0);
+  const totalPossibleMarks = gradedSubmissions.reduce((sum, item) => sum + (item.maxMarks ?? 0), 0);
+  const averageGrade = totalPossibleMarks > 0
+    ? Math.round((totalEarnedMarks / totalPossibleMarks) * 100)
     : 0;
   const totalAssignmentCount = assignments.length;
   const submittedAssignmentCount = assignments.filter((assignment) =>
@@ -104,7 +112,7 @@ export function StudentDashboardPage() {
               <span className="uppercase text-xs font-bold text-brand-600">{dashboardStats.studentName || 'Student'}</span>
             </p>
             <p className="text-sm text-slate-400 mt-1">
-              Class: {dashboardStats.className || 'Not assigned'}{dashboardStats.classSection ? ` / ${dashboardStats.classSection}` : ''} · Academic year: {dashboardStats.academicYear || 'Not available'}
+              Class: {dashboardStats.className || 'Not assigned'}{dashboardStats.classSection ? ` / ${dashboardStats.classSection}` : ''}{dashboardStats.groupName ? ` / ${dashboardStats.groupName}` : ''} · Academic year: {dashboardStats.academicYear || 'Not available'}
             </p>
           </div>
         </div>
@@ -196,7 +204,7 @@ export function StudentDashboardPage() {
                       <p className="text-sm font-semibold text-slate-700">{submission.assignmentTitle}</p>
                       <span className="text-sm font-bold text-emerald-600">{submission.marks ?? 0} / {submission.maxMarks ?? 100}</span>
                     </div>
-                    <p className="text-xs text-slate-400 mt-1.5">{submission.feedback}</p>
+                    <p className="text-xs text-slate-400 mt-1.5">{submission.classCourseName}{submission.classCourseSection ? ` · Section ${submission.classCourseSection}` : ''}{submission.groupName ? ` · ${submission.groupName}` : ''} · {submission.feedback}</p>
                   </Link>
                 ))}
                 {!submissions.some((item) => item.status === 'Graded' && item.feedback) && (

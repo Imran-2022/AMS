@@ -24,6 +24,7 @@ export interface StudentDashboardStats {
   role: string;
   className: string;
   classSection: string;
+  groupName?: string;
   academicYear: string;
   enrolledClassesCount: number;
   activeAssignmentsCount: number;

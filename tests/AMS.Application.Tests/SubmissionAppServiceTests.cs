@@ -1,4 +1,5 @@
 using AMS.Application.Services;
+using AMS.Application.Contracts;
 using AMS.Domain.Entities;
 using AMS.Domain.Repositories;
 using AMS.Domain.Shared;
@@ -41,8 +42,10 @@ public class SubmissionAppServiceTests
             Mock.Of<IStudentEnrollmentRepository>(),
             userRepo.Object,
             classCourseRepo.Object,
+            Mock.Of<IGroupRepository>(),
             authService.Object,
-            currentUser.Object);
+            currentUser.Object,
+            Mock.Of<IAttachmentAppService>());
 
         var ex = await Assert.ThrowsAsync<ForbiddenException>(() => service.GetByIdAsync(submissionId, otherStudentId, nameof(UserRole.Student)));
         Assert.Equal("Access denied.", ex.Message);
@@ -91,8 +94,10 @@ public class SubmissionAppServiceTests
             Mock.Of<IStudentEnrollmentRepository>(),
             userRepo.Object,
             classCourseRepo.Object,
+            Mock.Of<IGroupRepository>(),
             authService.Object,
-            currentUser.Object);
+            currentUser.Object,
+            Mock.Of<IAttachmentAppService>());
 
         var result = await service.GetByIdAsync(submissionId, studentId, nameof(UserRole.Student));
 

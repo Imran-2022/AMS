@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { getAssignment, getMySubmissions, createSubmission, updateSubmission, uploadAttachment, listAttachments, deleteAttachment, downloadAttachmentToBrowser, type AssignmentDto, type SubmissionDto } from '@/lib/api';
 import { Button } from '@/components/ui';
 import { FileUpload } from '@/components/ui';
@@ -148,7 +149,22 @@ export default function StudentAssignmentDetailPage() {
                 </svg>
                 Back
               </Button>
-              {canSubmit ? (
+              {submission?.id && submission.status !== 'Graded' ? (
+                <Link
+                  href={`/roles/student/submissions/${submission.id}`}
+                  className="inline-flex h-11 items-center justify-center rounded px-4 py-2 text-sm font-semibold text-slate-700 border border-slate-300 bg-white shadow-sm transition-all duration-200 hover:bg-slate-50"
+                >
+                  View submission
+                </Link>
+              ) : null}
+              {submission?.status === 'Graded' ? (
+                <Link
+                  href={`/roles/student/submissions/${submission.id}`}
+                  className="inline-flex h-11 items-center justify-center rounded px-4 py-2 text-sm font-semibold text-slate-700 border border-slate-300 bg-white shadow-sm transition-all duration-200 hover:bg-slate-50"
+                >
+                  View feedback
+                </Link>
+              ) : canSubmit ? (
                 <Button type="button" onClick={() => setSubmitOpen(true)} className="!h-11 !px-4 !py-2 !text-sm">
                   {submission ? 'Resubmit work' : 'Submit work'}
                 </Button>

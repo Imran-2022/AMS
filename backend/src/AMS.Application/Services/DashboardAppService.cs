@@ -8,6 +8,7 @@ public class DashboardAppService : IDashboardAppService
 {
     private readonly IUserRepository _userRepository;
     private readonly IClassCourseRepository _classCourseRepository;
+    private readonly IGroupRepository _groupRepository;
     private readonly ISubjectRepository _subjectRepository;
     private readonly IAssignmentRepository _assignmentRepository;
     private readonly ISubmissionRepository _submissionRepository;
@@ -17,6 +18,7 @@ public class DashboardAppService : IDashboardAppService
     public DashboardAppService(
         IUserRepository userRepository,
         IClassCourseRepository classCourseRepository,
+        IGroupRepository groupRepository,
         ISubjectRepository subjectRepository,
         IAssignmentRepository assignmentRepository,
         ISubmissionRepository submissionRepository,
@@ -25,6 +27,7 @@ public class DashboardAppService : IDashboardAppService
     {
         _userRepository = userRepository;
         _classCourseRepository = classCourseRepository;
+        _groupRepository = groupRepository;
         _subjectRepository = subjectRepository;
         _assignmentRepository = assignmentRepository;
         _submissionRepository = submissionRepository;
@@ -115,6 +118,9 @@ public class DashboardAppService : IDashboardAppService
             Role = student.Role.ToString(),
             ClassName = enrolledClasses.FirstOrDefault()?.Name ?? string.Empty,
             ClassSection = enrolledClasses.FirstOrDefault()?.Section ?? string.Empty,
+            GroupName = enrolledClasses.FirstOrDefault()?.GroupId is Guid groupId
+                ? (await _groupRepository.GetByIdAsync(groupId))?.Name
+                : null,
             AcademicYear = enrolledClasses.FirstOrDefault()?.AcademicYear ?? string.Empty,
             EnrolledClassesCount = enrollments.Count,
             ActiveAssignmentsCount = allAssignments.Count,

@@ -29,6 +29,7 @@ public class StudentDashboardStatsDto
     public string Role { get; set; } = string.Empty;
     public string ClassName { get; set; } = string.Empty;
     public string ClassSection { get; set; } = string.Empty;
+    public string? GroupName { get; set; }
     public string AcademicYear { get; set; } = string.Empty;
     public int EnrolledClassesCount { get; set; }
     public int ActiveAssignmentsCount { get; set; }
