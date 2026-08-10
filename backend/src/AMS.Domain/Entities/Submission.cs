@@ -55,6 +55,11 @@ public class Submission
         Status = SubmissionStatus.ResubmissionRequested;
     }
 
+    public void UpdateStatus(SubmissionStatus status)
+    {
+        Status = status;
+    }
+
     public void Resubmit(string contentText, string? fileUrl, string? fileName, DateTime now, DateTime deadline, bool allowLateSubmission)
     {
         if (now > deadline && !allowLateSubmission)

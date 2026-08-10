@@ -27,4 +27,18 @@ public class SubmissionTests
 
         Assert.Contains("exceed", ex.Message);
     }
+
+    [Fact]
+    public void UpdateStatus_Should_Preserve_Grade_And_Feedback()
+    {
+        var assignment = new Assignment(Guid.NewGuid(), "Title", "Desc", Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.AddDays(1), 35, AssignmentStatus.Published, true, false, DateTime.UtcNow);
+        var submission = new Submission(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "content", null, DateTime.UtcNow, false, SubmissionStatus.Submitted);
+
+        submission.MarkGraded(23, "Good first attempt", Guid.NewGuid(), assignment);
+        submission.UpdateStatus(SubmissionStatus.UnderReview);
+
+        Assert.Equal(23, submission.Marks);
+        Assert.Equal("Good first attempt", submission.Feedback);
+        Assert.Equal(SubmissionStatus.UnderReview, submission.Status);
+    }
 }

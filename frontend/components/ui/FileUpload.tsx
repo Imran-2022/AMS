@@ -50,9 +50,24 @@ export function FileUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const areFilesEqual = (left: File[], right: File[]) => {
+    if (left.length !== right.length) return false;
+
+    return left.every((file, index) => {
+      const other = right[index];
+      return !!other
+        && file.name === other.name
+        && file.size === other.size
+        && file.type === other.type
+        && file.lastModified === other.lastModified;
+    });
+  };
+
   useEffect(() => {
-    setFiles(selectedFiles);
-  }, [selectedFiles]);
+    if (!areFilesEqual(files, selectedFiles)) {
+      setFiles(selectedFiles);
+    }
+  }, [files, selectedFiles]);
 
   useEffect(() => {
     setFileUrl(initialFileUrl || null);

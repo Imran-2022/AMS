@@ -7,13 +7,14 @@ import { getAssignment, downloadAttachmentToBrowser, type AssignmentDto } from '
 export default function TeacherAssignmentDetailPage() {
   const params = useParams();
   const rawId = Array.isArray(params?.id) ? params.id[0] : params?.id;
+  const assignmentId = typeof rawId === 'string' ? rawId : '';
 
   const [assignment, setAssignment] = useState<AssignmentDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!rawId) {
+    if (!assignmentId) {
       setError('Assignment id is missing.');
       setLoading(false);
       return;
@@ -25,7 +26,7 @@ export default function TeacherAssignmentDetailPage() {
       try {
         setLoading(true);
         setError(null);
-        const data = await getAssignment(rawId);
+        const data = await getAssignment(assignmentId);
         if (!cancelled) {
           setAssignment(data);
         }
@@ -45,7 +46,7 @@ export default function TeacherAssignmentDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [rawId]);
+  }, [assignmentId]);
 
   const deadline = useMemo(() => {
     if (!assignment?.deadline) return null;

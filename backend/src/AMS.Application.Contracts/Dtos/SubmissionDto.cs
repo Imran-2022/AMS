@@ -20,6 +20,7 @@ public class SubmissionDto
     public string StudentName { get; set; } = string.Empty;
     public string StudentInitials { get; set; } = string.Empty;
     public string AssignmentTitle { get; set; } = string.Empty;
+    public int MaxMarks { get; set; }
     public string ClassCourseName { get; set; } = string.Empty;
     public string ClassCourseSection { get; set; } = string.Empty;
 }

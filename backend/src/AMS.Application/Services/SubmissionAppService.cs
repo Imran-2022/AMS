@@ -167,7 +167,7 @@ public class SubmissionAppService : ISubmissionAppService
             }
             else
             {
-                submission = new Submission(submission.Id, submission.AssignmentId, submission.StudentId, submission.ContentText, submission.FileUrl, submission.SubmittedAt, submission.IsLate, parsed, submission.FileName, submission.ResubmittedAt, submission.ResubmissionCount);
+                submission.UpdateStatus(parsed);
             }
             await _submissionRepository.UpdateAsync(submission, cancellationToken);
             return await ToDtoAsync(submission, cancellationToken).ConfigureAwait(false);
@@ -220,6 +220,7 @@ public class SubmissionAppService : ISubmissionAppService
             StudentName = student.FullName,
             StudentInitials = initials,
             AssignmentTitle = assignment.Title,
+            MaxMarks = assignment.MaxMarks,
             ClassCourseName = classCourse.Name,
             ClassCourseSection = classCourse.Section
         };

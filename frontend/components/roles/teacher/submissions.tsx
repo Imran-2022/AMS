@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
-import { FileText, Search, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { FileText, Search } from 'lucide-react';
 import { AppShell } from '../../layout/AppShell';
 import { AmsPagination } from '../../ui';
-import { getSubmissions, gradeSubmission, updateSubmissionStatus } from '@/lib/api';
+import { getSubmissions } from '@/lib/api';
 import type { SubmissionDto } from '@/lib/api';
 
 type StatusFilter = 'all' | 'pending' | 'graded' | 'needs_revision';
@@ -56,16 +57,13 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export function TeacherSubmissionsPage() {
+  const router = useRouter();
   const [submissions, setSubmissions] = useState<SubmissionDto[]>([]);
   const [activeTab, setActiveTab] = useState<StatusFilter>('all');
   const [classFilter, setClassFilter] = useState('All classes');
   const [sectionFilter, setSectionFilter] = useState('All sections');
   const [assignmentFilter, setAssignmentFilter] = useState('All assignments');
   const [searchTerm, setSearchTerm] = useState('');
-  const [gradeModal, setGradeModal] = useState<GradeModalState>(null);
-  const [marks, setMarks] = useState('');
-  const [feedback, setFeedback] = useState('');
-  const [status, setStatus] = useState('Submitted');
   const [loadError, setLoadError] = useState<string | null>(null);
   const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
@@ -132,48 +130,6 @@ export function TeacherSubmissionsPage() {
     const start = pageIndex * pageSize;
     return visibleSubmissions.slice(start, start + pageSize);
   }, [visibleSubmissions, pageIndex, pageSize]);
-
-  const openGradeModal = (submission: SubmissionDto) => {
-    setGradeModal(submission);
-    setMarks(submission.marks?.toString() ?? '');
-    setFeedback(submission.feedback ?? '');
-    setStatus(submission.status);
-  };
-
-  const closeGradeModal = () => {
-    setGradeModal(null);
-  };
-
-  const handleSaveGrade = async () => {
-    if (!gradeModal) return;
-
-    setLoadError(null);
-
-    try {
-      let updatedSubmission: SubmissionDto;
-
-      if (status === 'Graded') {
-        if (!marks.trim()) {
-          setLoadError('Please enter marks before grading.');
-          return;
-        }
-        updatedSubmission = await gradeSubmission(gradeModal.id, {
-          marks: Number(marks),
-          feedback: feedback.trim() || undefined,
-        });
-      } else {
-        updatedSubmission = await updateSubmissionStatus(gradeModal.id, {
-          status,
-        });
-      }
-
-      setSubmissions((current) => current.map((item) => (item.id === updatedSubmission.id ? updatedSubmission : item)));
-      setGradeModal(updatedSubmission);
-    } catch (error) {
-      console.error(error);
-      setLoadError('Unable to save submission updates. Please try again.');
-    }
-  };
 
   const handleClassChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const nextClass = event.target.value;
@@ -320,10 +276,10 @@ export function TeacherSubmissionsPage() {
                         <StatusBadge status={submission.status} />
                       </td>
                       <td className="px-2 py-3.5 text-slate-600">
-                        {submission.status === 'Graded' ? `${submission.marks ?? 0}` : '—'}
+                        {submission.status === 'Graded' ? `${submission.marks ?? 0}/${submission.maxMarks ?? 35}` : '—'}
                       </td>
                       <td className="px-5 py-3.5 text-right">
-                        <button type="button" onClick={() => openGradeModal(submission)} className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold ${submission.status === 'Graded' ? 'border border-slate-200 text-slate-600 hover:bg-slate-50' : 'bg-brand-600 text-white hover:bg-brand-700'}`}>
+                        <button type="button" onClick={() => router.push(`/roles/teacher/submissions/${submission.id}`)} className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold ${submission.status === 'Graded' ? 'border border-slate-200 text-slate-600 hover:bg-slate-50' : 'bg-brand-600 text-white hover:bg-brand-700'}`}>
                           {submission.status === 'Graded' ? 'View' : 'Grade'}
                         </button>
                       </td>
@@ -352,87 +308,6 @@ export function TeacherSubmissionsPage() {
           <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-rose-700">{loadError}</div>
         )}
       </div>
-
-      {gradeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm" onClick={closeGradeModal}>
-          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
-            <div className="flex items-start justify-between border-b border-slate-100 px-7 py-6">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
-                  {gradeModal.studentInitials}
-                </div>
-                <div>
-                  <h2 className="text-lg font-extrabold text-slate-800">{gradeModal.studentName}</h2>
-                  <p className="text-sm text-slate-400">{gradeModal.assignmentTitle}</p>
-                </div>
-              </div>
-              <button type="button" onClick={closeGradeModal} className="text-slate-400 hover:text-slate-600">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="grid gap-6 overflow-y-auto px-7 py-6 lg:grid-cols-2">
-              <div>
-                <p className="mb-2 block text-[13px] font-semibold text-slate-800">Submitted work</p>
-                <div className="rounded border border-slate-200 bg-slate-50 p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-brand-500">
-                      <FileText className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-slate-700">{gradeModal.fileName ?? 'No attachment'}</p>
-                      <p className="text-xs text-slate-400 mt-1">{gradeModal.submittedAt ? new Date(gradeModal.submittedAt).toLocaleString() : 'Not submitted'}</p>
-                    </div>
-                  </div>
-                  {gradeModal.fileUrl ? (
-                    <button type="button" onClick={() => window.open(gradeModal.fileUrl, '_blank')} className="mt-3 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-                      Open attachment
-                    </button>
-                  ) : null}
-                </div>
-                <p className="mt-3 text-xs text-slate-400">Student comment: “Please review my answers and let me know if I can improve my approach.”</p>
-              </div>
-
-              <div className="space-y-5">
-                <div>
-                  <label className="mb-2 block text-[13px] font-semibold text-slate-800">Marks</label>
-                  <div className="flex items-center gap-2">
-                    <input value={marks} onChange={(event) => setMarks(event.target.value)} type="number" placeholder="0" className="w-24 rounded border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100" />
-                    <span className="text-sm text-slate-400">/ {gradeModal.marks ?? '—'}</span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-[13px] font-semibold text-slate-800">Feedback for student</label>
-                  <textarea value={feedback} onChange={(event) => setFeedback(event.target.value)} rows={4} placeholder="Add comments on their work…" className="w-full resize-none rounded border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100" />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-[13px] font-semibold text-slate-800">Submission status</label>
-                  <select value={status} onChange={(event) => setStatus(event.target.value)} className="w-full rounded border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100">
-                    <option value="Submitted">Submitted</option>
-                    <option value="Late">Late</option>
-                    <option value="UnderReview">Under review</option>
-                    <option value="ResubmissionRequested">Request resubmission</option>
-                    <option value="Resubmitted">Resubmitted</option>
-                    <option value="Graded">Graded</option>
-                  </select>
-                  <p className="mt-2 text-xs text-slate-400">Changing status updates the submission state for the student.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 rounded-b-3xl border-t border-slate-100 bg-slate-50/60 px-7 py-5">
-              <button type="button" onClick={closeGradeModal} className="rounded border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">
-                Cancel
-              </button>
-              <button type="button" onClick={handleSaveGrade} className="rounded bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">
-                Save &amp; notify student
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </AppShell>
   );
 }

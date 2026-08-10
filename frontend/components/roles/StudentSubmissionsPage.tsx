@@ -1,48 +1,79 @@
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AmsPagination } from '../ui';
 import { AppShell } from '../layout/AppShell';
-import { STUDENT_SUBMISSIONS } from '../data';
+import { getMySubmissions, type SubmissionDto } from '@/lib/api';
 
 export function StudentSubmissionsPage() {
   const [currentTab, setCurrentTab] = useState<'all' | 'graded' | 'pending'>('all');
   const [subjectFilter, setSubjectFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSubmission, setSelectedSubmission] = useState<typeof STUDENT_SUBMISSIONS[number] | null>(STUDENT_SUBMISSIONS[0] ?? null);
+  const [selectedSubmission, setSelectedSubmission] = useState<SubmissionDto | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [submissions, setSubmissions] = useState<SubmissionDto[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const items = await getMySubmissions();
+        setSubmissions(items);
+      } catch {
+        setSubmissions([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void load();
+  }, []);
 
   const statusCounts = useMemo(() => ({
-    all: STUDENT_SUBMISSIONS.length,
-    graded: STUDENT_SUBMISSIONS.filter((item) => item.status === 'Graded').length,
-    pending: STUDENT_SUBMISSIONS.filter((item) => item.status === 'Pending').length,
-  }), []);
+    all: submissions.length,
+    graded: submissions.filter((item) => item.status === 'Graded').length,
+    pending: submissions.filter((item) => item.status !== 'Graded').length,
+  }), [submissions]);
 
   const averageGrade = useMemo(() => {
-    const graded = STUDENT_SUBMISSIONS.filter((item) => item.status === 'Graded');
+    const graded = submissions.filter((item) => item.status === 'Graded' && typeof item.marks === 'number');
     if (!graded.length) return 0;
-    return Math.round((graded.reduce((sum, item) => sum + (item.marks ?? 0) / item.max * 100, 0) / graded.length));
-  }, []);
+    return Math.round(graded.reduce((sum, item) => sum + (item.marks ?? 0), 0) / graded.length);
+  }, [submissions]);
 
   const subjectStats = useMemo(() => {
-    return [
-      { subject: 'Mathematics', ratio: 95, graded: 2, color: 'bg-brand-500' },
-      { subject: 'Physics', ratio: 80, graded: 1, color: 'bg-sky-500' },
-      { subject: 'Biology', ratio: 86, graded: 2, color: 'bg-emerald-500' },
-      { subject: 'English', ratio: 90, graded: 1, color: 'bg-violet-500' },
-    ];
-  }, []);
+    const grouped = new Map<string, { total: number; graded: number; marks: number[] }>();
+    submissions.forEach((item) => {
+      const subject = item.classCourseName || 'General';
+      const entry = grouped.get(subject) ?? { total: 0, graded: 0, marks: [] };
+      entry.total += 1;
+      if (item.status === 'Graded') {
+        entry.graded += 1;
+        if (typeof item.marks === 'number') entry.marks.push(item.marks);
+      }
+      grouped.set(subject, entry);
+    });
+
+    return Array.from(grouped.entries())
+      .slice(0, 4)
+      .map(([subject, value]) => ({
+        subject,
+        ratio: value.graded ? Math.min(100, Math.round((value.marks.reduce((sum, mark) => sum + mark, 0) / (value.graded * 100)) * 100)) : 0,
+        graded: value.graded,
+        color: ['bg-brand-500', 'bg-sky-500', 'bg-emerald-500', 'bg-violet-500'][Math.abs(subject.length) % 4],
+      }));
+  }, [submissions]);
 
   const filteredSubmissions = useMemo(() => {
-    return STUDENT_SUBMISSIONS.filter((item) => {
+    return submissions.filter((item) => {
       const matchesTab = currentTab === 'all' || (currentTab === 'graded' && item.status === 'Graded') || (currentTab === 'pending' && item.status !== 'Graded');
-      const matchesSubject = !subjectFilter || item.subject === subjectFilter;
-      const matchesSearch = !searchTerm || item.title.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSubject = !subjectFilter || item.classCourseName === subjectFilter;
+      const matchesSearch = !searchTerm || item.assignmentTitle.toLowerCase().includes(searchTerm.toLowerCase());
       return matchesTab && matchesSubject && matchesSearch;
     });
-  }, [currentTab, subjectFilter, searchTerm]);
+  }, [submissions, currentTab, subjectFilter, searchTerm]);
 
-  const subjectOptions = useMemo(() => Array.from(new Set(STUDENT_SUBMISSIONS.map((item) => item.subject))), []);
+  const subjectOptions = useMemo(() => Array.from(new Set(submissions.map((item) => item.classCourseName))), [submissions]);
   const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
   const [pageIndex, setPageIndex] = useState(0);
@@ -52,7 +83,7 @@ export function StudentSubmissionsPage() {
     return filteredSubmissions.slice(start, start + pageSize);
   }, [filteredSubmissions, pageIndex, pageSize]);
 
-  const openView = (submission: typeof STUDENT_SUBMISSIONS[number]) => {
+  const openView = (submission: SubmissionDto) => {
     setSelectedSubmission(submission);
     setModalOpen(true);
   };
@@ -111,7 +142,7 @@ export function StudentSubmissionsPage() {
         </div>
 
         <div>
-          <p className="text-sm font-bold text-slate-700 mb-3">Grades by subject</p>
+          <p className="text-sm font-bold text-slate-700 mb-3">Class performance</p>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             {subjectStats.map((subject) => (
               <div key={subject.subject} className="bg-white rounded-2xl border border-slate-200 p-5">
@@ -122,7 +153,7 @@ export function StudentSubmissionsPage() {
                 <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                   <div className={`h-full ${subject.color} rounded-full`} style={{ width: `${subject.ratio}%` }} />
                 </div>
-                <p className="text-[11px] text-slate-400 mt-2">{subject.graded} of {subject.graded} graded</p>
+                <p className="text-[11px] text-slate-400 mt-2">{subject.graded} graded</p>
               </div>
             ))}
           </div>
@@ -147,7 +178,7 @@ export function StudentSubmissionsPage() {
               onChange={(e) => setSubjectFilter(e.target.value)}
               className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white"
             >
-              <option value="">All subjects</option>
+              <option value="">All classes</option>
               {subjectOptions.map((subject) => (
                 <option key={subject} value={subject}>{subject}</option>
               ))}
@@ -172,7 +203,7 @@ export function StudentSubmissionsPage() {
             <thead>
               <tr className="border-b border-slate-100 text-left">
                 <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">ASSIGNMENT</th>
-                <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">SUBJECT</th>
+                <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">CLASS</th>
                 <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">SUBMITTED</th>
                 <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">STATUS</th>
                 <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">MARKS</th>
@@ -180,18 +211,20 @@ export function StudentSubmissionsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {pagedSubmissions.map((submission) => (
+              {loading ? (
+                <tr><td colSpan={6} className="px-5 py-6 text-sm text-slate-500">Loading submissions…</td></tr>
+              ) : pagedSubmissions.length ? pagedSubmissions.map((submission) => (
                 <tr key={submission.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-5 py-3.5 font-semibold text-slate-700">{submission.title}</td>
-                  <td className="px-2 py-3.5 text-slate-500">{submission.subject}</td>
-                  <td className="px-2 py-3.5 text-slate-500">{submission.submittedAt}</td>
+                  <td className="px-5 py-3.5 font-semibold text-slate-700">{submission.assignmentTitle}</td>
+                  <td className="px-2 py-3.5 text-slate-500">{submission.classCourseName || '—'}</td>
+                  <td className="px-2 py-3.5 text-slate-500">{new Date(submission.submittedAt).toLocaleString()}</td>
                   <td className="px-2 py-3.5">
                     <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${submission.status === 'Graded' ? 'bg-emerald-50 text-emerald-600' : 'bg-sky-50 text-sky-600'}`}>
                       <span className={`h-2.5 w-2.5 rounded-full ${submission.status === 'Graded' ? 'bg-emerald-500' : 'bg-sky-500'}`} />
                       {submission.status === 'Graded' ? 'Graded' : 'Awaiting grade'}
                     </span>
                   </td>
-                  <td className="px-2 py-3.5 font-semibold text-slate-700">{submission.status === 'Graded' ? `${submission.marks} / ${submission.max}` : '— / ' + submission.max}</td>
+                  <td className="px-2 py-3.5 font-semibold text-slate-700">{submission.status === 'Graded' ? `${submission.marks ?? 0}` : '—'}</td>
                   <td className="px-5 py-3.5 text-right">
                     <button
                       type="button"
@@ -202,19 +235,23 @@ export function StudentSubmissionsPage() {
                     </button>
                   </td>
                 </tr>
-              ))}
+              )) : (
+                <tr><td colSpan={6} className="px-5 py-6 text-sm text-slate-500">No submissions found.</td></tr>
+              )}
             </tbody>
           </table>
-          <AmsPagination
-            currentPage={pageIndex}
-            pageSize={pageSize}
-            totalItems={filteredSubmissions.length}
-            pageSizeOptions={PAGE_SIZE_OPTIONS}
-            onPageChange={setPageIndex}
-            onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
-            label="Showing"
-            itemLabel="submissions"
-          />
+          {!loading && (
+            <AmsPagination
+              currentPage={pageIndex}
+              pageSize={pageSize}
+              totalItems={filteredSubmissions.length}
+              pageSizeOptions={PAGE_SIZE_OPTIONS}
+              onPageChange={setPageIndex}
+              onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
+              label="Showing"
+              itemLabel="submissions"
+            />
+          )}
         </div>
 
         {modalOpen && selectedSubmission ? (
@@ -222,8 +259,8 @@ export function StudentSubmissionsPage() {
             <div className="bg-white rounded-3xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
               <div className="flex items-start justify-between px-7 pt-6 pb-5 border-b border-slate-100 shrink-0">
                 <div>
-                  <h2 className="text-xl font-extrabold text-slate-800">{selectedSubmission.title}</h2>
-                  <p className="text-sm text-slate-400 mt-0.5">{selectedSubmission.subject} · {selectedSubmission.teacher}</p>
+                  <h2 className="text-xl font-extrabold text-slate-800">{selectedSubmission.assignmentTitle}</h2>
+                  <p className="text-sm text-slate-400 mt-0.5">{selectedSubmission.classCourseName || 'Course'} · {selectedSubmission.classCourseSection || 'Section'}</p>
                 </div>
                 <button type="button" onClick={closeModal} className="text-slate-400 hover:text-slate-600">
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
@@ -236,7 +273,7 @@ export function StudentSubmissionsPage() {
                     <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-5 py-4 flex items-center justify-between">
                       <div>
                         <p className="text-xs font-bold text-emerald-600">YOUR GRADE</p>
-                        <p className="text-2xl font-extrabold text-slate-800 mt-1">{selectedSubmission.marks} <span className="text-slate-400 font-normal text-base">/ {selectedSubmission.max}</span></p>
+                        <p className="text-2xl font-extrabold text-slate-800 mt-1">{selectedSubmission.marks ?? 0} <span className="text-slate-400 font-normal text-base">/ 100</span></p>
                       </div>
                       <svg className="w-9 h-9 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
                     </div>

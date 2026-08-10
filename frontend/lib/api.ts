@@ -187,6 +187,7 @@ export type SubmissionDto = {
   isLate: boolean;
   status: string;
   marks?: number;
+  maxMarks?: number;
   feedback?: string;
   gradedByTeacherId?: string;
   gradedAt?: string;
@@ -437,6 +438,10 @@ export async function getAssignment(id: string) {
 
 export async function getSubmissions() {
   return request<SubmissionDto[]>(`/api/submissions`);
+}
+
+export async function getSubmission(id: string) {
+  return request<SubmissionDto>(`/api/submissions/${id}`);
 }
 
 export async function getMySubmissions() {

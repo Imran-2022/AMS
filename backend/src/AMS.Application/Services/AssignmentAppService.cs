@@ -222,6 +222,7 @@ public class AssignmentAppService : IAssignmentAppService
     {
         var classCourse = await _classCourseRepository.GetByIdAsync(assignment.ClassCourseId, cancellationToken) ?? throw new NotFoundException("Class/course not found.");
         var subject = await _subjectRepository.GetByIdAsync(assignment.SubjectId, cancellationToken) ?? throw new NotFoundException("Subject not found.");
+        var teacher = await _userRepository.GetByIdAsync(assignment.TeacherId, cancellationToken);
 
         var submissions = await _submissionRepository.GetByAssignmentAsync(assignment.Id, cancellationToken).ConfigureAwait(false);
         var enrollments = await _studentEnrollmentRepository.GetByClassCourseAsync(assignment.ClassCourseId, cancellationToken).ConfigureAwait(false);
@@ -247,6 +248,7 @@ public class AssignmentAppService : IAssignmentAppService
             ClassCourseName = classCourse.Name,
             ClassCourseSection = classCourse.Section,
             SubjectName = subject.Name,
+            TeacherName = teacher?.FullName ?? string.Empty,
             SubmittedCount = submissions.Count,
             TotalStudents = enrollments.Count,
             Attachments = attachments
