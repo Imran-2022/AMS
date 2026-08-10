@@ -216,17 +216,35 @@ export default function TeacherSubmissionDetailPage() {
                     <p className="text-xs text-slate-400">{submittedText}</p>
                   </div>
 
-                  {submission.fileName ? (
+                  {submission.attachments?.length ? (
+                    <div className="space-y-2.5">
+                      {submission.attachments.map((attachment) => (
+                        <button
+                          key={attachment.id}
+                          type="button"
+                          onClick={() => void downloadAttachmentToBrowser(attachment.downloadUrl, attachment.originalFileName)}
+                          className="flex w-full cursor-pointer items-center gap-3 rounded-xl border border-slate-100 bg-white p-3 text-left transition hover:bg-slate-50"
+                        >
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-500">
+                            <FileText className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-slate-700">{attachment.originalFileName}</p>
+                            <p className="text-[11px] text-slate-400">{attachment.contentType} · {Math.max(1, Math.round(attachment.sizeBytes / 1024))} KB</p>
+                          </div>
+                          <svg className="h-4 w-4 shrink-0 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                        </button>
+                      ))}
+                    </div>
+                  ) : submission.fileName ? (
                     <div className="flex items-center gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4">
                       <button
                         type="button"
                         onClick={() => submission.fileUrl ? void downloadAttachmentToBrowser(submission.fileUrl, submission.fileName ?? 'submission-file') : undefined}
-                        className="flex items-center gap-3 text-left"
+                        className="flex cursor-pointer items-center gap-3 text-left"
                       >
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-300">
-                          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M21.44 11.05 12.25 20.24a5 5 0 0 1-7.07-7.07l9.19-9.19a3 3 0 0 1 4.24 4.24l-9.2 9.19a1 1 0 0 1-1.41-1.41l8.49-8.49" />
-                          </svg>
+                          <FileText className="h-5 w-5" />
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-slate-700">{submission.fileName}</p>
