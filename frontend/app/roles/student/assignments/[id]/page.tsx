@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getAssignment, getMySubmissions, createSubmission, updateSubmission, uploadAttachment, listAttachments, deleteAttachment, downloadAttachmentToBrowser, type AssignmentDto, type SubmissionDto } from '@/lib/api';
+import { getAssignment, getMySubmissions, createSubmission, updateSubmission, uploadAttachment, downloadAttachmentToBrowser, type AssignmentDto, type SubmissionDto } from '@/lib/api';
 import { Button } from '@/components/ui';
 import { FileUpload } from '@/components/ui';
 import { AppShell } from '@/components/layout/AppShell';
@@ -20,7 +20,7 @@ export default function StudentAssignmentDetailPage() {
   const [submission, setSubmission] = useState<SubmissionDto | null>(null);
   const [submitOpen, setSubmitOpen] = useState(false);
   const [comment, setComment] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -111,17 +111,13 @@ export default function StudentAssignmentDetailPage() {
         ? await updateSubmission(submission.id, { contentText: comment })
         : await createSubmission({ assignmentId: assignment.id, contentText: comment });
 
-      if (selectedFile) {
-        if (submission) {
-          const existingAttachments = await listAttachments('Submission', nextSubmission.id);
-          await Promise.all(existingAttachments.map((attachment) => deleteAttachment(attachment.id)));
-        }
-        await uploadAttachment('Submission', nextSubmission.id, selectedFile);
+      if (selectedFiles.length > 0) {
+        await Promise.all(selectedFiles.map((file) => uploadAttachment('Submission', nextSubmission.id, file)));
       }
 
       setSubmission(nextSubmission);
       setSubmitOpen(false);
-      setSelectedFile(null);
+      setSelectedFiles([]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to submit assignment.');
     } finally {
@@ -257,7 +253,7 @@ export default function StudentAssignmentDetailPage() {
 
           {submitOpen && assignment ? (
             <div className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4">
-              <div className="w-full max-w-xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+              <div className="w-full max-w-xl overflow-hidden rounded bg-white shadow-2xl">
                 <div className="flex items-start justify-between border-b border-slate-100 px-6 py-5">
                   <div>
                     <h2 className="text-xl font-extrabold text-slate-800">{submission ? 'Resubmit work' : 'Submit work'}</h2>
@@ -266,23 +262,42 @@ export default function StudentAssignmentDetailPage() {
                   <Button type="button" variant="ghost" onClick={() => setSubmitOpen(false)} className="h-9 w-9 px-0 text-slate-400">×</Button>
                 </div>
                 <div className="space-y-5 px-6 py-6">
-                  <FileUpload
-                    selectedFiles={selectedFile ? [selectedFile] : []}
-                    onFileSelected={setSelectedFile}
-                    onFilesSelected={(files) => setSelectedFile(files.at(-1) ?? null)}
-                    allowedTypesText="PDF, DOCX, TXT, ZIP, PNG, JPG (Max 10MB)"
-                  />
-                  <textarea
-                    rows={5}
-                    value={comment}
-                    onChange={(event) => setComment(event.target.value)}
-                    placeholder="Add a note for your teacher..."
-                    className="w-full resize-none rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
-                  />
+                  <div>
+                    <label className="mb-2 block text-[13px] font-semibold text-slate-800">
+                      Attachments <span className="font-normal text-slate-400">(optional)</span>
+                    </label>
+                    <FileUpload
+                      multiple
+                      selectedFiles={selectedFiles}
+                      existingAttachments={(submission?.attachments ?? []).map((attachment) => ({
+                        id: attachment.id,
+                        originalFileName: attachment.originalFileName,
+                        downloadUrl: attachment.downloadUrl,
+                        sizeBytes: attachment.sizeBytes,
+                      }))}
+                      onFilesSelected={setSelectedFiles}
+                      allowedTypesText="PDF, DOCX, TXT, ZIP, PNG, JPG (Max 10MB)"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="submission-description" className="mb-2 block text-[13px] font-semibold text-slate-800">
+                      Description <span className="font-normal text-slate-400">(optional)</span>
+                    </label>
+                    <textarea
+                      id="submission-description"
+                      rows={5}
+                      value={comment}
+                      onChange={(event) => setComment(event.target.value)}
+                      placeholder="Add a note for your teacher..."
+                      className="w-full resize-none rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+                    />
+                  </div>
                 </div>
                 <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/70 px-6 py-4">
                   <Button type="button" variant="secondary" onClick={() => setSubmitOpen(false)}>Cancel</Button>
-                  <Button type="button" disabled={submitting} onClick={() => void handleSubmit()}>{submitting ? 'Submitting...' : 'Submit'}</Button>
+                  <Button type="button" disabled={submitting} onClick={() => void handleSubmit()}>
+                    {submitting ? (submission ? 'Re-submitting...' : 'Submitting...') : (submission ? 'Re-submit' : 'Submit')}
+                  </Button>
                 </div>
               </div>
             </div>

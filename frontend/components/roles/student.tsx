@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { AppShell } from '../layout/AppShell';
 import { AmsPagination, Button, Card, PageHeader, StatusBadge, Metric, FileUpload } from '../ui';
 import { getStudentDashboardStats, type StudentDashboardStats } from '@/lib/api/dashboard';
-import { getAssignments, getMySubmissions, createSubmission, updateSubmission, uploadAttachment, listAttachments, deleteAttachment, type AssignmentDto, type SubmissionDto } from '@/lib/api';
+import { getAssignments, getMySubmissions, createSubmission, updateSubmission, uploadAttachment, type AssignmentDto, type SubmissionDto } from '@/lib/api';
 
 type StudentAssignment = {
   id: number;
@@ -251,8 +251,7 @@ export function StudentAssignmentsPage() {
   const [modalType, setModalType] = useState<'submit' | null>(null);
   const [selectedAssignment, setSelectedAssignment] = useState<AssignmentDto & { studentStatus?: string; submission?: SubmissionDto | null } | null>(null);
   const [comment, setComment] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadedFileName, setUploadedFileName] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   const [assignments, setAssignments] = useState<AssignmentDto[]>([]);
   const [submissions, setSubmissions] = useState<SubmissionDto[]>([]);
@@ -337,8 +336,7 @@ export function StudentAssignmentsPage() {
     setSelectedAssignment(assignment);
     setModalType('submit');
     setComment(assignment.submission?.contentText ?? '');
-    setSelectedFile(null);
-    setUploadedFileName(assignment.submission?.attachments?.[0]?.originalFileName ?? assignment.submission?.fileName ?? '');
+    setSelectedFiles([]);
   };
 
   const openAssignmentView = (assignment: AssignmentDto & { studentStatus?: string; submission?: SubmissionDto | null }) => {
@@ -358,7 +356,7 @@ export function StudentAssignmentsPage() {
     setModalType(null);
     setSelectedAssignment(null);
     setComment('');
-    setUploadedFileName('');
+    setSelectedFiles([]);
   };
 
   async function submitAssignment() {
@@ -368,15 +366,11 @@ export function StudentAssignmentsPage() {
       let submission: SubmissionDto;
       if (selectedAssignment.submission) {
         submission = await updateSubmission(selectedAssignment.submission.id, { contentText: comment });
-        if (selectedFile) {
-          const existingAttachments = await listAttachments('Submission', submission.id);
-          await Promise.all(existingAttachments.map((attachment) => deleteAttachment(attachment.id)));
-        }
       } else {
         submission = await createSubmission({ assignmentId: selectedAssignment.id, contentText: comment });
       }
-      if (selectedFile) {
-        await uploadAttachment('Submission', submission.id, selectedFile);
+      if (selectedFiles.length > 0) {
+        await Promise.all(selectedFiles.map((file) => uploadAttachment('Submission', submission.id, file)));
       }
       const mine = await getMySubmissions();
       setSubmissions(mine);
@@ -576,29 +570,28 @@ export function StudentAssignmentsPage() {
               <div className="overflow-y-auto px-7 py-6 space-y-5">
                 <div className="space-y-5">
                   <div>
-                    <label className="mb-2 block text-[13px] font-semibold text-slate-800">Upload your work</label>
+                    <label className="mb-2 block text-[13px] font-semibold text-slate-800">Attachments <span className="font-normal text-slate-400">(optional)</span></label>
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                       <FileUpload
-                        selectedFiles={selectedFile ? [selectedFile] : []}
+                        multiple
+                        selectedFiles={selectedFiles}
+                        existingAttachments={(selectedAssignment.submission?.attachments ?? []).map((attachment) => ({
+                          id: attachment.id,
+                          originalFileName: attachment.originalFileName,
+                          downloadUrl: attachment.downloadUrl,
+                          sizeBytes: attachment.sizeBytes,
+                        }))}
                         onFileSelected={(file) => {
-                          setSelectedFile(file);
-                          setUploadedFileName(file.name);
+                          setSelectedFiles((current) => [...current, file]);
                         }}
-                        onFilesSelected={(files) => {
-                          const newest = files.at(-1) ?? null;
-                          setSelectedFile(newest);
-                          setUploadedFileName(newest ? newest.name : '');
-                        }}
+                        onFilesSelected={setSelectedFiles}
                         allowedTypesText="PDF, DOCX, TXT, ZIP, PNG, JPG (Max 10MB)"
                       />
                     </div>
-                    {uploadedFileName ? (
-                      <p className="mt-2 text-sm text-slate-500">Selected: <span className="font-medium text-slate-700">{uploadedFileName}</span></p>
-                    ) : null}
                   </div>
 
                   <div>
-                    <label className="mb-2 block text-[13px] font-semibold text-slate-800">Comment <span className="font-normal text-slate-400">(optional)</span></label>
+                    <label className="mb-2 block text-[13px] font-semibold text-slate-800">Description <span className="font-normal text-slate-400">(optional)</span></label>
                     <textarea
                       rows={4}
                       value={comment}
@@ -615,7 +608,7 @@ export function StudentAssignmentsPage() {
                   Cancel
                 </Button>
                 <Button type="button" onClick={submitAssignment} className="bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700">
-                  {selectedAssignment.submission ? 'Resubmit' : 'Submit'}
+                  {selectedAssignment.submission ? 'Re-submit' : 'Submit'}
                 </Button>
               </div>
             </div>
