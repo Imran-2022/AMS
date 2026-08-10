@@ -47,7 +47,11 @@ public class StudentEnrollmentAppService : IEnrollmentAppService
                 StudentId = enrollment.StudentId,
                 StudentName = student.FullName,
                 ClassCourseId = enrollment.ClassCourseId,
-                ClassCourseName = classCourse.Name
+                ClassCourseName = classCourse.Name,
+                ParentMobile = student.ParentMobile,
+                PhoneNumber = student.PhoneNumber,
+                AvatarUrl = student.AvatarUrl,
+                IsActive = student.IsActive
             });
         }
 
@@ -88,7 +92,10 @@ public class StudentEnrollmentAppService : IEnrollmentAppService
             StudentId = enrollment.StudentId,
             StudentName = student.FullName,
             ClassCourseId = enrollment.ClassCourseId,
-            ClassCourseName = classCourse.Name
+            ClassCourseName = classCourse.Name,
+            ParentMobile = student.ParentMobile,
+            PhoneNumber = student.PhoneNumber,
+            IsActive = student.IsActive
         };
     }
 

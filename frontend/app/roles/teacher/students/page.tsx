@@ -1,15 +1,21 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { getUsers, API_BASE_URL } from '@/lib/api'
+import { getAssignments, getSubmissions, API_BASE_URL } from '@/lib/api'
 import { getEnrollments } from '@/lib/api/enrollments'
+import { getClassCourses } from '@/lib/api'
 
 type StudentRow = {
   id: string
   initials: string
   name: string
   cls: string
+  className: string
+  section: string
   parentContact: string
+  avatarUrl: string
+  average: string
+  lastSubmission: string
   color: string
   isActive: boolean
 }
@@ -46,33 +52,48 @@ export default function StudentsPage(){
       setError(null)
       try {
         console.debug('[StudentsPage] API_BASE_URL=', API_BASE_URL)
-        console.debug('[StudentsPage] initiating getEnrollments (and getUsers when allowed)')
+        console.debug('[StudentsPage] loading enrollments, classes, assignments, and submissions')
 
-        const enrollments = await getEnrollments()
-        let users = [] as any[]
+        const [enrollments, classCourses, assignments, submissions] = await Promise.all([
+          getEnrollments(),
+          getClassCourses(),
+          getAssignments(),
+          getSubmissions(),
+        ])
 
-        try {
-          users = await getUsers()
-          console.debug('[StudentsPage] loaded users', users?.length ?? 0)
-        } catch (uErr) {
-          console.warn('[StudentsPage] getUsers failed, falling back to enrollments-only roster', uErr)
-        }
-
-        console.debug('[StudentsPage] loaded enrollments', enrollments?.length ?? 0)
+        const classMap = new Map(classCourses.map((course) => [course.id, course]))
+        const teacherAssignmentIds = new Set(assignments.map((assignment) => assignment.id))
 
         const studentRows = enrollments.map((enrollment) => {
-          const user = users.find((u) => u.id === enrollment.studentId)
-          const name = user?.fullName ?? enrollment.studentName ?? 'Unknown student'
-          const cls = enrollment.classCourseName ?? 'Unassigned'
+          const course = classMap.get(enrollment.classCourseId)
+          const name = enrollment.studentName ?? 'Unknown student'
+          const className = course?.name ?? enrollment.classCourseName ?? 'Unassigned'
+          const section = course?.section ?? ''
+          const cls = section ? `${className} - ${section}` : className
+          const studentSubmissions = submissions.filter((submission) => submission.studentId === enrollment.studentId && teacherAssignmentIds.has(submission.assignmentId))
+          const graded = studentSubmissions.filter((submission) => submission.status === 'Graded' && typeof submission.marks === 'number' && submission.maxMarks)
+          const average = graded.length
+            ? `${Math.round((graded.reduce((total, submission) => total + ((submission.marks ?? 0) / (submission.maxMarks ?? 1)) * 100, 0) / graded.length))}%`
+            : '—'
+          const latest = studentSubmissions
+            .map((submission) => new Date(submission.submittedAt))
+            .sort((left, right) => right.getTime() - left.getTime())[0]
 
           return {
-            id: enrollment.studentId,
+            id: `${enrollment.studentId}-${enrollment.classCourseId}`,
             initials: getInitials(name),
             name,
             cls,
-            parentContact: user?.parentMobile || user?.phoneNumber || '—',
+            className,
+            section,
+            parentContact: enrollment.parentMobile || enrollment.phoneNumber || '—',
+            avatarUrl: enrollment.avatarUrl
+              ? (enrollment.avatarUrl.startsWith('http') ? enrollment.avatarUrl : `${API_BASE_URL}${enrollment.avatarUrl}`)
+              : '',
+            average,
+            lastSubmission: latest ? latest.toLocaleDateString() : '—',
             color: getColorKey(name),
-            isActive: user?.isActive ?? true,
+            isActive: enrollment.isActive,
           }
         })
 
@@ -90,22 +111,24 @@ export default function StudentsPage(){
   }, [])
 
   const sections = useMemo(() => {
-    const filtered = rows.filter((row) => !filterClass || row.cls.startsWith(`Class ${filterClass}`))
-    return Array.from(new Set(filtered.map((row) => row.cls.split(' - ')[1]).filter(Boolean)))
+    const filtered = rows.filter((row) => !filterClass || row.className === filterClass)
+    return Array.from(new Set(filtered.map((row) => row.section).filter(Boolean)))
   }, [filterClass, rows])
 
   const filteredRows = useMemo(() => {
     return rows.filter((row) => {
-      const matchClass = !filterClass || row.cls.startsWith(`Class ${filterClass}`)
-      const matchSection = !filterSection || row.cls.endsWith(filterSection)
+      const matchClass = !filterClass || row.className === filterClass
+      const matchSection = !filterSection || row.section === filterSection
       const matchQuery = !query || row.name.toLowerCase().includes(query.toLowerCase())
       return matchClass && matchSection && matchQuery
     })
   }, [filterClass, filterSection, query, rows])
 
   const totalStudents = filteredRows.length
-  const count9A = filteredRows.filter((row) => row.cls === 'Class 9 - A').length
-  const count10B = filteredRows.filter((row) => row.cls === 'Class 10 - B').length
+  const classCounts = Array.from(new Set(rows.map((row) => row.className))).map((className) => ({
+    className,
+    count: filteredRows.filter((row) => row.className === className).length,
+  }))
   const needsAttention = filteredRows.filter((row) => !row.isActive).length
 
   const colorMap: Record<string,{bg:string;text:string}> = {
@@ -137,22 +160,22 @@ export default function StudentsPage(){
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-[11px] font-bold text-slate-400">CLASS 9 - A</p>
+            <p className="text-[11px] font-bold text-slate-400">{classCounts[0]?.className ?? 'CLASS 1'}</p>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 7h18"/><path d="M12 4v16"/><path d="M6 11h12"/></svg>
             </div>
           </div>
-          <p className="text-2xl font-extrabold text-slate-800">{isLoading ? '—' : count9A}</p>
+          <p className="text-2xl font-extrabold text-slate-800">{isLoading ? '—' : (classCounts[0]?.count ?? 0)}</p>
           <p className="mt-1 text-xs text-slate-400">Students in this class</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-[11px] font-bold text-slate-400">CLASS 10 - B</p>
+            <p className="text-[11px] font-bold text-slate-400">{classCounts[1]?.className ?? 'CLASS 2'}</p>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19h16"/><path d="M5 15h14"/><path d="M7 11h10"/></svg>
             </div>
           </div>
-          <p className="text-2xl font-extrabold text-slate-800">{isLoading ? '—' : count10B}</p>
+          <p className="text-2xl font-extrabold text-slate-800">{isLoading ? '—' : (classCounts[1]?.count ?? 0)}</p>
           <p className="mt-1 text-xs text-slate-400">Students in this class</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
@@ -179,8 +202,7 @@ export default function StudentsPage(){
         <div className="flex items-center gap-2.5">
           <select value={filterClass} onChange={e=>{ setFilterClass(e.target.value); setFilterSection('') }} className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white">
             <option value="">All classes</option>
-            <option value="9">Class 9</option>
-            <option value="10">Class 10</option>
+            {Array.from(new Set(rows.map((row) => row.className))).map((className) => <option key={className} value={className}>{className}</option>)}
           </select>
           <select value={filterSection} onChange={e=>setFilterSection(e.target.value)} className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white">
             <option value="">All sections</option>
@@ -217,7 +239,18 @@ export default function StudentsPage(){
                 <tr key={row.id}>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full ${colorMap[row.color]?.bg} flex items-center justify-center text-xs font-bold text-brand-700 shrink-0`}>
+                      {row.avatarUrl ? (
+                        <img
+                          src={row.avatarUrl}
+                          alt=""
+                          className="h-8 w-8 shrink-0 rounded-full object-cover"
+                          onError={(event) => {
+                            event.currentTarget.style.display = 'none';
+                            event.currentTarget.nextElementSibling?.removeAttribute('hidden');
+                          }}
+                        />
+                      ) : null}
+                      <div hidden={Boolean(row.avatarUrl)} className={`w-8 h-8 rounded-full ${colorMap[row.color]?.bg} flex items-center justify-center text-xs font-bold text-brand-700 shrink-0`}>
                         {row.initials}
                       </div>
                       <span className="font-semibold text-slate-700">{row.name}</span>
@@ -225,10 +258,10 @@ export default function StudentsPage(){
                   </td>
                   <td className="px-2 py-3.5 text-slate-500">{row.cls}</td>
                   <td className="px-2 py-3.5 text-slate-500">{row.parentContact}</td>
-                  <td className="px-2 py-3.5 text-slate-500">—</td>
-                  <td className="px-2 py-3.5 text-slate-500">—</td>
+                  <td className="px-2 py-3.5 text-slate-500">{row.average}</td>
+                  <td className="px-2 py-3.5 text-slate-500">{row.lastSubmission}</td>
                   <td className="px-5 py-3.5 text-right">
-                    <button onClick={() => setSelected(row)} className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50">View</button>
+                    <button onClick={() => setSelected(row)} className="px-4 py-1.5 rounded border cursor-pointer border-slate-200 text-white text-xs font-semibold bg-brand-600 hover:bg-brand-700">View</button>
                   </td>
                 </tr>
               ))
@@ -243,10 +276,21 @@ export default function StudentsPage(){
 
       {selected && (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-slate-950/30">
-          <div className="bg-white rounded-3xl w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+          <div className="bg-white rounded w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
             <div className="flex items-start justify-between px-7 pt-6 pb-5 border-b border-slate-100 shrink-0">
               <div className="flex items-center gap-3">
-                <div className={`w-12 h-12 rounded-full ${colorMap[selected.color]?.bg} flex items-center justify-center text-sm font-bold text-brand-700 shrink-0`}>
+                {selected.avatarUrl ? (
+                  <img
+                    src={selected.avatarUrl}
+                    alt={selected.name}
+                    className="h-12 w-12 shrink-0 rounded-full object-cover"
+                    onError={(event) => {
+                      event.currentTarget.style.display = 'none';
+                      event.currentTarget.nextElementSibling?.removeAttribute('hidden');
+                    }}
+                  />
+                ) : null}
+                <div hidden={Boolean(selected.avatarUrl)} className={`w-12 h-12 rounded-full ${colorMap[selected.color]?.bg} flex items-center justify-center text-sm font-bold text-brand-700 shrink-0`}>
                   {selected.initials}
                 </div>
                 <div>
@@ -277,7 +321,7 @@ export default function StudentsPage(){
               </div>
             </div>
             <div className="flex items-center justify-end px-7 py-5 border-t border-slate-100 bg-slate-50/60">
-              <button onClick={() => setSelected(null)} className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-semibold hover:bg-slate-50">Close</button>
+              <button onClick={() => setSelected(null)} className="px-10 py-2.5 rounded border border-slate-200 cursor-pointer bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700">Close</button>
             </div>
           </div>
         </div>

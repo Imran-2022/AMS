@@ -5,6 +5,10 @@ export type StudentEnrollmentDto = {
   studentName: string;
   classCourseId: string;
   classCourseName: string;
+  parentMobile: string;
+  phoneNumber: string;
+  avatarUrl: string;
+  isActive: boolean;
 };
 
 export type CreateStudentEnrollmentDto = {
