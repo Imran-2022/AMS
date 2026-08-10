@@ -142,32 +142,32 @@ export function StudentSubmissionsPage() {
             <p className="text-xs text-slate-400 mt-1">Across all graded work</p>
           </div>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="flex items-center gap-2 flex-wrap">
             {(['all', 'graded', 'pending'] as const).map((status) => (
               <Button
                 key={status}
                 type="button"
                 variant={currentTab === status ? 'primary' : 'ghost'}
                 onClick={() => setCurrentTab(status)}
-                className={`tab cursor-pointer px-4 py-2 text-sm font-semibold transition ${currentTab === status ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+                className={`tab cursor-pointer px-4 py-2 text-sm font-semibold transition ${currentTab === status ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}>
                 {status === 'all' ? 'All' : status === 'graded' ? 'Graded' : 'Awaiting grade'}
                 <span className="opacity-70 font-normal"> {statusCounts[status]}</span>
               </Button>
             ))}
           </div>
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
             <select
               value={subjectFilter}
               onChange={(e) => setSubjectFilter(e.target.value)}
-              className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white"
+              className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
             >
               <option value="">All classes</option>
               {subjectOptions.map((subject) => (
                 <option key={subject} value={subject}>{subject}</option>
               ))}
             </select>
-            <div className="relative max-w-xs w-full sm:w-auto">
+            <div className="relative w-56">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
               </span>
@@ -176,7 +176,7 @@ export function StudentSubmissionsPage() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search submissions…"
-                className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 py-2.5 text-sm text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+                className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
               />
             </div>
           </div>
