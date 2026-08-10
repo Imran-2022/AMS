@@ -12,17 +12,19 @@ namespace AMS.HttpApi.Controllers;
 public class SubjectsController : ControllerBase
 {
     private readonly ISubjectAppService _subjectAppService;
+    private readonly ICurrentUserService _currentUser;
 
-    public SubjectsController(ISubjectAppService subjectAppService)
+    public SubjectsController(ISubjectAppService subjectAppService, ICurrentUserService currentUser)
     {
         _subjectAppService = subjectAppService;
+        _currentUser = currentUser;
     }
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<SubjectDto>>> GetAll()
     {
-        var currentUserId = this.GetCurrentUserId();
-        var currentUserRole = User.IsInRole("Admin") ? "Admin" : User.IsInRole("Teacher") ? "Teacher" : "Student";
+        var currentUserId = _currentUser.UserId;
+        var currentUserRole = _currentUser.Role;
         var subjects = await _subjectAppService.GetAllAsync(currentUserId, currentUserRole);
         return Ok(subjects);
     }
@@ -30,8 +32,8 @@ public class SubjectsController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<SubjectDto>> GetById(Guid id)
     {
-        var currentUserId = this.GetCurrentUserId();
-        var currentUserRole = User.IsInRole("Admin") ? "Admin" : User.IsInRole("Teacher") ? "Teacher" : "Student";
+        var currentUserId = _currentUser.UserId;
+        var currentUserRole = _currentUser.Role;
         var subject = await _subjectAppService.GetByIdAsync(id, currentUserId, currentUserRole);
         return subject is null ? NotFound() : Ok(subject);
     }
@@ -39,8 +41,8 @@ public class SubjectsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<SubjectDto>> Create([FromBody] CreateSubjectDto input)
     {
-        var currentUserId = this.GetCurrentUserId();
-        var currentUserRole = User.IsInRole("Admin") ? "Admin" : User.IsInRole("Teacher") ? "Teacher" : "Student";
+        var currentUserId = _currentUser.UserId;
+        var currentUserRole = _currentUser.Role;
         var subject = await _subjectAppService.CreateAsync(input, currentUserId, currentUserRole);
         return CreatedAtAction(nameof(GetById), new { id = subject.Id }, subject);
     }
@@ -48,8 +50,8 @@ public class SubjectsController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<SubjectDto>> Update(Guid id, [FromBody] UpdateSubjectDto input)
     {
-        var currentUserId = this.GetCurrentUserId();
-        var currentUserRole = User.IsInRole("Admin") ? "Admin" : User.IsInRole("Teacher") ? "Teacher" : "Student";
+        var currentUserId = _currentUser.UserId;
+        var currentUserRole = _currentUser.Role;
         var subject = await _subjectAppService.UpdateAsync(id, input, currentUserId, currentUserRole);
         return Ok(subject);
     }
@@ -57,8 +59,8 @@ public class SubjectsController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<ActionResult> Delete(Guid id)
     {
-        var currentUserId = this.GetCurrentUserId();
-        var currentUserRole = User.IsInRole("Admin") ? "Admin" : User.IsInRole("Teacher") ? "Teacher" : "Student";
+        var currentUserId = _currentUser.UserId;
+        var currentUserRole = _currentUser.Role;
         await _subjectAppService.DeleteAsync(id, currentUserId, currentUserRole);
         return NoContent();
     }

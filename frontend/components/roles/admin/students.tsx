@@ -371,13 +371,13 @@ export function AdminStudentsPage() {
           <>
             <Card>
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1">
                   {STATUS_OPTIONS.map((status) => (
                     <button
                       key={status}
                       type="button"
                       onClick={() => setStatusFilter(status)}
-                      className={`rounded-full px-4 py-2 text-sm font-semibold transition ${statusFilter === status ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>
+                      className={`rounded px-4 py-2 text-sm font-semibold cursor-pointer transition ${statusFilter === status ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>
                       {status} <span className="opacity-70 font-normal">{status === 'All' ? students.length : students.filter((student) => student.status === status).length}</span>
                     </button>
                   ))}
@@ -386,7 +386,7 @@ export function AdminStudentsPage() {
                   <select
                     value={classFilter}
                     onChange={(event) => setClassFilter(event.target.value)}
-                    className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    className="rounded border cursor-pointer border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                   >
                     <option>All classes</option>
                     {classNames.map((name) => (
@@ -398,7 +398,7 @@ export function AdminStudentsPage() {
                   <select
                     value={sectionFilter}
                     onChange={(event) => setSectionFilter(event.target.value)}
-                    className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    className="rounded border cursor-pointer border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                   >
                     <option>All sections</option>
                     {sectionNames.map((section) => (
@@ -412,7 +412,7 @@ export function AdminStudentsPage() {
                       value={search}
                       onChange={(event) => setSearch(event.target.value)}
                       placeholder="Search students…"
-                      className="w-full rounded-2xl border border-slate-200 px-10 py-2.5 text-sm text-slate-700 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                      className="w-full rounded border border-slate-200 px-8 py-2 text-sm text-slate-700 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                     />
                     <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
                       <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
@@ -505,7 +505,7 @@ export function AdminStudentsPage() {
                                       left: menuPosition.left,
                                       zIndex: 9999,
                                     }}
-                                    className="w-44 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl"
+                                    className="w-44 overflow-hidden rounded border border-slate-200 bg-white shadow-xl"
                                   >
                                     <button type="button" onClick={() => handleEditStudent(student)} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">
                                       Edit student

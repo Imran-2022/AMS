@@ -15,6 +15,34 @@ function getAuthToken() {
   if (typeof window === 'undefined') return null;
   return window.localStorage.getItem('ams-token');
 }
+
+export async function downloadFile(url: string) {
+  const token = getAuthToken();
+  const targetUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+  const response = await fetch(targetUrl, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `Request failed: ${response.status}`);
+  }
+  return response.blob();
+}
+
+export async function downloadAttachmentToBrowser(url: string, fileName?: string) {
+  const blob = await downloadFile(url);
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = objectUrl;
+  anchor.download = fileName || 'download';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(objectUrl);
+}
+
 export function logout(redirect = true) {
   if (typeof window === 'undefined') return;
   try {
@@ -25,6 +53,44 @@ export function logout(redirect = true) {
   if (redirect) {
     window.location.href = '/login';
   }
+}
+
+function normalizeDownloadUrl(url?: string) {
+  if (!url) return url;
+  if (/^https?:\/\//i.test(url)) return url;
+  if (url.startsWith('/')) return `${API_BASE_URL}${url}`;
+  return `${API_BASE_URL}/${url}`;
+}
+
+function normalizeApiPayload<T>(payload: T): T {
+  if (!payload || typeof payload !== 'object') return payload;
+
+  if (Array.isArray(payload)) {
+    return payload.map((item) => normalizeApiPayload(item)) as unknown as T;
+  }
+
+  const clone = { ...payload } as any;
+
+  if (typeof clone.downloadUrl === 'string') {
+    clone.downloadUrl = normalizeDownloadUrl(clone.downloadUrl);
+  }
+
+  if (typeof clone.attachmentUrl === 'string') {
+    clone.attachmentUrl = normalizeDownloadUrl(clone.attachmentUrl);
+  }
+
+  if (Array.isArray(clone.attachments)) {
+    clone.attachments = clone.attachments.map((item: unknown) => {
+      if (!item || typeof item !== 'object') return item;
+      const normalized = { ...(item as any) };
+      if (typeof normalized.downloadUrl === 'string') {
+        normalized.downloadUrl = normalizeDownloadUrl(normalized.downloadUrl);
+      }
+      return normalized;
+    });
+  }
+
+  return clone;
 }
 
 export async function request<T>(path: string, init?: RequestInit, retry = false): Promise<ApiResponse<T>> {
@@ -67,7 +133,10 @@ export async function request<T>(path: string, init?: RequestInit, retry = false
   }
 
   const text = await response.text();
-  return text ? (JSON.parse(text) as ApiResponse<T>) : (undefined as unknown as ApiResponse<T>);
+  if (!text) return undefined as unknown as ApiResponse<T>;
+
+  const parsed = JSON.parse(text) as ApiResponse<T>;
+  return normalizeApiPayload(parsed);
 }
 
 export type AssignmentDto = {
@@ -91,6 +160,20 @@ export type AssignmentDto = {
   createdAt: string;
   submittedCount?: number;
   totalStudents?: number;
+  attachments?: AttachmentDto[];
+};
+
+export type AttachmentDto = {
+  id: string;
+  ownerType: string;
+  ownerId: string;
+  originalFileName: string;
+  storedFileName: string;
+  contentType: string;
+  sizeBytes: number;
+  uploadedByUserId: string;
+  uploadedAt: string;
+  downloadUrl: string;
 };
 
 export type SubmissionDto = {
@@ -104,6 +187,7 @@ export type SubmissionDto = {
   isLate: boolean;
   status: string;
   marks?: number;
+  maxMarks?: number;
   feedback?: string;
   gradedByTeacherId?: string;
   gradedAt?: string;
@@ -112,6 +196,7 @@ export type SubmissionDto = {
   assignmentTitle: string;
   classCourseName: string;
   classCourseSection: string;
+  attachments?: AttachmentDto[];
 };
 
 export type UserDto = {
@@ -261,6 +346,13 @@ export type SubjectDto = {
   classCourseId: string;
 };
 
+export type StudentEnrollmentDto = {
+  studentId: string;
+  studentName: string;
+  classCourseId: string;
+  classCourseName: string;
+};
+
 export type CreateSubjectDto = {
   name: string;
   code: string;
@@ -356,6 +448,10 @@ export async function getSubmissions() {
   return request<SubmissionDto[]>(`/api/submissions`);
 }
 
+export async function getSubmission(id: string) {
+  return request<SubmissionDto>(`/api/submissions/${id}`);
+}
+
 export async function getMySubmissions() {
   return request<SubmissionDto[]>(`/api/submissions/mine`);
 }
@@ -392,6 +488,10 @@ export async function toggleUserStatus(id: string) {
 
 export async function getClassCourses() {
   return request<ClassCourseDto[]>(`/api/classes`);
+}
+
+export async function getEnrollments() {
+  return request<StudentEnrollmentDto[]>(`/api/enrollments`);
 }
 
 export async function getAcademicYears() {
@@ -474,6 +574,12 @@ export async function createAssignment(input: CreateAssignmentDto) {
   });
 }
 
+export async function duplicateAssignment(id: string) {
+  return request<AssignmentDto>(`/api/assignments/${id}/duplicate`, {
+    method: 'POST'
+  });
+}
+
 export async function updateAssignment(id: string, input: UpdateAssignmentDto) {
   return request<AssignmentDto>(`/api/assignments/${id}`, {
     method: 'PUT',
@@ -546,6 +652,13 @@ export async function listAttachments(ownerType: string, ownerId: string) {
 
 export async function deleteAttachment(id: string) {
   return request<void>(`/api/attachments/${id}`, { method: 'DELETE' });
+}
+
+export async function renameAttachment(id: string, newOriginalFileName: string) {
+  return request<AttachmentDto>(`/api/attachments/${id}/rename`, {
+    method: 'PATCH',
+    body: JSON.stringify({ newOriginalFileName })
+  });
 }
 
 export async function updateSubmission(id: string, input: UpdateSubmissionDto) {

@@ -155,8 +155,8 @@ function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, 
       </nav>
 
       <div className="border-t border-[#ECECEF] p-3">
-        <div className="relative group">
-          <div className="w-full nav-item relative flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-[#F5F5F7] text-left cursor-pointer">
+          <div className="relative group">
+          <button type="button" onClick={() => router.push(settingsHref)} className="w-full nav-item relative flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-[#F5F5F7] text-left cursor-pointer">
             <div className={`w-9 h-9 rounded-full ${role === 'Teacher' || role === 'Student' ? 'bg-brand-600' : 'bg-[#1F2430]'} text-white flex items-center justify-center shrink-0 overflow-hidden`}> 
             {avatarUrl ? (
               <img src={avatarUrl} alt="Profile" className="h-full w-full object-cover" />
@@ -172,14 +172,14 @@ function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, 
                 </p>
               </div>
             ) : null}
-          </div>
+          </button>
 
           <div className="absolute left-0 bottom-full hidden min-w-full pb-2 group-hover:block">
             <div className="rounded-xl border border-[#ECECEF] bg-white p-2 shadow-lg">
               <button
                 type="button"
                 onClick={() => router.push(settingsHref)}
-                className="w-full inline-flex items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] font-medium text-[#1F2430]/80 transition-colors hover:bg-[#F5F5F7]">
+                className="w-full inline-flex items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] font-medium text-[#1F2430]/80 transition-colors hover:bg-[#F5F5F7] cursor-pointer">
                 <Settings className="h-5 w-5" />
                 {!collapsed ? <span>{settingsLabel}</span> : null}
               </button>
@@ -187,7 +187,7 @@ function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, 
               <button
                 type="button"
                 onClick={() => onLogout()}
-                className="w-full inline-flex items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] font-medium text-[#1F2430]/80 transition-colors hover:bg-[#F5F5F7]">
+                className="w-full inline-flex items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] font-medium text-[#1F2430]/80 transition-colors hover:bg-[#F5F5F7] cursor-pointer">
                 <LogOut className="h-5 w-5" />
                 {!collapsed ? <span>Sign out</span> : null}
               </button>

@@ -6,6 +6,10 @@ public class StudentEnrollmentDto
     public string StudentName { get; set; } = string.Empty;
     public Guid ClassCourseId { get; set; }
     public string ClassCourseName { get; set; } = string.Empty;
+    public string ParentMobile { get; set; } = string.Empty;
+    public string PhoneNumber { get; set; } = string.Empty;
+    public string AvatarUrl { get; set; } = string.Empty;
+    public bool IsActive { get; set; }
 }
 
 public class CreateStudentEnrollmentDto

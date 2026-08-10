@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
-import { AmsDeleteComfiramtionModal, AmsPagination, AddTeacherModal, type AddTeacherFormData } from '../../ui';
+import { AmsDeleteComfiramtionModal, AmsPagination, AddTeacherModal, Button, type AddTeacherFormData } from '../../ui';
 import { AppShell } from '../../layout/AppShell';
 import { createUser, deleteUser, getUsers, updateUser } from '@/lib/api';
 import { getTeacherAssignments, type TeacherSubjectAssignmentDto } from '@/lib/api/teacherAssignments';
@@ -44,12 +44,16 @@ function mapUserToTeacherRow(user: {
     .slice(0, 2)
     .toUpperCase();
 
+  const subjectSpecializations = user.subjectSpecialization
+    ? user.subjectSpecialization.split(',').map((value) => value.trim()).filter(Boolean)
+    : [];
+
   return {
     id: user.id,
     initials,
     name: user.fullName,
     email: user.email,
-    subjects: user.subjectSpecialization ? [user.subjectSpecialization] : [],
+    subjects: subjectSpecializations,
     classesCount: 0,
     status: user.isActive ? 'Active' : 'Inactive',
     tone: user.isActive ? 'emerald' : 'slate',
@@ -186,12 +190,13 @@ export function AdminTeachersPage() {
 
     setTeacherModalSubmitting(true);
     try {
+      const specializationValue = (values.subjectSpecializations ?? []).join(', ');
       if (editingTeacher) {
         await updateUser(editingTeacher.id, {
           fullName: values.fullName,
           email: values.email,
           isActive: values.status === 'Active',
-          subjectSpecialization: values.subjectSpecialization,
+          subjectSpecialization: specializationValue,
           phoneNumber: values.phone,
           gender: values.gender,
           qualification: values.qualification,
@@ -205,7 +210,7 @@ export function AdminTeachersPage() {
           password: values.password,
           role: 'Teacher',
           isActive: values.status === 'Active',
-          subjectSpecialization: values.subjectSpecialization,
+          subjectSpecialization: specializationValue,
           phoneNumber: values.phone,
           gender: values.gender,
           qualification: values.qualification,
@@ -249,11 +254,10 @@ export function AdminTeachersPage() {
             <p className="text-xs font-bold text-brand-600">ADMINISTRATION</p>
             <h1 className="text-3xl font-extrabold text-slate-800 mt-0.5">Teachers</h1>
           </div>
-          <button onClick={openNewTeacher} className="px-4 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 flex items-center gap-2"> 
+          <Button onClick={openNewTeacher} className="flex items-center gap-2">
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Add teacher
-          </button>
-          
+          </Button>
         </div>
 
         <div className={`hidden ${mode === 'error' ? 'flex' : ''} bg-rose-50 border border-rose-200 rounded-2xl px-5 py-4 items-center justify-between`} id="errorBanner">
@@ -316,16 +320,16 @@ export function AdminTeachersPage() {
           <>
             <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-2">
-                <button onClick={()=>setTab('All')} className={`tab px-4 py-2 rounded-xl text-sm font-semibold ${selectedTab==='All' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>All <span className="opacity-70 font-normal">{teachers.length}</span></button>
-                <button onClick={()=>setTab('Active')} className={`tab px-4 py-2 rounded-xl text-sm font-semibold ${selectedTab==='Active' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>Active <span className="opacity-60 font-normal">{teachers.filter(t=>t.status==='Active').length}</span></button>
-                <button onClick={()=>setTab('On leave')} className={`tab px-4 py-2 rounded-xl text-sm font-semibold ${selectedTab==='On leave' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>On leave <span className="opacity-60 font-normal">{teachers.filter(t=>t.status==='On leave').length}</span></button>
+                <button onClick={()=>setTab('All')} className={`tab px-4 py-2 rounded text-sm font-semibold ${selectedTab==='All' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>All <span className="opacity-70 font-normal">{teachers.length}</span></button>
+                <button onClick={()=>setTab('Active')} className={`tab px-4 py-2 rounded text-sm font-semibold ${selectedTab==='Active' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>Active <span className="opacity-60 font-normal">{teachers.filter(t=>t.status==='Active').length}</span></button>
+                <button onClick={()=>setTab('On leave')} className={`tab px-4 py-2 rounded text-sm font-semibold ${selectedTab==='On leave' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>On leave <span className="opacity-60 font-normal">{teachers.filter(t=>t.status==='On leave').length}</span></button>
               </div>
               <div className="flex items-center gap-2.5 flex-1 justify-end min-w-[280px]">
-                <select className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white">
+                <select className="text-sm border border-slate-200 rounded px-4 py-2 text-slate-600 bg-white">
                   <option>All subjects</option>
                 </select>
                 <div className="relative flex-1 max-w-xs">
-                  <input value={search} onChange={(e)=>setSearch(e.target.value)} type="text" placeholder="Search teachers…" className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-brand-500" />
+                  <input value={search} onChange={(e)=>setSearch(e.target.value)} type="text" placeholder="Search teachers…" className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-brand-500" />
                   <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
                 </div>
               </div>
@@ -338,7 +342,7 @@ export function AdminTeachersPage() {
                     <tr className="border-b border-slate-100 text-left">
                       <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">NAME</th>
                       <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">EMAIL</th>
-                      <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">SUBJECTS</th>
+                      <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">SUBJECTS ASSIGNED</th>
                       <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">CLASSES</th>
                       <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">STATUS</th>
                       <th className="w-16 px-5 py-3.5 text-right text-[11px] font-bold text-slate-400">ACTIONS</th>
@@ -420,7 +424,7 @@ export function AdminTeachersPage() {
           <p className="text-base font-bold text-slate-800">No teachers yet</p>
           <p className="text-sm text-slate-500 mt-1 max-w-md">Add your first teacher, or import a roster from a CSV file to get started quickly.</p>
           <div className="mt-5">
-            <button onClick={openNewTeacher} className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-700">Add teacher</button>
+            <Button onClick={openNewTeacher}>Add teacher</Button>
           </div>
         </div>
       </div>
@@ -452,7 +456,17 @@ export function AdminTeachersPage() {
           gender: editingTeacher.gender ?? '',
           qualification: editingTeacher.qualification ?? '',
           joiningDate: editingTeacher.joiningDate ?? '',
-          subjectSpecialization: editingTeacher.subjectSpecialization ?? editingTeacher.subjects[0] ?? '',
+          subjectSpecializations: editingTeacher.subjectSpecialization
+            ? editingTeacher.subjectSpecialization
+                .split(',')
+                .map((v) => v.trim())
+                .map((val) => {
+                  // stored values may include code like "Subject — CODE"; normalize to subject name
+                  const parts = val.split('—');
+                  return parts[0].trim();
+                })
+                .filter(Boolean)
+            : editingTeacher.subjects,
           avatarUrl: editingTeacher.avatarUrl ?? '',
         } : undefined}
         isSubmitting={teacherModalSubmitting}

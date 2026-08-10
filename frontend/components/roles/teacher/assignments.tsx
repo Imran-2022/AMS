@@ -1,11 +1,12 @@
 "use client";
 
 import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BookOpen, ClipboardList, Copy, FileText, Layers, Pencil, Plus, Search, Send, Trash2, Eye } from 'lucide-react';
 import { AppShell } from '../../layout/AppShell';
 import { AmsDeleteComfiramtionModal, AmsPagination, Button, FileUpload } from '../../ui';
-import { getAssignments, getClassCourses, getSubjects, createAssignment, updateAssignment, deleteAssignment, publishAssignment, unpublishAssignment } from '@/lib/api';
+import { getAssignments, getClassCourses, getSubjects, createAssignment, duplicateAssignment as duplicateAssignmentApi, updateAssignment, deleteAssignment, publishAssignment, unpublishAssignment, uploadAttachment, listAttachments, renameAttachment, deleteAttachment } from '@/lib/api';
 import type { AssignmentDto, ClassCourseDto, SubjectDto, CreateAssignmentDto, UpdateAssignmentDto } from '@/lib/api';
 
 type AssignmentStatus = 'Published' | 'Draft';
@@ -23,6 +24,15 @@ type AssignmentFormValues = {
   maxMarks: string;
   attachmentUrl: string;
   attachmentName: string;
+  allowLateSubmission: boolean;
+  allowResubmission: boolean;
+};
+
+type ExistingAttachment = {
+  id: string;
+  originalFileName: string;
+  downloadUrl: string;
+  sizeBytes: number;
 };
 
 const createEmptyForm = (): AssignmentFormValues => ({
@@ -37,7 +47,39 @@ const createEmptyForm = (): AssignmentFormValues => ({
   maxMarks: '20',
   attachmentUrl: '',
   attachmentName: '',
+  allowLateSubmission: false,
+  allowResubmission: true,
 });
+
+const formatDateForInput = (value: string) => {
+  if (!value) return '';
+  const isoMatch = value.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/);
+  if (isoMatch) {
+    return value.slice(0, 16);
+  }
+
+  const usMatch = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (usMatch) {
+    const month = String(Number(usMatch[1])).padStart(2, '0');
+    const day = String(Number(usMatch[2])).padStart(2, '0');
+    const year = usMatch[3];
+    let hour = Number(usMatch[4]);
+    const minute = usMatch[5];
+    const period = usMatch[6].toUpperCase();
+    if (period === 'PM' && hour < 12) hour += 12;
+    if (period === 'AM' && hour === 12) hour = 0;
+    return `${year}-${month}-${day}T${String(hour).padStart(2, '0')}:${minute}`;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
 
 function StatCard({ label, value, sub, icon }: { label: string; value: string | number; sub: string; icon: ReactNode }) {
   return (
@@ -53,6 +95,8 @@ function StatCard({ label, value, sub, icon }: { label: string; value: string | 
 }
 
 export function TeacherAssignmentsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [assignments, setAssignments] = useState<AssignmentDto[]>([]);
   const [classes, setClasses] = useState<ClassCourseDto[]>([]);
   const [subjects, setSubjects] = useState<SubjectDto[]>([]);
@@ -67,11 +111,18 @@ export function TeacherAssignmentsPage() {
   const [editingAssignment, setEditingAssignment] = useState<AssignmentDto | null>(null);
   const [pendingDelete, setPendingDelete] = useState<AssignmentDto | null>(null);
   const [form, setForm] = useState<AssignmentFormValues>(createEmptyForm());
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
+  const [existingAttachments, setExistingAttachments] = useState<ExistingAttachment[]>([]);
+  const [removedAttachmentIds, setRemovedAttachmentIds] = useState<string[]>([]);
+  const [selectedClassName, setSelectedClassName] = useState('');
+  const [selectedSection, setSelectedSection] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
   const [pageIndex, setPageIndex] = useState(0);
+
+  const selectedClassCourseId = searchParams.get('classCourseId');
 
   useEffect(() => {
     const handleClick = () => setOpenMenuId(null);
@@ -100,7 +151,7 @@ export function TeacherAssignmentsPage() {
   }, []);
 
   useEffect(() => {
-    if (!form.classCourseId && classes.length) {
+    if (!form.classCourseId && classes.length && !modalOpen) {
       const defaultClass = classes[0];
       const classSubjects = subjects.filter((subject) => subject.classCourseId === defaultClass.id);
       setForm((current) => ({
@@ -111,8 +162,19 @@ export function TeacherAssignmentsPage() {
         subjectId: classSubjects[0]?.id ?? '',
         subjectName: classSubjects[0]?.name ?? '',
       }));
+      setSelectedClassName(defaultClass.name);
+      setSelectedSection(defaultClass.section);
     }
-  }, [classes, subjects, form.classCourseId]);
+  }, [classes, subjects, form.classCourseId, modalOpen]);
+
+  const selectedClassLabel = useMemo(() => {
+    const selectedClass = classes.find((classCourse) => classCourse.id === selectedClassCourseId);
+    return selectedClass ? `${selectedClass.name} — ${selectedClass.section}` : null;
+  }, [classes, selectedClassCourseId]);
+
+  useEffect(() => {
+    setClassFilter(selectedClassLabel ?? 'All classes');
+  }, [selectedClassLabel]);
 
   const visibleAssignments = useMemo(() => {
     return assignments.filter((assignment) => {
@@ -135,7 +197,7 @@ export function TeacherAssignmentsPage() {
 
   useEffect(() => {
     setPageIndex(0);
-  }, [filter, classFilter, sectionFilter, subjectFilter, searchTerm]);
+  }, [filter, classFilter, sectionFilter, subjectFilter, searchTerm, searchParams]);
 
   const pagedAssignments = useMemo(() => {
     const start = pageIndex * pageSize;
@@ -155,10 +217,11 @@ export function TeacherAssignmentsPage() {
     };
   }, [assignments]);
 
-  const availableClasses = useMemo(
-    () => ['All classes', ...Array.from(new Set(assignments.map((assignment) => `${assignment.classCourseName} — ${assignment.classCourseSection}`)))],
-    [assignments]
-  );
+  const availableClasses = useMemo(() => {
+    const classNames = assignments.map((assignment) => `${assignment.classCourseName} — ${assignment.classCourseSection}`);
+    if (selectedClassLabel) classNames.push(selectedClassLabel);
+    return ['All classes', ...Array.from(new Set(classNames))];
+  }, [assignments, selectedClassLabel]);
 
   const availableSections = useMemo(
     () => ['All sections', ...Array.from(new Set(assignments.map((assignment) => assignment.classCourseSection)))],
@@ -170,14 +233,74 @@ export function TeacherAssignmentsPage() {
     [assignments]
   );
 
+  const classNames = useMemo(
+    () => Array.from(new Set(classes.map((cls) => cls.name))),
+    [classes]
+  );
+
+  const sectionOptions = useMemo(
+    () => classes.filter((cls) => cls.name === selectedClassName).map((cls) => cls.section),
+    [classes, selectedClassName]
+  );
+
+  const selectedClass = useMemo(
+    () => classes.find((cls) => cls.name === selectedClassName && cls.section === selectedSection),
+    [classes, selectedClassName, selectedSection]
+  );
+
   const availableSubjectsForForm = useMemo(
     () => subjects.filter((subject) => subject.classCourseId === form.classCourseId),
     [subjects, form.classCourseId]
   );
 
-  const openCreateModal = (assignment?: AssignmentDto) => {
+  useEffect(() => {
+    if (searchParams.get('create') === '1' && !modalOpen) {
+      void openCreateModal();
+    }
+  }, [searchParams, modalOpen]);
+
+  const openCreateModal = async (assignment?: AssignmentDto) => {
     if (assignment) {
       setEditingAssignment(assignment);
+      const assignmentClass = classes.find((c) => c.id === assignment.classCourseId);
+      setSelectedClassName(assignmentClass?.name ?? '');
+      setSelectedSection(assignmentClass?.section ?? '');
+      let attachmentUrl = assignment.attachmentUrl ?? '';
+      let attachmentName = assignment.attachmentName ?? '';
+
+      let attachments: ExistingAttachment[] = [];
+      try {
+        const fetchedAttachments = await listAttachments('Assignment', assignment.id);
+        attachments = fetchedAttachments.map((item) => ({
+          id: item.id,
+          originalFileName: item.originalFileName,
+          downloadUrl: item.downloadUrl,
+          sizeBytes: item.sizeBytes,
+        }));
+      } catch (error) {
+        console.error('Unable to load attachments for edit form', error);
+      }
+
+      if (attachments.length === 0 && (assignment.attachmentName || assignment.attachmentUrl)) {
+        attachments = [
+          {
+            id: 'assignment-record-attachment',
+            originalFileName: assignment.attachmentName ?? 'Existing attachment',
+            downloadUrl: assignment.attachmentUrl ?? '',
+            sizeBytes: 0,
+          },
+        ];
+      }
+
+      const firstAttachment = attachments[0];
+      if (firstAttachment) {
+        attachmentUrl = firstAttachment.downloadUrl;
+        attachmentName = firstAttachment.originalFileName;
+      }
+
+      setExistingAttachments(attachments);
+      setRemovedAttachmentIds([]);
+
       setForm({
         title: assignment.title,
         description: assignment.description,
@@ -186,15 +309,19 @@ export function TeacherAssignmentsPage() {
         classCourseSection: assignment.classCourseSection,
         subjectId: assignment.subjectId,
         subjectName: assignment.subjectName,
-        deadline: assignment.deadline,
+        deadline: formatDateForInput(assignment.deadline),
         maxMarks: String(assignment.maxMarks),
-        attachmentUrl: assignment.attachmentUrl ?? '',
-        attachmentName: assignment.attachmentName ?? '',
+        attachmentUrl,
+        attachmentName,
+        allowLateSubmission: assignment.allowLateSubmission,
+        allowResubmission: assignment.allowResubmission,
       });
     } else {
       const defaultClass = classes[0];
       const defaultSubject = subjects.find((subject) => subject.classCourseId === defaultClass?.id);
       setEditingAssignment(null);
+      setSelectedClassName(defaultClass?.name ?? '');
+      setSelectedSection(defaultClass?.section ?? '');
       setForm({
         title: '',
         description: '',
@@ -207,7 +334,12 @@ export function TeacherAssignmentsPage() {
         maxMarks: '20',
         attachmentUrl: '',
         attachmentName: '',
+        allowLateSubmission: false,
+        allowResubmission: true,
       });
+      setAttachmentFiles([]);
+      setExistingAttachments([]);
+      setRemovedAttachmentIds([]);
     }
     setModalOpen(true);
   };
@@ -216,9 +348,18 @@ export function TeacherAssignmentsPage() {
     setModalOpen(false);
     setEditingAssignment(null);
     setForm(createEmptyForm());
+    setAttachmentFiles([]);
+    setExistingAttachments([]);
+    setRemovedAttachmentIds([]);
+    setSelectedClassName('');
+    setSelectedSection('');
+
+    if (searchParams.get('create') === '1') {
+      router.replace('/roles/teacher/assignments');
+    }
   };
 
-  const handleSubmit = async (status: AssignmentStatus) => {
+  const handleSubmit = async (status?: AssignmentStatus) => {
     if (!form.title.trim() || !form.description.trim() || !form.deadline.trim() || !form.classCourseId || !form.subjectId) {
       return;
     }
@@ -234,19 +375,26 @@ export function TeacherAssignmentsPage() {
         subjectId: form.subjectId,
         deadline: form.deadline,
         maxMarks: Number(form.maxMarks || 20),
-        allowLateSubmission: false,
-        allowResubmission: false,
+        allowLateSubmission: form.allowLateSubmission,
+        allowResubmission: form.allowResubmission,
       } as CreateAssignmentDto;
 
       if (editingAssignment) {
+        const realRemovedIds = removedAttachmentIds.filter((id) => !id.startsWith('assignment-record-attachment'));
+        if (realRemovedIds.length > 0) {
+          await Promise.all(realRemovedIds.map((id) => deleteAttachment(id)));
+        }
+
         const updatedAssignment = await updateAssignment(editingAssignment.id, payload as UpdateAssignmentDto);
         setAssignments((current) => current.map((item) => (item.id === updatedAssignment.id ? updatedAssignment : item)));
-        if (status === 'Published' && updatedAssignment.status === 'Draft') {
-          const publishedAssignment = await publishAssignment(updatedAssignment.id);
-          setAssignments((current) => current.map((item) => (item.id === publishedAssignment.id ? publishedAssignment : item)));
+        if (attachmentFiles.length > 0) {
+          await Promise.all(attachmentFiles.map((file) => uploadAttachment('Assignment', editingAssignment.id, file)));
         }
       } else {
         const createdAssignment = await createAssignment(payload);
+        if (attachmentFiles.length > 0) {
+          await Promise.all(attachmentFiles.map((file) => uploadAttachment('Assignment', createdAssignment.id, file)));
+        }
         setAssignments((current) => [createdAssignment, ...current]);
         if (status === 'Published') {
           const publishedAssignment = await publishAssignment(createdAssignment.id);
@@ -329,19 +477,8 @@ export function TeacherAssignmentsPage() {
   const handleDuplicate = async (assignment: AssignmentDto) => {
     try {
       setLoadError(null);
-      const duplicateAssignment = await createAssignment({
-        title: `${assignment.title} (Copy)`,
-        description: assignment.description,
-        attachmentUrl: assignment.attachmentUrl || undefined,
-        attachmentName: assignment.attachmentName || undefined,
-        classCourseId: assignment.classCourseId,
-        subjectId: assignment.subjectId,
-        deadline: assignment.deadline,
-        maxMarks: assignment.maxMarks,
-        allowLateSubmission: false,
-        allowResubmission: false,
-      });
-      setAssignments((current) => [duplicateAssignment, ...current]);
+      const duplicate = await duplicateAssignmentApi(assignment.id);
+      setAssignments((current) => [duplicate, ...current]);
     } catch (error) {
       console.error(error);
       try {
@@ -383,17 +520,26 @@ export function TeacherAssignmentsPage() {
     }
   };
 
-  const handleClassChange = (classCourseId: string) => {
-    const selectedClass = classes.find((cls) => cls.id === classCourseId);
-    const classSubjects = subjects.filter((subject) => subject.classCourseId === classCourseId);
-    setForm((current) => ({
-      ...current,
-      classCourseId,
-      classCourseName: selectedClass?.name ?? current.classCourseName,
-      classCourseSection: selectedClass?.section ?? current.classCourseSection,
-      subjectId: classSubjects[0]?.id ?? current.subjectId,
-      subjectName: classSubjects[0]?.name ?? current.subjectName,
-    }));
+  const handleClassNameChange = (className: string) => {
+    setSelectedClassName(className);
+    const firstSection = classes.find((cls) => cls.name === className)?.section ?? '';
+    setSelectedSection(firstSection);
+  };
+
+  const handleSectionChange = (section: string) => {
+    setSelectedSection(section);
+    const selected = classes.find((cls) => cls.name === selectedClassName && cls.section === section);
+    if (selected) {
+      const classSubjects = subjects.filter((subject) => subject.classCourseId === selected.id);
+      setForm((current) => ({
+        ...current,
+        classCourseId: selected.id,
+        classCourseName: selected.name,
+        classCourseSection: selected.section,
+        subjectId: classSubjects[0]?.id ?? current.subjectId,
+        subjectName: classSubjects[0]?.name ?? current.subjectName,
+      }));
+    }
   };
 
   const handleSubjectChange = (subjectId: string) => {
@@ -428,34 +574,34 @@ export function TeacherAssignmentsPage() {
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex flex-wrap items-center gap-2">
-              <button type="button" onClick={() => setFilter('all')} className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${filter === 'all' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+              <button type="button" onClick={() => setFilter('all')} className={`rounded px-4 py-2 text-sm font-semibold transition ${filter === 'all' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
                 All <span className="ml-1 font-normal opacity-70">{stats.total}</span>
               </button>
-              <button type="button" onClick={() => setFilter('published')} className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${filter === 'published' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+              <button type="button" onClick={() => setFilter('published')} className={`rounded px-4 py-2 text-sm font-semibold transition ${filter === 'published' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
                 Published <span className="ml-1 font-normal opacity-70">{stats.published}</span>
               </button>
-              <button type="button" onClick={() => setFilter('drafts')} className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${filter === 'drafts' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+              <button type="button" onClick={() => setFilter('drafts')} className={`rounded px-4 py-2 text-sm font-semibold transition ${filter === 'drafts' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
                 Drafts <span className="ml-1 font-normal opacity-70">{stats.drafts}</span>
               </button>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <select value={classFilter} onChange={(event) => setClassFilter(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 outline-none focus:border-brand-500">
+              <select value={classFilter} onChange={(event) => setClassFilter(event.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500">
                 {availableClasses.map((option) => (
                   <option key={option} value={option}>
                     {option}
                   </option>
                 ))}
               </select>
-              <select value={sectionFilter} onChange={(event) => setSectionFilter(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 outline-none focus:border-brand-500">
+              <select value={sectionFilter} onChange={(event) => setSectionFilter(event.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500">
                 {availableSections.map((option) => (
                   <option key={option} value={option}>
                     {option}
                   </option>
                 ))}
               </select>
-              <select value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 outline-none focus:border-brand-500">
+              <select value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500">
                 {availableSubjects.map((option) => (
                   <option key={option} value={option}>
                     {option}
@@ -464,7 +610,7 @@ export function TeacherAssignmentsPage() {
               </select>
               <div className="relative min-w-[240px]">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} type="text" placeholder="Search assignments…" className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-600 outline-none focus:border-brand-500" />
+                <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} type="text" placeholder="Search assignments…" className="w-full rounded border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-600 outline-none focus:border-brand-500" />
               </div>
             </div>
           </div>
@@ -505,9 +651,15 @@ export function TeacherAssignmentsPage() {
                     <p className="mt-3 text-sm text-slate-600">{assignment.description}</p>
                     <div className="mt-4 flex flex-wrap items-center gap-2">
                       <span className="rounded-lg bg-slate-50 px-2.5 py-1 text-[11px] font-mono text-slate-500">Due: {new Date(assignment.deadline).toLocaleString()}</span>
-                      {assignment.attachmentName && (
+                      {assignment.attachments && assignment.attachments.length > 0 ? (
+                        assignment.attachments.map((attachment) => (
+                          <span key={attachment.id} className="rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
+                            {attachment.originalFileName}
+                          </span>
+                        ))
+                      ) : assignment.attachmentName ? (
                         <span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">Attachment: {assignment.attachmentName}</span>
-                      )}
+                      ) : null}
                     </div>
                     <div className="mt-4">
                       <div className="mb-2 flex items-center justify-between gap-4 text-[11px] uppercase tracking-[0.12em] text-slate-500">
@@ -530,7 +682,7 @@ export function TeacherAssignmentsPage() {
                         <button type="button" onClick={() => openCreateModal(assignment)} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
                           <Pencil className="h-4 w-4" /> Edit
                         </button>
-                        <button type="button" onClick={() => { window.location.href = '/roles/teacher/submissions'; }} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
+                        <button type="button" onClick={() => router.push(`/roles/teacher/submissions?assignmentId=${encodeURIComponent(assignment.id)}`)} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
                           <Eye className="h-4 w-4" /> View submissions
                         </button>
                         <button type="button" onClick={() => handleDuplicate(assignment)} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
@@ -571,7 +723,7 @@ export function TeacherAssignmentsPage() {
 
         {modalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
-            <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl">
+            <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded border border-slate-200 bg-white shadow-2xl">
               <div className="flex items-start justify-between border-b border-slate-100 px-7 py-6">
                 <div>
                   <h2 className="text-xl font-extrabold text-slate-900">{editingAssignment ? 'Edit assignment' : 'Create assignment'}</h2>
@@ -596,21 +748,36 @@ export function TeacherAssignmentsPage() {
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div>
                     <label className="mb-2 block text-[13px] font-semibold text-slate-800">Class <span className="text-rose-500">*</span></label>
-                    <select value={form.classCourseId} onChange={(event) => handleClassChange(event.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100">
-                      {classes.map((cls) => (
-                        <option key={cls.id} value={cls.id}>
-                          {cls.name} — {cls.section}
+                    <select value={selectedClassName} onChange={(event) => handleClassNameChange(event.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100">
+                      <option value="" disabled>
+                        Select class
+                      </option>
+                      {classNames.map((name) => (
+                        <option key={name} value={name}>
+                          {name}
                         </option>
                       ))}
                     </select>
                   </div>
                   <div>
                     <label className="mb-2 block text-[13px] font-semibold text-slate-800">Section <span className="text-rose-500">*</span></label>
-                    <input value={form.classCourseSection} disabled className="w-full rounded-2xl border border-slate-300 bg-slate-100 px-4 py-2.5 text-sm text-slate-500 outline-none" />
+                    <select value={selectedSection} onChange={(event) => handleSectionChange(event.target.value)} className={`w-full rounded-2xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100 ${!selectedClassName ? 'bg-slate-100 text-slate-500' : 'bg-white text-slate-700'}`} disabled={!selectedClassName}>
+                      <option value="" disabled>
+                        {selectedClassName ? 'Select section' : 'Select class first'}
+                      </option>
+                      {sectionOptions.map((section) => (
+                        <option key={section} value={section}>
+                          {section}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="mb-2 block text-[13px] font-semibold text-slate-800">Subject <span className="text-rose-500">*</span></label>
-                    <select value={form.subjectId} onChange={(event) => handleSubjectChange(event.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100">
+                    <select value={form.subjectId} onChange={(event) => handleSubjectChange(event.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100" disabled={!selectedClass}>
+                      <option value="" disabled>
+                        {selectedClass ? 'Select subject' : 'Select class first'}
+                      </option>
                       {availableSubjectsForForm.map((subject) => (
                         <option key={subject.id} value={subject.id}>
                           {subject.name}
@@ -632,17 +799,88 @@ export function TeacherAssignmentsPage() {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-[13px] font-semibold text-slate-800">Attachment <span className="text-slate-400 font-normal">(optional)</span></label>
-                  <FileUpload onFileUploaded={(url, name) => setForm((current) => ({ ...current, attachmentUrl: url, attachmentName: name }))} />
+                  <label className="mb-2 block text-[13px] font-semibold text-slate-800">Attachments <span className="text-slate-400 font-normal">(optional)</span></label>
+                  <FileUpload
+                    multiple
+                    selectedFiles={attachmentFiles}
+                    existingAttachments={existingAttachments}
+                    initialFileUrl={form.attachmentUrl}
+                    initialFileName={form.attachmentName}
+                    onRemoveExistingAttachment={(id) => {
+                      const attachment = existingAttachments.find((item) => item.id === id);
+                      const next = existingAttachments.filter((item) => item.id !== id);
+
+                      setExistingAttachments(next);
+                      setRemovedAttachmentIds((current) => (current.includes(id) ? current : [...current, id]));
+
+                      if (attachment && form.attachmentUrl === attachment.downloadUrl) {
+                        setForm((current) => ({ ...current, attachmentUrl: '', attachmentName: '' }));
+                      }
+
+                      if (next.length === 0) {
+                        setForm((current) => ({ ...current, attachmentUrl: '', attachmentName: '' }));
+                      }
+                    }}
+                    onRenameExistingAttachment={async (id, name) => {
+                      const attachment = existingAttachments.find((item) => item.id === id);
+                      if (!attachment) return;
+
+                      const normalizedName = (() => {
+                        const extIndex = attachment.originalFileName.lastIndexOf('.');
+                        if (extIndex >= 0) {
+                          const extension = attachment.originalFileName.substring(extIndex);
+                          return name.endsWith(extension) ? name : `${name}${extension}`;
+                        }
+                        return name;
+                      })();
+
+                      const updateLocal = (updatedName: string) => {
+                        setExistingAttachments((current) => current.map((item) => (item.id === id ? { ...item, originalFileName: updatedName } : item)));
+                        if (form.attachmentUrl === attachment.downloadUrl) {
+                          setForm((current) => ({ ...current, attachmentName: updatedName }));
+                        }
+                      };
+
+                      if (id.startsWith('assignment-record-attachment')) {
+                        updateLocal(normalizedName);
+                        return;
+                      }
+
+                      try {
+                        const renamed = await renameAttachment(id, normalizedName);
+                        updateLocal(renamed.originalFileName);
+                      } catch (error) {
+                        console.error('Unable to rename attachment', error);
+                        updateLocal(normalizedName);
+                      }
+                    }}
+                    onFileSelected={(file) => {
+                      setAttachmentFiles([file]);
+                      setForm((current) => ({ ...current, attachmentUrl: '', attachmentName: '' }));
+                    }}
+                    onFilesSelected={(files) => {
+                      setAttachmentFiles(files);
+                      setForm((current) => ({ ...current, attachmentUrl: '', attachmentName: '' }));
+                    }}
+                  />
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-b-3xl border-t border-slate-100 bg-slate-50/80 px-7 py-5">
-                <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
-                <div className="flex flex-wrap items-center gap-3">
-                  <Button type="button" variant="secondary" onClick={() => handleSubmit('Draft')}>Save as draft</Button>
-                  <Button type="button" onClick={() => handleSubmit('Published')}>Publish</Button>
-                </div>
+                {editingAssignment ? (
+                  <div className="ml-auto flex items-center gap-3">
+                    <Button type="button" variant="secondary" onClick={closeModal}>Close</Button>
+                    <Button type="button" onClick={() => handleSubmit()}>Update Assignment</Button>
+                  </div>
+                ) : (
+                  <>
+                    <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Button type="button" variant="secondary" onClick={() => handleSubmit('Draft')}>Save as draft</Button>
+                      <Button type="button" onClick={() => handleSubmit('Published')}>Publish</Button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>

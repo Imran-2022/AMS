@@ -59,6 +59,56 @@ public class AttachmentAppService : IAttachmentAppService
         }).ToList();
     }
 
+    public async Task<AttachmentDto> RenameAsync(Guid id, string newOriginalFileName)
+    {
+        var entity = await _attachmentRepository.GetByIdAsync(id);
+        if (entity is null) throw new InvalidOperationException("Attachment not found.");
+
+        entity.Rename(newOriginalFileName);
+        await _attachmentRepository.UpdateAsync(entity);
+
+        return new AttachmentDto
+        {
+            Id = entity.Id,
+            OwnerType = entity.OwnerType,
+            OwnerId = entity.OwnerId,
+            OriginalFileName = entity.OriginalFileName,
+            StoredFileName = entity.StoredFileName,
+            ContentType = entity.ContentType,
+            SizeBytes = entity.SizeBytes,
+            UploadedByUserId = entity.UploadedByUserId,
+            UploadedAt = entity.UploadedAt,
+            DownloadUrl = $"/api/files/download/{entity.StoredFileName}"
+        };
+    }
+
+    public async Task CloneAttachmentsAsync(string ownerType, Guid sourceOwnerId, string destinationOwnerType, Guid destinationOwnerId)
+    {
+        var attachments = await _attachmentRepository.GetByOwnerAsync(ownerType, sourceOwnerId);
+        foreach (var attachment in attachments)
+        {
+            var fileTuple = await _fileAppService.OpenFileAsync(attachment.StoredFileName);
+            if (fileTuple is null) continue;
+
+            await using var sourceStream = fileTuple.Value.Stream;
+            var saveResult = await _fileAppService.SaveFileAsync(sourceStream, fileTuple.Value.OriginalFileName, attachment.ContentType);
+            var storedSegment = saveResult.FileUrl?.Split('/').Last() ?? Guid.NewGuid().ToString();
+
+            var clonedAttachment = new Attachment(
+                Guid.NewGuid(),
+                destinationOwnerType,
+                destinationOwnerId,
+                attachment.OriginalFileName,
+                storedSegment,
+                attachment.ContentType,
+                attachment.SizeBytes,
+                attachment.UploadedByUserId,
+                DateTime.UtcNow);
+
+            await _attachmentRepository.AddAsync(clonedAttachment);
+        }
+    }
+
     public async Task DeleteAsync(Guid id)
     {
         var entity = await _attachmentRepository.GetByIdAsync(id);
@@ -75,6 +125,15 @@ public class AttachmentAppService : IAttachmentAppService
         }
 
         await _attachmentRepository.DeleteAsync(id);
+    }
+
+    public async Task DeleteByOwnerAsync(string ownerType, Guid ownerId)
+    {
+        var attachments = await _attachmentRepository.GetByOwnerAsync(ownerType, ownerId);
+        foreach (var attachment in attachments)
+        {
+            await DeleteAsync(attachment.Id);
+        }
     }
 
     public async Task<Stream?> OpenStreamAsync(string storedFileName)

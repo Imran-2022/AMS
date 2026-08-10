@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { Button } from './Button';
 import { Modal } from './Modal';
+import { getSubjects, type SubjectDto } from '@/lib/api';
 
 export type AddTeacherFormData = {
   fullName: string;
@@ -13,7 +14,7 @@ export type AddTeacherFormData = {
   gender?: string;
   qualification?: string;
   joiningDate?: string;
-  subjectSpecialization?: string;
+  subjectSpecializations?: string[];
   avatarUrl?: string;
 };
 
@@ -50,6 +51,17 @@ export function AddTeacherModal({
   requirePassword = false,
   onSubmit,
 }: AddTeacherModalProps) {
+  const [subjects, setSubjects] = useState<SubjectDto[]>([]);
+  const uniqueSubjects = useMemo(() => {
+    const seen = new Set<string>();
+    return subjects.filter((subject) => {
+      const key = `${subject.name}:${subject.code}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [subjects]);
+
   const [values, setValues] = useState<AddTeacherFormData>({
     fullName: '',
     email: '',
@@ -59,12 +71,22 @@ export function AddTeacherModal({
     gender: '',
     qualification: '',
     joiningDate: '',
-    subjectSpecialization: '',
+    subjectSpecializations: [],
     avatarUrl: '',
   });
 
   useEffect(() => {
     if (!open) return;
+
+    (async () => {
+      try {
+        const apiSubjects = await getSubjects();
+        setSubjects(apiSubjects);
+      } catch (err) {
+        console.error('Failed to load subjects for teacher specialization', err);
+      }
+    })();
+
     setValues({
       fullName: initialValues?.fullName ?? '',
       email: initialValues?.email ?? '',
@@ -74,13 +96,18 @@ export function AddTeacherModal({
       gender: initialValues?.gender ?? '',
       qualification: initialValues?.qualification ?? '',
       joiningDate: normalizeDate(initialValues?.joiningDate),
-      subjectSpecialization: initialValues?.subjectSpecialization ?? '',
+      subjectSpecializations: initialValues?.subjectSpecializations ?? [],
       avatarUrl: initialValues?.avatarUrl ?? '',
     });
   }, [open, initialValues]);
 
   function handleChange<Key extends keyof AddTeacherFormData>(field: Key, value: AddTeacherFormData[Key]) {
     setValues((current) => ({ ...current, [field]: value }));
+  }
+
+  function handleSpecializationChange(event: ChangeEvent<HTMLSelectElement>) {
+    const selected = Array.from(event.target.selectedOptions).map((option) => option.value);
+    setValues((current) => ({ ...current, subjectSpecializations: selected }));
   }
 
   return (
@@ -226,13 +253,19 @@ export function AddTeacherModal({
           </div>
           <div className="mt-4">
             <label className={labelClass}>Subject specialization</label>
-            <input
-              value={values.subjectSpecialization}
-              onChange={(event) => handleChange('subjectSpecialization', event.target.value)}
-              placeholder="Subject specialization"
-              className={inputClass}
-            />
-            <p className={hintClass}>Used to suggest this teacher when assigning subjects to a class.</p>
+            <select
+              multiple
+              value={values.subjectSpecializations ?? []}
+              onChange={handleSpecializationChange}
+              className="w-full min-h-[10rem] rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+            >
+              {uniqueSubjects.map((subject) => (
+                <option key={`${subject.name}-${subject.code}`} value={subject.name}>
+                  {subject.name} — {subject.code}
+                </option>
+              ))}
+            </select>
+            <p className={hintClass}>Hold Ctrl/Cmd to select multiple subjects.</p>
           </div>
         </div>
       </div>

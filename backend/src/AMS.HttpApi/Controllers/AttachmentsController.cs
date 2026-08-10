@@ -13,6 +13,8 @@ public class AttachmentsController : ControllerBase
 {
     private readonly IAttachmentAppService _attachmentAppService;
 
+    public record RenameAttachmentRequest(string NewOriginalFileName);
+
     public AttachmentsController(IAttachmentAppService attachmentAppService)
     {
         _attachmentAppService = attachmentAppService;
@@ -35,6 +37,18 @@ public class AttachmentsController : ControllerBase
     {
         var list = await _attachmentAppService.ListAsync(ownerType, ownerId);
         return Ok(list);
+    }
+
+    [HttpPatch("{id}/rename")]
+    public async Task<ActionResult<AttachmentDto>> Rename(Guid id, [FromBody] RenameAttachmentRequest input)
+    {
+        if (string.IsNullOrWhiteSpace(input.NewOriginalFileName))
+        {
+            return BadRequest("NewOriginalFileName is required.");
+        }
+
+        var renamed = await _attachmentAppService.RenameAsync(id, input.NewOriginalFileName);
+        return Ok(renamed);
     }
 
     [HttpDelete("{id}")]

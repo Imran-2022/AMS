@@ -1,12 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.22.0" />
+    <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.1" />
     <ProjectReference Include="..\AMS.Application\AMS.Application.csproj" />
     <ProjectReference Include="..\AMS.Application.Contracts\AMS.Application.Contracts.csproj" />
     <ProjectReference Include="..\AMS.EntityFrameworkCore\AMS.EntityFrameworkCore.csproj" />

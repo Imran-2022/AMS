@@ -1,3 +1,4 @@
+using AMS.Domain.Shared;
 using System;
 
 namespace AMS.Domain.Entities;
@@ -27,5 +28,11 @@ public class Attachment
         SizeBytes = sizeBytes;
         UploadedByUserId = uploadedByUserId;
         UploadedAt = uploadedAt;
+    }
+
+    public void Rename(string newOriginalFileName)
+    {
+        if (string.IsNullOrWhiteSpace(newOriginalFileName)) throw new DomainException("Original file name is required.");
+        OriginalFileName = newOriginalFileName;
     }
 }

@@ -99,6 +99,21 @@ if (missingClassNames.Any())
     classDefinitions = await classDefRepo.GetAllAsync(CancellationToken.None);
 }
 
+// Ensure default groups exist for higher-secondary classes (9-12) regardless of existing class courses
+var higherSecondaryDefinitions = classDefinitions.Where(cd => new[] { "Nine", "Ten", "Eleven", "Twelve" }.Contains(cd.Name)).ToList();
+foreach (var classDefinition in higherSecondaryDefinitions)
+{
+    var existingGroups = await groupRepo.GetByClassDefinitionAsync(classDefinition.Id, CancellationToken.None);
+    var defaultGroups = new[] { "Science", "Arts", "Commerce" };
+    foreach (var groupName in defaultGroups)
+    {
+        if (existingGroups.All(g => g.Name != groupName))
+        {
+            await groupRepo.AddAsync(new Group(Guid.NewGuid(), classDefinition.Id, groupName), CancellationToken.None);
+        }
+    }
+}
+
 var classCourse = await classRepo.GetAllAsync(CancellationToken.None);
 if (classCourse.Count == 0)
 {
@@ -108,15 +123,7 @@ if (classCourse.Count == 0)
     var elevenDef = seededDefinitions.FirstOrDefault(c => c.Name == "Eleven");
     if (elevenDef is not null)
     {
-        var groups = await groupRepo.GetByClassDefinitionAsync(elevenDef.Id, CancellationToken.None);
-        scienceGroupId = groups.FirstOrDefault(g => g.Name == "Science")?.Id;
-
-        if (scienceGroupId is null)
-        {
-            var scienceGroup = new Group(Guid.NewGuid(), elevenDef.Id, "Science");
-            await groupRepo.AddAsync(scienceGroup, CancellationToken.None);
-            scienceGroupId = scienceGroup.Id;
-        }
+        scienceGroupId = (await groupRepo.GetByClassDefinitionAsync(elevenDef.Id, CancellationToken.None)).FirstOrDefault(g => g.Name == "Science")?.Id;
     }
 
     var orderedDefinitions = classNames
@@ -160,7 +167,7 @@ if (classCourse.Count == 0)
 
         if (teacher is not null && student is not null)
         {
-            var assignment = new Assignment(Guid.NewGuid(), "Algebra Basics", "Complete the algebra worksheet.", oneCourse.Id, math.Id, teacher.Id, DateTime.UtcNow.AddDays(7), 100, AssignmentStatus.Published, true, false, DateTime.UtcNow);
+            var assignment = new Assignment(Guid.NewGuid(), "Algebra Basics", "Complete the algebra worksheet.", oneCourse.Id, math.Id, teacher.Id, DateTime.UtcNow.AddDays(7), 100, AssignmentStatus.Published, false, true, DateTime.UtcNow);
             await assignmentRepo.AddAsync(assignment, CancellationToken.None);
 
             var submission = new Submission(Guid.NewGuid(), assignment.Id, student.Id, "Completed worksheet.", null, DateTime.UtcNow, false, SubmissionStatus.Submitted);
