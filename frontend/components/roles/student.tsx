@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '../layout/AppShell';
-import { Button, Card, PageHeader, StatusBadge, Metric, FileUpload } from '../ui';
+import { AmsPagination, Button, Card, PageHeader, StatusBadge, Metric, FileUpload } from '../ui';
 import { getStudentDashboardStats, type StudentDashboardStats } from '@/lib/api/dashboard';
 import { getAssignments, getMySubmissions, createSubmission, updateSubmission, uploadAttachment, listAttachments, deleteAttachment, type AssignmentDto, type SubmissionDto } from '@/lib/api';
 
@@ -249,6 +249,9 @@ export function StudentAssignmentsPage() {
   const [assignments, setAssignments] = useState<AssignmentDto[]>([]);
   const [submissions, setSubmissions] = useState<SubmissionDto[]>([]);
   const [loading, setLoading] = useState(false);
+  const PAGE_SIZE_OPTIONS = [5, 10, 15] as const;
+  const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(5);
+  const [pageIndex, setPageIndex] = useState(0);
 
   const now = useMemo(() => new Date(), []);
 
@@ -269,7 +272,9 @@ export function StudentAssignmentsPage() {
   }, []);
 
   const mapAssignments = useMemo(() => {
-    return assignments.map((a) => {
+    return [...assignments].sort((a, b) => {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }).map((a) => {
       const sub = submissions.find((s) => s.assignmentId === a.id) ?? null;
       return {
         ...a,
@@ -310,6 +315,15 @@ export function StudentAssignmentsPage() {
       return matchesTab && matchesSubject && matchesSearch;
     });
   }, [mapAssignments, currentTab, subjectFilter, searchTerm, now]);
+
+  useEffect(() => {
+    setPageIndex(0);
+  }, [currentTab, subjectFilter, searchTerm, pageSize]);
+
+  const pagedAssignments = useMemo(() => {
+    const start = pageIndex * pageSize;
+    return filteredAssignments.slice(start, start + pageSize);
+  }, [filteredAssignments, pageIndex, pageSize]);
 
   const openSubmit = (assignment: AssignmentDto & { studentStatus?: string; submission?: SubmissionDto | null }) => {
     setSelectedAssignment(assignment);
@@ -481,18 +495,18 @@ export function StudentAssignmentsPage() {
 
         <div className="space-y-4">
           {filteredAssignments.length ? (
-            filteredAssignments.map((assignment) => {
+            pagedAssignments.map((assignment) => {
               const badgeClass = statusBadgeClass(assignment.studentStatus);
               const statusLabel = assignment.studentStatus === 'Not submitted' ? (isPastDue(assignment.deadline) ? 'Missing' : 'Due soon') : assignment.studentStatus === 'Submitted' ? 'Submitted' : assignment.studentStatus === 'Graded' ? 'Graded' : assignment.studentStatus;
 
               return (
-                <div key={assignment.id} className={`rounded-2xl border bg-white p-5 ${assignment.studentStatus === 'Not submitted' && isPastDue(assignment.deadline) ? 'border-dashed border-rose-200' : 'border-slate-200'}`}>
+                <Link href={`/roles/student/assignments/${assignment.id}`} key={assignment.id} className={`group block rounded-2xl border bg-white p-5 transition hover:border-brand-500 hover:shadow-md focus-visible:border-brand-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 ${assignment.studentStatus === 'Not submitted' && isPastDue(assignment.deadline) ? 'border-dashed border-rose-200' : 'border-slate-200'}`}>
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <Button type="button" variant="ghost" onClick={() => openAssignmentView(assignment)} className="text-left text-base font-bold text-slate-800 transition hover:text-brand-600">
+                        <p className="text-base font-bold text-slate-800 transition group-hover:text-brand-600">
                           {assignment.title}
-                        </Button>
+                        </p>
                         <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${subjectBadgeClass(assignment.subjectName)}`}>
                           {assignment.subjectName}
                         </span>
@@ -507,46 +521,10 @@ export function StudentAssignmentsPage() {
 
                   <p className="mt-3 text-sm text-slate-500">{assignment.description ?? ''}</p>
 
-                  <div className="mt-4 flex items-center justify-between gap-3">
+                  <div className="mt-4">
                     <span className="rounded bg-slate-50 px-2 py-1 font-mono text-[11px] text-slate-400">Due: {new Date(assignment.deadline).toLocaleString()}</span>
-                    {assignment.studentStatus === 'Not submitted' ? (
-                      <Button
-                        variant="primary"
-                        type="button"
-                        onClick={openSubmit.bind(null, assignment)}
-                        className="cursor-pointer bg-violet-600 px-4 py-2 text-xs font-semibold text-white hover:bg-violet-700">
-                        {isPastDue(assignment.deadline) ? 'Submit late' : 'Submit work'}
-                      </Button>
-                    ) : assignment.studentStatus === 'Graded' ? (
-                      <Button
-                        variant="secondary"
-                        type="button"
-                        onClick={() => openSubmissionView(assignment)}
-                        className="cursor-pointer border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                        View feedback
-                      </Button>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        {(assignment.allowResubmission || assignment.studentStatus === 'ResubmissionRequested') ? (
-                          <Button
-                            variant="primary"
-                            type="button"
-                            onClick={openSubmit.bind(null, assignment)}
-                            className="cursor-pointer bg-violet-600 px-4 py-2 text-xs font-semibold text-white hover:bg-violet-700">
-                            Resubmit work
-                          </Button>
-                        ) : null}
-                        <Button
-                          variant="secondary"
-                          type="button"
-                          onClick={() => openSubmissionView(assignment)}
-                          className="cursor-pointer border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                          View submission
-                        </Button>
-                      </div>
-                    )}
                   </div>
-                </div>
+                </Link>
               );
             })
           ) : (
@@ -557,6 +535,18 @@ export function StudentAssignmentsPage() {
               <p className="text-base font-bold text-slate-700">Nothing here</p>
               <p className="mt-1 max-w-sm text-sm text-slate-400">No assignments match this filter right now.</p>
             </div>
+          )}
+          {!loading && filteredAssignments.length > 0 && (
+            <AmsPagination
+              currentPage={pageIndex}
+              pageSize={pageSize}
+              totalItems={filteredAssignments.length}
+              pageSizeOptions={PAGE_SIZE_OPTIONS}
+              onPageChange={setPageIndex}
+              onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
+              label="Showing"
+              itemLabel="assignments"
+            />
           )}
         </div>
 

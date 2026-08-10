@@ -140,25 +140,6 @@ export function StudentSubmissionsPage() {
             <p className="text-xs text-slate-400 mt-1">Across all graded work</p>
           </div>
         </div>
-
-        <div>
-          <p className="text-sm font-bold text-slate-700 mb-3">Class performance</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-            {subjectStats.map((subject) => (
-              <div key={subject.subject} className="bg-white rounded-2xl border border-slate-200 p-5">
-                <div className="flex items-center justify-between mb-2">
-                  <p className={`text-xs font-bold ${subject.color.replace('bg-', 'text-')}`}>{subject.subject}</p>
-                  <span className="text-lg font-extrabold text-slate-800">{subject.ratio}%</span>
-                </div>
-                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div className={`h-full ${subject.color} rounded-full`} style={{ width: `${subject.ratio}%` }} />
-                </div>
-                <p className="text-[11px] text-slate-400 mt-2">{subject.graded} graded</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
         <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap gap-2">
             {(['all', 'graded', 'pending'] as const).map((status) => (

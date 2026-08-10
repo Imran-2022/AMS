@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { getAssignment, getMySubmissions, createSubmission, updateSubmission, uploadAttachment, listAttachments, deleteAttachment, downloadAttachmentToBrowser, type AssignmentDto, type SubmissionDto } from '@/lib/api';
 import { Button } from '@/components/ui';
 import { FileUpload } from '@/components/ui';
+import { AppShell } from '@/components/layout/AppShell';
 
 export default function StudentAssignmentDetailPage() {
   const params = useParams();
@@ -85,7 +86,20 @@ export default function StudentAssignmentDetailPage() {
   const classSection = assignment?.classCourseSection ?? '';
   const subjectName = assignment?.subjectName ?? '';
   const maxMarks = assignment?.maxMarks ?? 0;
-  const canResubmit = Boolean(submission && (assignment?.allowResubmission || submission.status === 'ResubmissionRequested'));
+  const statusLabel = !submission
+    ? 'Not submitted'
+    : submission.status === 'Graded'
+      ? 'Graded'
+      : submission.status === 'ResubmissionRequested'
+        ? 'Resubmission requested'
+        : submission.status === 'Resubmitted'
+          ? 'Resubmitted'
+          : 'Submitted';
+  const canResubmit = Boolean(
+    submission &&
+    submission.status !== 'Graded' &&
+    (assignment?.allowResubmission || submission.status === 'ResubmissionRequested')
+  );
   const canSubmit = Boolean(assignment) && (!submission || canResubmit);
 
   async function handleSubmit() {
@@ -115,24 +129,27 @@ export default function StudentAssignmentDetailPage() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <div className="flex-1 overflow-y-auto space-y-5 p-6">
+    <AppShell role="Student" breadcrumb="Student / Assignments">
+      <div className="space-y-5">
           <div className="flex items-start justify-between flex-wrap gap-3">
             <div>
-              <div className="mt-1">
+              <div className="mt-1 flex flex-wrap items-center gap-3">
                 <h1 className="text-3xl font-extrabold text-slate-800">{assignmentTitle}</h1>
+                <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${statusLabel === 'Graded' ? 'bg-emerald-50 text-emerald-600' : statusLabel === 'Not submitted' ? 'bg-amber-50 text-amber-600' : 'bg-sky-50 text-sky-600'}`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${statusLabel === 'Graded' ? 'bg-emerald-500' : statusLabel === 'Not submitted' ? 'bg-amber-500' : 'bg-sky-500'}`} />
+                  {statusLabel}
+                </span>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button type="button" variant="secondary" onClick={() => router.back()} className="!px-2.5 !py-1.5 !text-xs">
-                <svg aria-hidden="true" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <Button type="button" variant="secondary" onClick={() => router.back()} className="!h-11 !px-4 !py-2 !text-sm">
+                <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="m15 18-6-6 6-6" />
                 </svg>
                 Back
               </Button>
               {canSubmit ? (
-                <Button type="button" onClick={() => setSubmitOpen(true)}>
+                <Button type="button" onClick={() => setSubmitOpen(true)} className="!h-11 !px-4 !py-2 !text-sm">
                   {submission ? 'Resubmit work' : 'Submit work'}
                 </Button>
               ) : null}
@@ -254,8 +271,7 @@ export default function StudentAssignmentDetailPage() {
               </div>
             </div>
           ) : null}
-        </div>
       </div>
-    </div>
+    </AppShell>
   );
 }
