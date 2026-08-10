@@ -77,7 +77,7 @@ export function TeacherDashboardPage() {
       deadline: payload.deadline,
       maxMarks: payload.maxMarks,
       allowLateSubmission: false,
-      allowResubmission: false,
+      allowResubmission: true,
     };
 
     const created = await createAssignment(dto);
@@ -106,7 +106,7 @@ export function TeacherDashboardPage() {
       deadline: payload.deadline,
       maxMarks: payload.maxMarks,
       allowLateSubmission: false,
-      allowResubmission: false,
+      allowResubmission: true,
     };
 
     const created = await createAssignment(dto);

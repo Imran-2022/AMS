@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AppShell } from '../layout/AppShell';
 import { Button, Card, PageHeader, StatusBadge, Metric, FileUpload } from '../ui';
 import { getStudentDashboardStats, type StudentDashboardStats } from '@/lib/api/dashboard';
-import { getAssignments, getMySubmissions, createSubmission, uploadAttachment, type AssignmentDto, type SubmissionDto } from '@/lib/api';
+import { getAssignments, getMySubmissions, createSubmission, updateSubmission, uploadAttachment, listAttachments, deleteAttachment, type AssignmentDto, type SubmissionDto } from '@/lib/api';
 
 type StudentAssignment = {
   id: number;
@@ -284,9 +284,9 @@ export function StudentAssignmentsPage() {
   const openSubmit = (assignment: AssignmentDto & { studentStatus?: string; submission?: SubmissionDto | null }) => {
     setSelectedAssignment(assignment);
     setModalType('submit');
-    setComment('');
+    setComment(assignment.submission?.contentText ?? '');
     setSelectedFile(null);
-    setUploadedFileName('');
+    setUploadedFileName(assignment.submission?.fileName ?? '');
   };
 
   const openAssignmentView = (assignment: AssignmentDto & { studentStatus?: string; submission?: SubmissionDto | null }) => {
@@ -313,7 +313,16 @@ export function StudentAssignmentsPage() {
     if (!selectedAssignment) return;
     try {
       setLoading(true);
-      const submission = await createSubmission({ assignmentId: selectedAssignment.id, contentText: comment });
+      let submission: SubmissionDto;
+      if (selectedAssignment.submission) {
+        submission = await updateSubmission(selectedAssignment.submission.id, { contentText: comment });
+        if (selectedFile) {
+          const existingAttachments = await listAttachments('Submission', submission.id);
+          await Promise.all(existingAttachments.map((attachment) => deleteAttachment(attachment.id)));
+        }
+      } else {
+        submission = await createSubmission({ assignmentId: selectedAssignment.id, contentText: comment });
+      }
       if (selectedFile) {
         await uploadAttachment('Submission', submission.id, selectedFile);
       }
@@ -469,12 +478,12 @@ export function StudentAssignmentsPage() {
 
                   <div className="mt-4 flex items-center justify-between gap-3">
                     <span className="rounded bg-slate-50 px-2 py-1 font-mono text-[11px] text-slate-400">Due: {new Date(assignment.deadline).toLocaleString()}</span>
-                    {assignment.studentStatus === 'Not submitted' ? (
+                    {assignment.studentStatus === 'Not submitted' || assignment.allowResubmission || assignment.studentStatus === 'ResubmissionRequested' ? (
                       <button
                         type="button"
                         onClick={openSubmit.bind(null, assignment)}
                         className="rounded-xl bg-violet-600 px-4 py-2 text-xs font-semibold text-white hover:bg-violet-700">
-                        {isPastDue(assignment.deadline) ? 'Submit late' : 'Submit work'}
+                        {assignment.studentStatus === 'Not submitted' ? (isPastDue(assignment.deadline) ? 'Submit late' : 'Submit work') : 'Resubmit work'}
                       </button>
                     ) : (
                       <button
@@ -505,7 +514,7 @@ export function StudentAssignmentsPage() {
               <div className="flex items-start justify-between px-7 pt-6 pb-5 border-b border-slate-100">
                 <div>
                   <h2 className="text-[32px] font-extrabold leading-none text-slate-800 tracking-[-0.03em]">
-                    {isPastDue(selectedAssignment.deadline) ? 'Submit late work' : 'Submit work'}
+                    {selectedAssignment.submission ? 'Resubmit work' : (isPastDue(selectedAssignment.deadline) ? 'Submit late work' : 'Submit work')}
                   </h2>
                   <p className="text-base text-slate-400 mt-3">{selectedAssignment.subjectName} ·</p>
                 </div>
@@ -556,7 +565,7 @@ export function StudentAssignmentsPage() {
                   Cancel
                 </button>
                 <button type="button" onClick={submitAssignment} className="rounded-2xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700">
-                  Submit
+                  {selectedAssignment.submission ? 'Resubmit' : 'Submit'}
                 </button>
               </div>
             </div>

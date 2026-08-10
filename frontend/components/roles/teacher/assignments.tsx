@@ -24,6 +24,8 @@ type AssignmentFormValues = {
   maxMarks: string;
   attachmentUrl: string;
   attachmentName: string;
+  allowLateSubmission: boolean;
+  allowResubmission: boolean;
 };
 
 type ExistingAttachment = {
@@ -45,6 +47,8 @@ const createEmptyForm = (): AssignmentFormValues => ({
   maxMarks: '20',
   attachmentUrl: '',
   attachmentName: '',
+  allowLateSubmission: false,
+  allowResubmission: true,
 });
 
 const formatDateForInput = (value: string) => {
@@ -309,6 +313,8 @@ export function TeacherAssignmentsPage() {
         maxMarks: String(assignment.maxMarks),
         attachmentUrl,
         attachmentName,
+        allowLateSubmission: assignment.allowLateSubmission,
+        allowResubmission: assignment.allowResubmission,
       });
     } else {
       const defaultClass = classes[0];
@@ -328,6 +334,8 @@ export function TeacherAssignmentsPage() {
         maxMarks: '20',
         attachmentUrl: '',
         attachmentName: '',
+        allowLateSubmission: false,
+        allowResubmission: true,
       });
       setAttachmentFiles([]);
       setExistingAttachments([]);
@@ -367,8 +375,8 @@ export function TeacherAssignmentsPage() {
         subjectId: form.subjectId,
         deadline: form.deadline,
         maxMarks: Number(form.maxMarks || 20),
-        allowLateSubmission: false,
-        allowResubmission: false,
+        allowLateSubmission: form.allowLateSubmission,
+        allowResubmission: form.allowResubmission,
       } as CreateAssignmentDto;
 
       if (editingAssignment) {

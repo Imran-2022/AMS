@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { getAssignment, downloadAttachmentToBrowser, type AssignmentDto } from '@/lib/api';
+import { getAssignment, updateAssignment, downloadAttachmentToBrowser, type AssignmentDto } from '@/lib/api';
 
 export default function TeacherAssignmentDetailPage() {
   const params = useParams();
@@ -12,6 +12,7 @@ export default function TeacherAssignmentDetailPage() {
   const [assignment, setAssignment] = useState<AssignmentDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [updatingPolicy, setUpdatingPolicy] = useState<'late' | 'resubmission' | null>(null);
 
   useEffect(() => {
     if (!assignmentId) {
@@ -78,6 +79,24 @@ export default function TeacherAssignmentDetailPage() {
   const classSection = assignment?.classCourseSection ?? '';
   const subjectName = assignment?.subjectName ?? '';
   const maxMarks = assignment?.maxMarks ?? 0;
+
+  const togglePolicy = async (policy: 'late' | 'resubmission') => {
+    if (!assignment) return;
+
+    setUpdatingPolicy(policy);
+    setError(null);
+    try {
+      const updated = await updateAssignment(assignment.id, {
+        [policy === 'late' ? 'allowLateSubmission' : 'allowResubmission']:
+          !(policy === 'late' ? assignment.allowLateSubmission : assignment.allowResubmission),
+      });
+      setAssignment(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to update submission options.');
+    } finally {
+      setUpdatingPolicy(null);
+    }
+  };
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -174,11 +193,37 @@ export default function TeacherAssignmentDetailPage() {
                   <div className="space-y-2.5">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-slate-600">Allow late submission</span>
-                      <span className="badge bg-slate-100 text-slate-500">{assignment?.allowLateSubmission ? 'Yes' : 'No'}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-slate-500">{assignment?.allowLateSubmission ? 'On' : 'Off'}</span>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-label="Allow late submission"
+                          aria-checked={assignment?.allowLateSubmission ?? false}
+                          disabled={updatingPolicy !== null}
+                          onClick={() => void togglePolicy('late')}
+                          className={`relative inline-flex h-6 w-11 cursor-pointer items-center rounded-full transition ${assignment?.allowLateSubmission ? 'bg-brand-600' : 'bg-slate-200'} disabled:cursor-not-allowed disabled:opacity-60`}
+                        >
+                          <span className={`inline-block h-5 w-5 rounded-full bg-white shadow-sm transition ${assignment?.allowLateSubmission ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                        </button>
+                      </div>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-slate-600">Allow resubmission</span>
-                      <span className="badge bg-slate-100 text-slate-500">{assignment?.allowResubmission ? 'Yes' : 'No'}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-slate-500">{assignment?.allowResubmission ? 'On' : 'Off'}</span>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-label="Allow resubmission"
+                          aria-checked={assignment?.allowResubmission ?? true}
+                          disabled={updatingPolicy !== null}
+                          onClick={() => void togglePolicy('resubmission')}
+                          className={`relative inline-flex h-6 w-11 cursor-pointer items-center rounded-full transition ${assignment?.allowResubmission ? 'bg-brand-600' : 'bg-slate-200'} disabled:cursor-not-allowed disabled:opacity-60`}
+                        >
+                          <span className={`inline-block h-5 w-5 rounded-full bg-white shadow-sm transition ${assignment?.allowResubmission ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

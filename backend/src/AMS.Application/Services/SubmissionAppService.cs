@@ -98,7 +98,14 @@ public class SubmissionAppService : ISubmissionAppService
         if (!await IsEnrolled(_currentUser.UserId, assignment.ClassCourseId)) throw new ForbiddenException("You are not enrolled in this class.");
 
         var existing = await _submissionRepository.GetByAssignmentAndStudentAsync(assignment.Id, _currentUser.UserId, cancellationToken);
-        if (existing is not null) throw new ValidationException("A submission already exists for this assignment.");
+        if (existing is not null)
+        {
+            if (!assignment.AllowResubmission) throw new ValidationException("Resubmission is not allowed for this assignment.");
+
+            existing.Resubmit(input.ContentText, input.FileUrl, input.FileName, DateTime.UtcNow, assignment.Deadline, assignment.AllowLateSubmission);
+            await _submissionRepository.UpdateAsync(existing, cancellationToken);
+            return await ToDtoAsync(existing, cancellationToken).ConfigureAwait(false);
+        }
 
         var submission = new Submission(Guid.NewGuid(), assignment.Id, _currentUser.UserId, input.ContentText, input.FileUrl, DateTime.UtcNow, false, SubmissionStatus.Submitted, input.FileName);
         submission.Submit(DateTime.UtcNow, assignment.Deadline, assignment.AllowLateSubmission, assignment);
@@ -114,6 +121,11 @@ public class SubmissionAppService : ISubmissionAppService
         if (!auth.Succeeded) throw new ForbiddenException("You can only update your own submission.");
 
         var assignment = await _assignmentRepository.GetByIdAsync(submission.AssignmentId, cancellationToken) ?? throw new NotFoundException("Assignment not found.");
+
+        if (submission.Status != SubmissionStatus.ResubmissionRequested && !assignment.AllowResubmission)
+        {
+            throw new ValidationException("Resubmission is not allowed for this assignment.");
+        }
         
         if (submission.Status == SubmissionStatus.ResubmissionRequested)
         {

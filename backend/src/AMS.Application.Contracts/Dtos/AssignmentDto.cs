@@ -14,7 +14,7 @@ public class AssignmentDto
     public int MaxMarks { get; set; }
     public string Status { get; set; } = string.Empty;
     public bool AllowLateSubmission { get; set; }
-    public bool AllowResubmission { get; set; }
+    public bool AllowResubmission { get; set; } = true;
     public DateTime CreatedAt { get; set; }
     public string ClassCourseName { get; set; } = string.Empty;
     public string ClassCourseSection { get; set; } = string.Empty;
@@ -37,7 +37,7 @@ public class CreateAssignmentDto
     public DateTime Deadline { get; set; }
     public int MaxMarks { get; set; }
     public bool AllowLateSubmission { get; set; }
-    public bool AllowResubmission { get; set; }
+    public bool AllowResubmission { get; set; } = true;
 }
 
 public class UpdateAssignmentDto
