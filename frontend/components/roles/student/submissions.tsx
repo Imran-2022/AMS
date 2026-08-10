@@ -166,7 +166,7 @@ export function StudentSubmissionsPage() {
                 key={status}
                 type="button"
                 onClick={() => setCurrentTab(status)}
-                className={`tab px-4 py-2 rounded-xl text-sm font-semibold transition ${currentTab === status ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+                className={`tab cursor-pointer px-4 py-2 rounded-xl text-sm font-semibold transition ${currentTab === status ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
                 {status === 'all' ? 'All' : status === 'graded' ? 'Graded' : 'Awaiting grade'}
                 <span className="opacity-70 font-normal"> {statusCounts[status]}</span>
               </button>
@@ -229,7 +229,7 @@ export function StudentSubmissionsPage() {
                     <button
                       type="button"
                       onClick={() => openView(submission)}
-                      className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50"
+                      className="cursor-pointer px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50"
                     >
                       View
                     </button>
@@ -262,7 +262,7 @@ export function StudentSubmissionsPage() {
                   <h2 className="text-xl font-extrabold text-slate-800">{selectedSubmission.assignmentTitle}</h2>
                   <p className="text-sm text-slate-400 mt-0.5">{selectedSubmission.classCourseName || 'Course'} · {selectedSubmission.classCourseSection || 'Section'}</p>
                 </div>
-                <button type="button" onClick={closeModal} className="text-slate-400 hover:text-slate-600">
+                <button type="button" onClick={closeModal} className="cursor-pointer text-slate-400 hover:text-slate-600">
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
                 </button>
               </div>
@@ -316,7 +316,7 @@ export function StudentSubmissionsPage() {
                 )}
               </div>
               <div className="flex items-center justify-end px-7 py-5 border-t border-slate-100 bg-slate-50/60 rounded-b-3xl shrink-0">
-                <button type="button" onClick={closeModal} className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-semibold hover:bg-slate-50">Close</button>
+                <button type="button" onClick={closeModal} className="cursor-pointer px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-semibold hover:bg-slate-50">Close</button>
               </div>
             </div>
           </div>

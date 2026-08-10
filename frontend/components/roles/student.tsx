@@ -88,7 +88,7 @@ export function StudentDashboardPage() {
             <h1 className="text-2xl font-extrabold text-slate-800">You have {pendingCount} assignment{pendingCount === 1 ? '' : 's'} due this week.</h1>
             <p className="text-sm text-slate-400 mt-1">{dashboardStats.enrolledClassesCount} enrolled class{dashboardStats.enrolledClassesCount === 1 ? '' : 'es'} · {dashboardStats.activeAssignmentsCount} active assignments</p>
           </div>
-          <button className="px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700">View assignments</button>
+          <button className="cursor-pointer px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700">View assignments</button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -146,7 +146,7 @@ export function StudentDashboardPage() {
                     </div>
                     <div className="flex items-center justify-between mt-3">
                       <span className="text-[11px] font-mono text-slate-400 bg-slate-50 px-2 py-1 rounded">Due: {new Date(item.deadline).toLocaleString()}</span>
-                      <button className="px-3.5 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700">Submit work</button>
+                      <button className="cursor-pointer px-3.5 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700">Submit work</button>
                     </div>
                   </div>
                 ))
@@ -421,7 +421,7 @@ export function StudentAssignmentsPage() {
                 key={status}
                 type="button"
                 onClick={() => setCurrentTab(status)}
-                className={`rounded-xl px-4 py-2 text-sm font-semibold ${currentTab === status ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+                className={`cursor-pointer rounded-xl px-4 py-2 text-sm font-semibold ${currentTab === status ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
                 {status === 'all' ? 'All' : status === 'pending' ? 'To do' : status === 'submitted' ? 'Submitted' : status === 'graded' ? 'Graded' : 'Missing'}
                 <span className="opacity-70 font-normal"> {tabCounts[status]}</span>
               </button>
@@ -429,7 +429,7 @@ export function StudentAssignmentsPage() {
           </div>
 
           <div className="flex items-center gap-2.5">
-            <select value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600">
+            <select value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)} className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600">
               <option value="">All subjects</option>
               {subjectOptions.map((subject) => (
                 <option key={subject} value={subject}>{subject}</option>
@@ -459,7 +459,7 @@ export function StudentAssignmentsPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <button type="button" onClick={() => openAssignmentView(assignment)} className="text-left text-base font-bold text-slate-800 transition hover:text-brand-600">
+                        <button type="button" onClick={() => openAssignmentView(assignment)} className="cursor-pointer text-left text-base font-bold text-slate-800 transition hover:text-brand-600">
                           {assignment.title}
                         </button>
                         <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${subjectBadgeClass(assignment.subjectName)}`}>
@@ -482,7 +482,7 @@ export function StudentAssignmentsPage() {
                       <button
                         type="button"
                         onClick={openSubmit.bind(null, assignment)}
-                        className="rounded-xl bg-violet-600 px-4 py-2 text-xs font-semibold text-white hover:bg-violet-700">
+                        className="cursor-pointer rounded-xl bg-violet-600 px-4 py-2 text-xs font-semibold text-white hover:bg-violet-700">
                         {isPastDue(assignment.deadline) ? 'Submit late' : 'Submit work'}
                       </button>
                     ) : assignment.studentStatus === 'Graded' ? (
@@ -498,7 +498,7 @@ export function StudentAssignmentsPage() {
                           <button
                             type="button"
                             onClick={openSubmit.bind(null, assignment)}
-                            className="rounded-xl bg-violet-600 px-4 py-2 text-xs font-semibold text-white hover:bg-violet-700">
+                            className="cursor-pointer rounded-xl bg-violet-600 px-4 py-2 text-xs font-semibold text-white hover:bg-violet-700">
                             Resubmit work
                           </button>
                         ) : null}
@@ -535,7 +535,7 @@ export function StudentAssignmentsPage() {
                   </h2>
                   <p className="text-base text-slate-400 mt-3">{selectedAssignment.subjectName} ·</p>
                 </div>
-                <button type="button" onClick={closeModal} className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors duration-200">
+                <button type="button" onClick={closeModal} className="cursor-pointer inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors duration-200">
                   <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
                 </button>
               </div>
@@ -578,10 +578,10 @@ export function StudentAssignmentsPage() {
               </div>
 
               <div className="flex items-center justify-end gap-3 px-7 py-5 border-t border-slate-100 bg-slate-50/80">
-                <button type="button" onClick={closeModal} className="rounded-2xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                <button type="button" onClick={closeModal} className="cursor-pointer rounded-2xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                   Cancel
                 </button>
-                <button type="button" onClick={submitAssignment} className="rounded-2xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700">
+                <button type="button" onClick={submitAssignment} className="cursor-pointer rounded-2xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700">
                   {selectedAssignment.submission ? 'Resubmit' : 'Submit'}
                 </button>
               </div>

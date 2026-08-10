@@ -108,7 +108,7 @@ export default function StudentSubmissionDetailPage() {
             <button
               type="button"
               onClick={() => router.push('/roles/student/submissions')}
-              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+              className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
             >
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m15 18-6-6 6-6" />
@@ -157,7 +157,7 @@ export default function StudentSubmissionDetailPage() {
                     <button
                       type="button"
                       onClick={() => submission.fileUrl ? void downloadAttachmentToBrowser(submission.fileUrl, submission.fileName ?? 'submission-file') : undefined}
-                      className="flex items-center gap-3 rounded-xl border border-slate-100 p-3 text-left transition hover:bg-slate-50"
+                      className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-100 p-3 text-left transition hover:bg-slate-50"
                     >
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-500">
                         <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -215,7 +215,7 @@ export default function StudentSubmissionDetailPage() {
                   <button
                     type="button"
                     onClick={() => router.push(`/roles/student/assignments/${submission.assignmentId}`)}
-                    className="block text-left text-base font-bold text-slate-800 transition hover:text-brand-600"
+                    className="block cursor-pointer text-left text-base font-bold text-slate-800 transition hover:text-brand-600"
                   >
                     {submission.assignmentTitle}
                   </button>

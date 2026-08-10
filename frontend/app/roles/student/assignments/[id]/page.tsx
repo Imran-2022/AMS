@@ -123,7 +123,7 @@ export default function StudentAssignmentDetailPage() {
                           key={attachment.id}
                           type="button"
                           onClick={() => void downloadAttachmentToBrowser(attachment.downloadUrl, attachment.originalFileName)}
-                          className="flex w-full items-center gap-3 rounded-xl border border-slate-100 p-3 text-left transition hover:bg-slate-50"
+                          className="flex w-full cursor-pointer items-center gap-3 rounded-xl border border-slate-100 p-3 text-left transition hover:bg-slate-50"
                         >
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-500">
                             <svg className="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -153,7 +153,7 @@ export default function StudentAssignmentDetailPage() {
                 <div className="rounded-2xl border border-slate-200 bg-white p-6">
                   <div className="mb-4 flex items-center justify-between">
                     <p className="eyebrow">PROGRESS</p>
-                    <button className="text-sm font-semibold text-brand-600 hover:text-brand-700">View submissions →</button>
+                    <button className="cursor-pointer text-sm font-semibold text-brand-600 hover:text-brand-700">View submissions →</button>
                   </div>
                   <div className="mb-2 flex items-center justify-between text-[15px]">
                     <span className="font-extrabold text-slate-800">{assignment?.submittedCount ?? 0} submitted</span>
