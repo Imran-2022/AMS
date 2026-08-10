@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
-import { AmsPagination } from '../ui';
-import { AppShell } from '../layout/AppShell';
+import { AmsPagination } from '../../ui';
+import { AppShell } from '../../layout/AppShell';
 import { getMySubmissions, type SubmissionDto } from '@/lib/api';
 
 export function StudentSubmissionsPage() {
