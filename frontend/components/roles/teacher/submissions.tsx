@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { FileText, Search } from 'lucide-react';
 import { AppShell } from '../../layout/AppShell';
 import { AmsPagination } from '../../ui';
-import { getSubmissions } from '@/lib/api';
-import type { SubmissionDto } from '@/lib/api';
+import { getAssignments, getSubmissions } from '@/lib/api';
+import type { AssignmentDto, SubmissionDto } from '@/lib/api';
 
 type StatusFilter = 'all' | 'pending' | 'graded' | 'needs_revision';
 
@@ -58,7 +58,9 @@ function StatusBadge({ status }: { status: string }) {
 
 export function TeacherSubmissionsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [submissions, setSubmissions] = useState<SubmissionDto[]>([]);
+  const [assignments, setAssignments] = useState<AssignmentDto[]>([]);
   const [activeTab, setActiveTab] = useState<StatusFilter>('all');
   const [classFilter, setClassFilter] = useState('All classes');
   const [sectionFilter, setSectionFilter] = useState('All sections');
@@ -73,8 +75,9 @@ export function TeacherSubmissionsPage() {
     async function loadSubmissions() {
       setLoadError(null);
       try {
-        const apiSubmissions = await getSubmissions();
+        const [apiSubmissions, apiAssignments] = await Promise.all([getSubmissions(), getAssignments()]);
         setSubmissions(apiSubmissions);
+        setAssignments(apiAssignments);
       } catch (error) {
         console.error(error);
         setLoadError('Unable to load submissions. Please refresh the page.');
@@ -83,6 +86,19 @@ export function TeacherSubmissionsPage() {
 
     void loadSubmissions();
   }, []);
+
+  useEffect(() => {
+    const assignmentId = searchParams.get('assignmentId');
+    if (!assignmentId) return;
+
+    const selectedAssignment = assignments.find((assignment) => assignment.id === assignmentId);
+    const selectedSubmission = submissions.find((submission) => submission.assignmentId === assignmentId);
+    const assignmentTitle = selectedAssignment?.title ?? selectedSubmission?.assignmentTitle;
+    if (assignmentTitle) {
+      setAssignmentFilter(assignmentTitle);
+      setPageIndex(0);
+    }
+  }, [assignments, searchParams, submissions]);
 
   const stats = useMemo(() => {
     const total = submissions.length;
@@ -122,8 +138,11 @@ export function TeacherSubmissionsPage() {
   }, [classFilter, submissions]);
 
   const availableAssignments = useMemo(
-    () => ['All assignments', ...Array.from(new Set(submissions.map((submission) => submission.assignmentTitle)))],
-    [submissions]
+    () => ['All assignments', ...Array.from(new Set([
+      ...assignments.map((assignment) => assignment.title),
+      ...submissions.map((submission) => submission.assignmentTitle),
+    ]))],
+    [assignments, submissions]
   );
 
   const pagedSubmissions = useMemo(() => {

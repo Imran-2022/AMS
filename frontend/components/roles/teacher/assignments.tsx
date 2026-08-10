@@ -682,7 +682,7 @@ export function TeacherAssignmentsPage() {
                         <button type="button" onClick={() => openCreateModal(assignment)} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
                           <Pencil className="h-4 w-4" /> Edit
                         </button>
-                        <button type="button" onClick={() => { window.location.href = '/roles/teacher/submissions'; }} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
+                        <button type="button" onClick={() => router.push(`/roles/teacher/submissions?assignmentId=${encodeURIComponent(assignment.id)}`)} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
                           <Eye className="h-4 w-4" /> View submissions
                         </button>
                         <button type="button" onClick={() => handleDuplicate(assignment)} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
