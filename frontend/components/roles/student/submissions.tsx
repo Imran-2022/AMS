@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
-import { AmsPagination } from '../../ui';
+import { AmsPagination, Button } from '../../ui';
 import { AppShell } from '../../layout/AppShell';
 import { getMySubmissions, type SubmissionDto } from '@/lib/api';
 
@@ -162,14 +162,15 @@ export function StudentSubmissionsPage() {
         <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap gap-2">
             {(['all', 'graded', 'pending'] as const).map((status) => (
-              <button
+              <Button
                 key={status}
                 type="button"
+                variant={currentTab === status ? 'primary' : 'ghost'}
                 onClick={() => setCurrentTab(status)}
-                className={`tab cursor-pointer px-4 py-2 rounded-xl text-sm font-semibold transition ${currentTab === status ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+                className={`tab cursor-pointer px-4 py-2 text-sm font-semibold transition ${currentTab === status ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
                 {status === 'all' ? 'All' : status === 'graded' ? 'Graded' : 'Awaiting grade'}
                 <span className="opacity-70 font-normal"> {statusCounts[status]}</span>
-              </button>
+              </Button>
             ))}
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
@@ -226,13 +227,14 @@ export function StudentSubmissionsPage() {
                   </td>
                   <td className="px-2 py-3.5 font-semibold text-slate-700">{submission.status === 'Graded' ? `${submission.marks ?? 0}` : '—'}</td>
                   <td className="px-5 py-3.5 text-right">
-                    <button
+                    <Button
+                      variant="secondary"
                       type="button"
                       onClick={() => openView(submission)}
-                      className="cursor-pointer px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50"
+                      className="cursor-pointer px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50"
                     >
                       View
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               )) : (
@@ -262,9 +264,9 @@ export function StudentSubmissionsPage() {
                   <h2 className="text-xl font-extrabold text-slate-800">{selectedSubmission.assignmentTitle}</h2>
                   <p className="text-sm text-slate-400 mt-0.5">{selectedSubmission.classCourseName || 'Course'} · {selectedSubmission.classCourseSection || 'Section'}</p>
                 </div>
-                <button type="button" onClick={closeModal} className="cursor-pointer text-slate-400 hover:text-slate-600">
+                <Button type="button" variant="ghost" onClick={closeModal} className="text-slate-400 hover:text-slate-600">
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                </button>
+                </Button>
               </div>
 
               <div className="overflow-y-auto px-7 py-6 space-y-5">
@@ -316,7 +318,7 @@ export function StudentSubmissionsPage() {
                 )}
               </div>
               <div className="flex items-center justify-end px-7 py-5 border-t border-slate-100 bg-slate-50/60 rounded-b-3xl shrink-0">
-                <button type="button" onClick={closeModal} className="cursor-pointer px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-semibold hover:bg-slate-50">Close</button>
+                <Button type="button" variant="secondary" onClick={closeModal} className="px-5 py-2.5 border border-slate-200 bg-white text-slate-600 text-sm font-semibold hover:bg-slate-50">Close</Button>
               </div>
             </div>
           </div>
