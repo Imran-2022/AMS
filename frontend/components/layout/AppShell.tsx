@@ -179,16 +179,16 @@ function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, 
               <button
                 type="button"
                 onClick={() => router.push(settingsHref)}
-                className="w-full inline-flex items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] font-medium text-[#1F2430]/80 transition-colors hover:bg-[#F5F5F7] cursor-pointer">
-                <Settings className="h-5 w-5" />
+                className="group nav-item relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left font-medium text-[14px] text-[#1F2430]/80 transition-colors hover:bg-[#F5F5F7] cursor-pointer">
+                <Settings className="shrink-0 h-5 w-5" />
                 {!collapsed ? <span>{settingsLabel}</span> : null}
               </button>
 
               <button
                 type="button"
                 onClick={() => onLogout()}
-                className="w-full inline-flex items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] font-medium text-[#1F2430]/80 transition-colors hover:bg-[#F5F5F7] cursor-pointer">
-                <LogOut className="h-5 w-5" />
+                className="group nav-item relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left font-medium text-[14px] text-[#1F2430]/80 transition-colors hover:bg-[#F5F5F7] cursor-pointer">
+                <LogOut className="shrink-0 h-5 w-5" />
                 {!collapsed ? <span>Sign out</span> : null}
               </button>
             </div>

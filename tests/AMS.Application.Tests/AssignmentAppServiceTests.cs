@@ -1,4 +1,5 @@
 using AMS.Application.Contracts.Dtos;
+using AMS.Application.Contracts;
 using AMS.Application.Services;
 using AMS.Domain.Entities;
 using AMS.Domain.Repositories;
@@ -19,6 +20,7 @@ public class AssignmentAppServiceTests
         var submissionRepo = new Mock<ISubmissionRepository>(MockBehavior.Strict);
         var userRepo = new Mock<IUserRepository>(MockBehavior.Strict);
         var classCourseRepo = new Mock<IClassCourseRepository>(MockBehavior.Strict);
+        var groupRepo = new Mock<IGroupRepository>(MockBehavior.Strict);
         var subjectRepo = new Mock<ISubjectRepository>(MockBehavior.Strict);
 
         var teacherId = Guid.NewGuid();
@@ -36,7 +38,9 @@ public class AssignmentAppServiceTests
             submissionRepo.Object,
             userRepo.Object,
             classCourseRepo.Object,
-            subjectRepo.Object);
+            groupRepo.Object,
+            subjectRepo.Object,
+            Mock.Of<IAttachmentAppService>());
 
         var input = new CreateAssignmentDto
         {

@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '../layout/AppShell';
-import { Button, Card, PageHeader, StatusBadge, Metric, FileUpload } from '../ui';
+import { AmsPagination, Button, Card, PageHeader, StatusBadge, Metric, FileUpload } from '../ui';
 import { getStudentDashboardStats, type StudentDashboardStats } from '@/lib/api/dashboard';
-import { getAssignments, getMySubmissions, createSubmission, updateSubmission, uploadAttachment, listAttachments, deleteAttachment, type AssignmentDto, type SubmissionDto } from '@/lib/api';
+import { getAssignments, getMySubmissions, createSubmission, updateSubmission, uploadAttachment, type AssignmentDto, type SubmissionDto } from '@/lib/api';
 
 type StudentAssignment = {
   id: number;
@@ -21,6 +22,7 @@ export function StudentDashboardPage() {
   const [assignments, setAssignments] = useState<AssignmentDto[]>([]);
   const [submissions, setSubmissions] = useState<SubmissionDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     async function load() {
@@ -47,31 +49,52 @@ export function StudentDashboardPage() {
 
   const assignmentRows = useMemo(() => {
     const submissionMap = new Map(submissions.map((submission) => [submission.assignmentId, submission]));
-    return assignments.slice(0, 4).map((assignment) => {
-      const submission = submissionMap.get(assignment.id);
-      const hasSubmitted = Boolean(submission);
-      const status = hasSubmitted ? (submission?.status === 'Graded' ? 'Graded' : 'Submitted') : 'Not submitted';
-      return {
-        id: assignment.id,
-        title: assignment.title,
-        subject: assignment.subjectName,
-        deadline: assignment.deadline,
-        status,
-      };
-    });
+    return assignments
+      .filter((assignment) => new Date(assignment.deadline) > new Date())
+      .filter((assignment) => !submissionMap.has(assignment.id))
+      .slice(0, 4)
+      .map((assignment) => {
+        return {
+          id: assignment.id,
+          title: assignment.title,
+          subject: assignment.subjectName,
+          deadline: assignment.deadline,
+          maxMarks: assignment.maxMarks,
+        };
+      });
   }, [assignments, submissions]);
 
-  const pendingCount = assignmentRows.filter((item) => item.status === 'Not submitted').length;
-  const submittedCount = assignmentRows.filter((item) => item.status !== 'Not submitted').length;
+  const pendingCount = assignments
+    .filter((assignment) => new Date(assignment.deadline) > new Date())
+    .filter((assignment) => !submissions.some((submission) => submission.assignmentId === assignment.id)).length;
   const gradedCount = submissions.filter((item) => item.status === 'Graded').length;
-  const averageGrade = gradedCount && submissions.some((item) => typeof item.marks === 'number')
-    ? Math.round(submissions.filter((item) => typeof item.marks === 'number').reduce((sum, item) => sum + ((item.marks ?? 0) / 100) * 100, 0) / gradedCount)
+  const gradedSubmissions = submissions.filter((item) =>
+    item.status === 'Graded' &&
+    typeof item.marks === 'number' &&
+    typeof item.maxMarks === 'number' &&
+    item.maxMarks > 0
+  );
+  const totalEarnedMarks = gradedSubmissions.reduce((sum, item) => sum + (item.marks ?? 0), 0);
+  const totalPossibleMarks = gradedSubmissions.reduce((sum, item) => sum + (item.maxMarks ?? 0), 0);
+  const averageGrade = totalPossibleMarks > 0
+    ? Math.round((totalEarnedMarks / totalPossibleMarks) * 100)
     : 0;
-  const completedCount = assignmentRows.filter((item) => item.status !== 'Not submitted').length;
-  const totalCount = Math.max(assignmentRows.length, 1);
-  const progress = Math.min(100, Math.max(0, Math.round((completedCount / totalCount) * 100)));
+  const totalAssignmentCount = assignments.length;
+  const submittedAssignmentCount = assignments.filter((assignment) =>
+    submissions.some((submission) => submission.assignmentId === assignment.id)
+  ).length;
+  const notSubmittedAssignmentCount = Math.max(0, totalAssignmentCount - submittedAssignmentCount);
+  const progress = totalAssignmentCount
+    ? Math.round((submittedAssignmentCount / totalAssignmentCount) * 100)
+    : 0;
 
   const dashboardStats = stats ?? {
+    studentName: '',
+    studentId: '',
+    role: 'Student',
+    className: '',
+    classSection: '',
+    academicYear: '',
     enrolledClassesCount: 0,
     activeAssignmentsCount: 0,
     submittedCount: 0,
@@ -82,13 +105,17 @@ export function StudentDashboardPage() {
   return (
     <AppShell role="Student" breadcrumb="Student / Dashboard">
       <div className="space-y-6">
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+        <div>
           <div>
-            <p className="text-xs font-bold text-brand-600 mb-1">STUDENT PORTAL</p>
-            <h1 className="text-2xl font-extrabold text-slate-800">You have {pendingCount} assignment{pendingCount === 1 ? '' : 's'} due this week.</h1>
-            <p className="text-sm text-slate-400 mt-1">{dashboardStats.enrolledClassesCount} enrolled class{dashboardStats.enrolledClassesCount === 1 ? '' : 'es'} · {dashboardStats.activeAssignmentsCount} active assignments</p>
+            <p className="text-base font-semibold text-slate-800">
+              <span className="text-xs font-bold text-brand-600">STUDENT PORTAL</span>
+              <span className="mx-2 text-slate-400">/</span>
+              <span className="uppercase text-xs font-bold text-brand-600">{dashboardStats.studentName || 'Student'}</span>
+            </p>
+            <p className="text-sm text-slate-400 mt-1">
+              Class: {dashboardStats.className || 'Not assigned'}{dashboardStats.classSection ? ` / ${dashboardStats.classSection}` : ''}{dashboardStats.groupName ? ` / ${dashboardStats.groupName}` : ''} · Academic year: {dashboardStats.academicYear || 'Not available'}
+            </p>
           </div>
-          <button className="px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700">View assignments</button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -97,7 +124,7 @@ export function StudentDashboardPage() {
               <p className="text-[11px] font-bold text-slate-400">DUE THIS WEEK</p>
             </div>
             <p className="text-2xl font-extrabold text-slate-800">{dashboardStats.upcomingDeadlinesCount}</p>
-            <p className="text-xs text-slate-400 mt-1">Upcoming deadlines</p>
+            <p className="text-xs text-slate-400 mt-1">Upcoming Deadlines</p>
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-4">
@@ -125,49 +152,64 @@ export function StudentDashboardPage() {
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6 items-start">
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
             <div className="flex items-center justify-between mb-5">
-              <p className="text-base font-bold text-slate-800">Upcoming deadlines</p>
-              <span className="badge bg-brand-50 text-brand-600">{pendingCount} pending</span>
+              <p className="text-base font-bold text-slate-800">Upcoming Deadlines</p>
+              <span className="badge bg-brand-50 text-brand-600">{pendingCount} not submitted</span>
             </div>
             <div className="space-y-4">
               {loading ? (
                 <p className="text-sm text-slate-500">Loading assignments…</p>
               ) : assignmentRows.length ? (
                 assignmentRows.map((item) => (
-                  <div key={item.id} className={`border border-slate-100 rounded-xl p-4 ${item.status === 'Graded' ? 'opacity-70' : ''}`}>
+                  <Link
+                    href={`/roles/student/assignments/${item.id}`}
+                    key={item.id}
+                    className="block cursor-pointer border border-slate-100 rounded-xl p-4"
+                  >
                     <div className="flex items-start justify-between gap-4">
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-sm font-bold text-slate-800">{item.title}</p>
                         <p className="text-xs text-slate-400 mt-0.5">{item.subject}</p>
                       </div>
-                      <span className={`badge ${item.status === 'Not submitted' ? 'bg-rose-50 text-rose-600' : item.status === 'Submitted' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                        <span className={`badge-dot ${item.status === 'Not submitted' ? 'bg-rose-500' : item.status === 'Submitted' ? 'bg-amber-500' : 'bg-emerald-500'}`} />
-                        {item.status === 'Not submitted' ? 'Due soon' : item.status === 'Submitted' ? 'In progress' : 'Submitted'}
-                      </span>
+                      <div className="shrink-0 flex flex-col items-end gap-1 text-right">
+                        <p className="text-xs font-semibold text-amber-600">Max marks: {item.maxMarks}</p>
+                        <p className="text-xs font-semibold text-slate-600">
+                          Due {new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(item.deadline))}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between mt-3">
-                      <span className="text-[11px] font-mono text-slate-400 bg-slate-50 px-2 py-1 rounded">Due: {new Date(item.deadline).toLocaleString()}</span>
-                      <button className="px-3.5 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700">Submit work</button>
-                    </div>
-                  </div>
+                  </Link>
                 ))
               ) : (
-                <p className="text-sm text-slate-500">No assignments available.</p>
+                <div className="flex min-h-[240px] flex-col items-center justify-center px-6 py-8 text-center">
+                  <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
+                    <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <rect x="4" y="3" width="16" height="18" rx="2" />
+                      <path d="M8 7h8M8 11h5M8 15l2 2 4-4" />
+                    </svg>
+                  </div>
+                  <p className="text-base font-bold text-slate-700">You’re all caught up</p>
+                  <p className="mt-1 max-w-sm text-sm text-slate-400">There are no upcoming assignments waiting for your submission.</p>
+                </div>
               )}
             </div>
           </div>
 
           <div className="space-y-4">
             <div className="bg-white rounded-2xl border border-slate-200 p-5">
-              <p className="text-sm font-bold text-slate-800 mb-4">Recent grades & feedback</p>
+              <p className="text-sm font-bold text-slate-800 mb-4">Recent Grades & Feedback</p>
               <div className="space-y-3">
                 {submissions.filter((item) => item.status === 'Graded' && item.feedback).slice(0, 3).map((submission) => (
-                  <div key={submission.id} className="border border-slate-100 rounded-xl p-3.5">
+                  <Link
+                    key={submission.id}
+                    href={`/roles/student/submissions/${submission.id}`}
+                    className="block border border-slate-100 rounded-xl p-3.5"
+                  >
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-semibold text-slate-700">{submission.assignmentTitle}</p>
-                      <span className="text-sm font-bold text-emerald-600">{submission.marks ?? 0}</span>
+                      <span className="text-sm font-bold text-emerald-600">{submission.marks ?? 0} / {submission.maxMarks ?? 100}</span>
                     </div>
-                    <p className="text-xs text-slate-400 mt-1.5">{submission.feedback}</p>
-                  </div>
+                    <p className="text-xs text-slate-400 mt-1.5">{submission.classCourseName}{submission.classCourseSection ? ` · Section ${submission.classCourseSection}` : ''}{submission.groupName ? ` · ${submission.groupName}` : ''} · {submission.feedback}</p>
+                  </Link>
                 ))}
                 {!submissions.some((item) => item.status === 'Graded' && item.feedback) && (
                   <p className="text-sm text-slate-500">No graded feedback yet.</p>
@@ -193,8 +235,8 @@ export function StudentDashboardPage() {
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm text-slate-600"><span className="font-bold text-slate-800">{completedCount}</span> of {totalCount} assignment{totalCount === 1 ? '' : 's'} completed</p>
-                  <p className="text-xs text-slate-400 mt-1">{dashboardStats.upcomingDeadlinesCount} due soon</p>
+                  <p className="text-sm text-slate-600"><span className="font-bold text-slate-800">{submittedAssignmentCount}</span> of {totalAssignmentCount} assignment{totalAssignmentCount === 1 ? '' : 's'} submitted</p>
+                  <p className="text-xs text-slate-400 mt-1">{notSubmittedAssignmentCount} not submitted</p>
                 </div>
               </div>
             </div>
@@ -213,12 +255,14 @@ export function StudentAssignmentsPage() {
   const [modalType, setModalType] = useState<'submit' | null>(null);
   const [selectedAssignment, setSelectedAssignment] = useState<AssignmentDto & { studentStatus?: string; submission?: SubmissionDto | null } | null>(null);
   const [comment, setComment] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadedFileName, setUploadedFileName] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   const [assignments, setAssignments] = useState<AssignmentDto[]>([]);
   const [submissions, setSubmissions] = useState<SubmissionDto[]>([]);
   const [loading, setLoading] = useState(false);
+  const PAGE_SIZE_OPTIONS = [5, 10, 15] as const;
+  const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(5);
+  const [pageIndex, setPageIndex] = useState(0);
 
   const now = useMemo(() => new Date(), []);
 
@@ -239,7 +283,9 @@ export function StudentAssignmentsPage() {
   }, []);
 
   const mapAssignments = useMemo(() => {
-    return assignments.map((a) => {
+    return [...assignments].sort((a, b) => {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }).map((a) => {
       const sub = submissions.find((s) => s.assignmentId === a.id) ?? null;
       return {
         ...a,
@@ -281,12 +327,20 @@ export function StudentAssignmentsPage() {
     });
   }, [mapAssignments, currentTab, subjectFilter, searchTerm, now]);
 
+  useEffect(() => {
+    setPageIndex(0);
+  }, [currentTab, subjectFilter, searchTerm, pageSize]);
+
+  const pagedAssignments = useMemo(() => {
+    const start = pageIndex * pageSize;
+    return filteredAssignments.slice(start, start + pageSize);
+  }, [filteredAssignments, pageIndex, pageSize]);
+
   const openSubmit = (assignment: AssignmentDto & { studentStatus?: string; submission?: SubmissionDto | null }) => {
     setSelectedAssignment(assignment);
     setModalType('submit');
     setComment(assignment.submission?.contentText ?? '');
-    setSelectedFile(null);
-    setUploadedFileName(assignment.submission?.attachments?.[0]?.originalFileName ?? assignment.submission?.fileName ?? '');
+    setSelectedFiles([]);
   };
 
   const openAssignmentView = (assignment: AssignmentDto & { studentStatus?: string; submission?: SubmissionDto | null }) => {
@@ -306,25 +360,25 @@ export function StudentAssignmentsPage() {
     setModalType(null);
     setSelectedAssignment(null);
     setComment('');
-    setUploadedFileName('');
+    setSelectedFiles([]);
   };
 
   async function submitAssignment() {
     if (!selectedAssignment) return;
+    if (!comment.trim()) {
+      alert('Description is required.');
+      return;
+    }
     try {
       setLoading(true);
       let submission: SubmissionDto;
       if (selectedAssignment.submission) {
         submission = await updateSubmission(selectedAssignment.submission.id, { contentText: comment });
-        if (selectedFile) {
-          const existingAttachments = await listAttachments('Submission', submission.id);
-          await Promise.all(existingAttachments.map((attachment) => deleteAttachment(attachment.id)));
-        }
       } else {
         submission = await createSubmission({ assignmentId: selectedAssignment.id, contentText: comment });
       }
-      if (selectedFile) {
-        await uploadAttachment('Submission', submission.id, selectedFile);
+      if (selectedFiles.length > 0) {
+        await Promise.all(selectedFiles.map((file) => uploadAttachment('Submission', submission.id, file)));
       }
       const mine = await getMySubmissions();
       setSubmissions(mine);
@@ -414,35 +468,36 @@ export function StudentAssignmentsPage() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="flex items-center gap-2 flex-wrap">
             {(['all', 'pending', 'submitted', 'graded', 'missing'] as const).map((status) => (
-              <button
+              <Button
                 key={status}
                 type="button"
+                variant={currentTab === status ? 'primary' : 'ghost'}
                 onClick={() => setCurrentTab(status)}
-                className={`rounded-xl px-4 py-2 text-sm font-semibold ${currentTab === status ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+                className={`tab cursor-pointer px-4 py-2 text-sm font-semibold ${currentTab === status ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}>
                 {status === 'all' ? 'All' : status === 'pending' ? 'To do' : status === 'submitted' ? 'Submitted' : status === 'graded' ? 'Graded' : 'Missing'}
                 <span className="opacity-70 font-normal"> {tabCounts[status]}</span>
-              </button>
+              </Button>
             ))}
           </div>
 
-          <div className="flex items-center gap-2.5">
-            <select value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600">
+          <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+            <select value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)} className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100">
               <option value="">All subjects</option>
               {subjectOptions.map((subject) => (
                 <option key={subject} value={subject}>{subject}</option>
               ))}
             </select>
-            <div className="relative">
+            <div className="relative w-56">
               <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search assignments…"
-                className="w-56 rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-600 outline-none focus:border-brand-500"
+                className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
               />
             </div>
           </div>
@@ -450,18 +505,18 @@ export function StudentAssignmentsPage() {
 
         <div className="space-y-4">
           {filteredAssignments.length ? (
-            filteredAssignments.map((assignment) => {
+            pagedAssignments.map((assignment) => {
               const badgeClass = statusBadgeClass(assignment.studentStatus);
               const statusLabel = assignment.studentStatus === 'Not submitted' ? (isPastDue(assignment.deadline) ? 'Missing' : 'Due soon') : assignment.studentStatus === 'Submitted' ? 'Submitted' : assignment.studentStatus === 'Graded' ? 'Graded' : assignment.studentStatus;
 
               return (
-                <div key={assignment.id} className={`rounded-2xl border bg-white p-5 ${assignment.studentStatus === 'Not submitted' && isPastDue(assignment.deadline) ? 'border-dashed border-rose-200' : 'border-slate-200'}`}>
+                <Link href={`/roles/student/assignments/${assignment.id}`} key={assignment.id} className={`group block rounded-2xl border bg-white p-5 transition hover:border-brand-500 hover:shadow-md focus-visible:border-brand-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 ${assignment.studentStatus === 'Not submitted' && isPastDue(assignment.deadline) ? 'border-dashed border-rose-200' : 'border-slate-200'}`}>
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <button type="button" onClick={() => openAssignmentView(assignment)} className="text-left text-base font-bold text-slate-800 transition hover:text-brand-600">
+                        <p className="text-base font-bold text-slate-800 transition group-hover:text-brand-600">
                           {assignment.title}
-                        </button>
+                        </p>
                         <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${subjectBadgeClass(assignment.subjectName)}`}>
                           {assignment.subjectName}
                         </span>
@@ -476,42 +531,10 @@ export function StudentAssignmentsPage() {
 
                   <p className="mt-3 text-sm text-slate-500">{assignment.description ?? ''}</p>
 
-                  <div className="mt-4 flex items-center justify-between gap-3">
+                  <div className="mt-4">
                     <span className="rounded bg-slate-50 px-2 py-1 font-mono text-[11px] text-slate-400">Due: {new Date(assignment.deadline).toLocaleString()}</span>
-                    {assignment.studentStatus === 'Not submitted' ? (
-                      <button
-                        type="button"
-                        onClick={openSubmit.bind(null, assignment)}
-                        className="rounded-xl bg-violet-600 px-4 py-2 text-xs font-semibold text-white hover:bg-violet-700">
-                        {isPastDue(assignment.deadline) ? 'Submit late' : 'Submit work'}
-                      </button>
-                    ) : assignment.studentStatus === 'Graded' ? (
-                      <button
-                        type="button"
-                        onClick={() => openSubmissionView(assignment)}
-                        className="cursor-pointer rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                        View feedback
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        {(assignment.allowResubmission || assignment.studentStatus === 'ResubmissionRequested') ? (
-                          <button
-                            type="button"
-                            onClick={openSubmit.bind(null, assignment)}
-                            className="rounded-xl bg-violet-600 px-4 py-2 text-xs font-semibold text-white hover:bg-violet-700">
-                            Resubmit work
-                          </button>
-                        ) : null}
-                        <button
-                          type="button"
-                          onClick={() => openSubmissionView(assignment)}
-                          className="cursor-pointer rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                          View submission
-                        </button>
-                      </div>
-                    )}
                   </div>
-                </div>
+                </Link>
               );
             })
           ) : (
@@ -522,6 +545,18 @@ export function StudentAssignmentsPage() {
               <p className="text-base font-bold text-slate-700">Nothing here</p>
               <p className="mt-1 max-w-sm text-sm text-slate-400">No assignments match this filter right now.</p>
             </div>
+          )}
+          {!loading && filteredAssignments.length > 0 && (
+            <AmsPagination
+              currentPage={pageIndex}
+              pageSize={pageSize}
+              totalItems={filteredAssignments.length}
+              pageSizeOptions={PAGE_SIZE_OPTIONS}
+              onPageChange={setPageIndex}
+              onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
+              label="Showing"
+              itemLabel="assignments"
+            />
           )}
         </div>
 
@@ -535,37 +570,36 @@ export function StudentAssignmentsPage() {
                   </h2>
                   <p className="text-base text-slate-400 mt-3">{selectedAssignment.subjectName} ·</p>
                 </div>
-                <button type="button" onClick={closeModal} className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors duration-200">
+                <Button type="button" variant="ghost" onClick={closeModal} className="inline-flex h-10 w-10 items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors duration-200">
                   <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
-                </button>
+                </Button>
               </div>
 
               <div className="overflow-y-auto px-7 py-6 space-y-5">
                 <div className="space-y-5">
                   <div>
-                    <label className="mb-2 block text-[13px] font-semibold text-slate-800">Upload your work</label>
+                    <label className="mb-2 block text-[13px] font-semibold text-slate-800">Attachments <span className="font-normal text-slate-400">(optional)</span></label>
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                       <FileUpload
-                        selectedFiles={selectedFile ? [selectedFile] : []}
+                        multiple
+                        selectedFiles={selectedFiles}
+                        existingAttachments={(selectedAssignment.submission?.attachments ?? []).map((attachment) => ({
+                          id: attachment.id,
+                          originalFileName: attachment.originalFileName,
+                          downloadUrl: attachment.downloadUrl,
+                          sizeBytes: attachment.sizeBytes,
+                        }))}
                         onFileSelected={(file) => {
-                          setSelectedFile(file);
-                          setUploadedFileName(file.name);
+                          setSelectedFiles((current) => [...current, file]);
                         }}
-                        onFilesSelected={(files) => {
-                          const newest = files.at(-1) ?? null;
-                          setSelectedFile(newest);
-                          setUploadedFileName(newest ? newest.name : '');
-                        }}
+                        onFilesSelected={setSelectedFiles}
                         allowedTypesText="PDF, DOCX, TXT, ZIP, PNG, JPG (Max 10MB)"
                       />
                     </div>
-                    {uploadedFileName ? (
-                      <p className="mt-2 text-sm text-slate-500">Selected: <span className="font-medium text-slate-700">{uploadedFileName}</span></p>
-                    ) : null}
                   </div>
 
                   <div>
-                    <label className="mb-2 block text-[13px] font-semibold text-slate-800">Comment <span className="font-normal text-slate-400">(optional)</span></label>
+                    <label className="mb-2 block text-[13px] font-semibold text-slate-800">Description <span className="text-rose-500">*</span></label>
                     <textarea
                       rows={4}
                       value={comment}
@@ -578,12 +612,12 @@ export function StudentAssignmentsPage() {
               </div>
 
               <div className="flex items-center justify-end gap-3 px-7 py-5 border-t border-slate-100 bg-slate-50/80">
-                <button type="button" onClick={closeModal} className="rounded-2xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                <Button type="button" variant="secondary" onClick={closeModal} className="border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                   Cancel
-                </button>
-                <button type="button" onClick={submitAssignment} className="rounded-2xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700">
-                  {selectedAssignment.submission ? 'Resubmit' : 'Submit'}
-                </button>
+                </Button>
+                <Button type="button" disabled={!comment.trim()} onClick={submitAssignment} className="bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700">
+                  {selectedAssignment.submission ? 'Re-submit' : 'Submit'}
+                </Button>
               </div>
             </div>
           </div>

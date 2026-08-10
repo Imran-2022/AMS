@@ -24,6 +24,13 @@ public class TeacherDashboardStatsDto
 
 public class StudentDashboardStatsDto
 {
+    public string StudentName { get; set; } = string.Empty;
+    public string StudentId { get; set; } = string.Empty;
+    public string Role { get; set; } = string.Empty;
+    public string ClassName { get; set; } = string.Empty;
+    public string ClassSection { get; set; } = string.Empty;
+    public string? GroupName { get; set; }
+    public string AcademicYear { get; set; } = string.Empty;
     public int EnrolledClassesCount { get; set; }
     public int ActiveAssignmentsCount { get; set; }
     public int SubmittedCount { get; set; }

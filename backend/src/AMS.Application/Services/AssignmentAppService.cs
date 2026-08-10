@@ -14,6 +14,7 @@ public class AssignmentAppService : IAssignmentAppService
     private readonly ISubmissionRepository _submissionRepository;
     private readonly IUserRepository _userRepository;
     private readonly IClassCourseRepository _classCourseRepository;
+    private readonly IGroupRepository _groupRepository;
     private readonly ISubjectRepository _subjectRepository;
     private readonly IAttachmentAppService _attachmentAppService;
 
@@ -24,6 +25,7 @@ public class AssignmentAppService : IAssignmentAppService
         ISubmissionRepository submissionRepository,
         IUserRepository userRepository,
         IClassCourseRepository classCourseRepository,
+        IGroupRepository groupRepository,
         ISubjectRepository subjectRepository,
         IAttachmentAppService attachmentAppService)
     {
@@ -33,6 +35,7 @@ public class AssignmentAppService : IAssignmentAppService
         _submissionRepository = submissionRepository;
         _userRepository = userRepository;
         _classCourseRepository = classCourseRepository;
+        _groupRepository = groupRepository;
         _subjectRepository = subjectRepository;
         _attachmentAppService = attachmentAppService;
     }
@@ -221,6 +224,7 @@ public class AssignmentAppService : IAssignmentAppService
     private async Task<AssignmentDto> ToDtoAsync(Assignment assignment, CancellationToken cancellationToken = default)
     {
         var classCourse = await _classCourseRepository.GetByIdAsync(assignment.ClassCourseId, cancellationToken) ?? throw new NotFoundException("Class/course not found.");
+        var group = classCourse.GroupId.HasValue ? await _groupRepository.GetByIdAsync(classCourse.GroupId.Value, cancellationToken) : null;
         var subject = await _subjectRepository.GetByIdAsync(assignment.SubjectId, cancellationToken) ?? throw new NotFoundException("Subject not found.");
         var teacher = await _userRepository.GetByIdAsync(assignment.TeacherId, cancellationToken);
 
@@ -247,6 +251,7 @@ public class AssignmentAppService : IAssignmentAppService
             CreatedAt = assignment.CreatedAt,
             ClassCourseName = classCourse.Name,
             ClassCourseSection = classCourse.Section,
+            GroupName = group?.Name,
             SubjectName = subject.Name,
             TeacherName = teacher?.FullName ?? string.Empty,
             SubmittedCount = submissions.Count,

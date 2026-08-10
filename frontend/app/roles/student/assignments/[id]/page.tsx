@@ -1,17 +1,27 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
-import { getAssignment, downloadAttachmentToBrowser, type AssignmentDto } from '@/lib/api';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { getAssignment, getMySubmissions, createSubmission, updateSubmission, uploadAttachment, downloadAttachmentToBrowser, type AssignmentDto, type SubmissionDto } from '@/lib/api';
+import { Button } from '@/components/ui';
+import { FileUpload } from '@/components/ui';
+import { AppShell } from '@/components/layout/AppShell';
 
 export default function StudentAssignmentDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const rawId = Array.isArray(params?.id) ? params.id[0] : params?.id;
   const assignmentId = typeof rawId === 'string' ? rawId : '';
 
   const [assignment, setAssignment] = useState<AssignmentDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [submission, setSubmission] = useState<SubmissionDto | null>(null);
+  const [submitOpen, setSubmitOpen] = useState(false);
+  const [comment, setComment] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!assignmentId) {
@@ -26,9 +36,12 @@ export default function StudentAssignmentDetailPage() {
       try {
         setLoading(true);
         setError(null);
-        const data = await getAssignment(assignmentId);
+        const [data, submissions] = await Promise.all([getAssignment(assignmentId), getMySubmissions()]);
         if (!cancelled) {
           setAssignment(data);
+          const currentSubmission = submissions.find((item) => item.assignmentId === data.id) ?? null;
+          setSubmission(currentSubmission);
+          setComment(currentSubmission?.contentText ?? '');
         }
       } catch (err) {
         if (!cancelled) {
@@ -68,30 +81,95 @@ export default function StudentAssignmentDetailPage() {
     ? Math.max(0, Math.ceil((deadline.getTime() - Date.now()) / 86400000))
     : 0;
 
-  const submissionPercent = assignment && assignment.totalStudents
-    ? Math.round(((assignment.submittedCount ?? 0) / assignment.totalStudents) * 100)
-    : 0;
-
   const assignmentTitle = assignment?.title ?? 'Assignment';
   const assignmentDescription = assignment?.description ?? 'Assignment description is not available.';
   const className = assignment?.classCourseName ?? 'Class';
   const classSection = assignment?.classCourseSection ?? '';
   const subjectName = assignment?.subjectName ?? '';
   const maxMarks = assignment?.maxMarks ?? 0;
+  const statusLabel = !submission
+    ? 'Not submitted'
+    : submission.status === 'Graded'
+      ? 'Graded'
+      : submission.status === 'ResubmissionRequested'
+        ? 'Resubmission requested'
+        : submission.status === 'Resubmitted'
+          ? 'Resubmitted'
+          : 'Submitted';
+  const canResubmit = Boolean(
+    submission &&
+    submission.status !== 'Graded' &&
+    (assignment?.allowResubmission || submission.status === 'ResubmissionRequested')
+  );
+  const canSubmit = Boolean(assignment) && (!submission || canResubmit);
+  const canSubmitForm = canSubmit && comment.trim().length > 0;
+
+  async function handleSubmit() {
+    if (!assignment || !canSubmit) return;
+    if (!comment.trim()) {
+      setError('Description is required.');
+      return;
+    }
+    try {
+      setSubmitting(true);
+      const nextSubmission = submission
+        ? await updateSubmission(submission.id, { contentText: comment })
+        : await createSubmission({ assignmentId: assignment.id, contentText: comment });
+
+      if (selectedFiles.length > 0) {
+        await Promise.all(selectedFiles.map((file) => uploadAttachment('Submission', nextSubmission.id, file)));
+      }
+
+      setSubmission(nextSubmission);
+      setSubmitOpen(false);
+      setSelectedFiles([]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to submit assignment.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <div className="flex-1 overflow-y-auto space-y-5 p-6">
+    <AppShell role="Student" breadcrumb="Student / Assignments">
+      <div className="space-y-5">
           <div className="flex items-start justify-between flex-wrap gap-3">
             <div>
-              <div className="flex items-center gap-3 mt-1">
+              <div className="mt-1 flex flex-wrap items-center gap-3">
                 <h1 className="text-3xl font-extrabold text-slate-800">{assignmentTitle}</h1>
-                <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-600">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  {assignment?.status ?? 'Draft'}
+                <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${statusLabel === 'Graded' ? 'bg-emerald-50 text-emerald-600' : statusLabel === 'Not submitted' ? 'bg-amber-50 text-amber-600' : 'bg-sky-50 text-sky-600'}`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${statusLabel === 'Graded' ? 'bg-emerald-500' : statusLabel === 'Not submitted' ? 'bg-amber-500' : 'bg-sky-500'}`} />
+                  {statusLabel}
                 </span>
               </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="secondary" onClick={() => router.back()} className="!h-11 !px-4 !py-2 !text-sm">
+                <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m15 18-6-6 6-6" />
+                </svg>
+                Back
+              </Button>
+              {submission?.id && submission.status !== 'Graded' ? (
+                <Link
+                  href={`/roles/student/submissions/${submission.id}`}
+                  className="inline-flex h-11 items-center justify-center rounded px-4 py-2 text-sm font-semibold text-slate-700 border border-slate-300 bg-white shadow-sm transition-all duration-200 hover:bg-slate-50"
+                >
+                  View submission
+                </Link>
+              ) : null}
+              {submission?.status === 'Graded' ? (
+                <Link
+                  href={`/roles/student/submissions/${submission.id}`}
+                  className="inline-flex h-11 items-center justify-center rounded px-4 py-2 text-sm font-semibold text-slate-700 border border-slate-300 bg-white shadow-sm transition-all duration-200 hover:bg-slate-50"
+                >
+                  View feedback
+                </Link>
+              ) : canSubmit ? (
+                <Button type="button" onClick={() => setSubmitOpen(true)} className="!h-11 !px-4 !py-2 !text-sm">
+                  {submission ? 'Resubmit work' : 'Submit work'}
+                </Button>
+              ) : null}
             </div>
           </div>
 
@@ -119,11 +197,12 @@ export default function StudentAssignmentDetailPage() {
                   <div className="space-y-2.5">
                     {(assignment?.attachments ?? []).length > 0 ? (
                       (assignment?.attachments ?? []).map((attachment) => (
-                        <button
+                        <Button
                           key={attachment.id}
                           type="button"
+                          variant="ghost"
                           onClick={() => void downloadAttachmentToBrowser(attachment.downloadUrl, attachment.originalFileName)}
-                          className="flex w-full items-center gap-3 rounded-xl border border-slate-100 p-3 text-left transition hover:bg-slate-50"
+                          className="flex w-full cursor-pointer items-center gap-3 border border-slate-100 p-3 text-left transition hover:bg-slate-50"
                         >
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-500">
                             <svg className="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -142,7 +221,7 @@ export default function StudentAssignmentDetailPage() {
                             <polyline points="7 10 12 15 17 10" />
                             <line x1="12" y1="15" x2="12" y2="3" />
                           </svg>
-                        </button>
+                        </Button>
                       ))
                     ) : (
                       <p className="text-sm text-slate-400">No attachments available.</p>
@@ -150,24 +229,6 @@ export default function StudentAssignmentDetailPage() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-6">
-                  <div className="mb-4 flex items-center justify-between">
-                    <p className="eyebrow">PROGRESS</p>
-                    <button className="text-sm font-semibold text-brand-600 hover:text-brand-700">View submissions →</button>
-                  </div>
-                  <div className="mb-2 flex items-center justify-between text-[15px]">
-                    <span className="font-extrabold text-slate-800">{assignment?.submittedCount ?? 0} submitted</span>
-                    <span className="text-slate-400">of {assignment?.totalStudents ?? 0} students</span>
-                  </div>
-                  <div className="progress-track">
-                    <div className="progress-fill bg-slate-300" style={{ width: `${submissionPercent}%` }} />
-                  </div>
-                  <p className="mt-2 text-xs text-slate-400">
-                    {assignment?.submittedCount
-                      ? `${assignment.submittedCount} submission${assignment.submittedCount === 1 ? '' : 's'} current`
-                      : 'No submissions yet — nothing to grade until a student turns in work.'}
-                  </p>
-                </div>
               </div>
 
               <div className="space-y-5">
@@ -191,28 +252,62 @@ export default function StudentAssignmentDetailPage() {
                   <p className="text-2xl font-extrabold text-slate-800">{maxMarks}</p>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-5">
-                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">Submission options</p>
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-slate-600">Allow late submission</span>
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">
-                        {assignment?.allowLateSubmission ? 'Yes' : 'No'}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-slate-600">Allow resubmission</span>
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">
-                        {assignment?.allowResubmission ? 'Yes' : 'No'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
           )}
-        </div>
+
+          {submitOpen && assignment ? (
+            <div className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4">
+              <div className="w-full max-w-xl overflow-hidden rounded bg-white shadow-2xl">
+                <div className="flex items-start justify-between border-b border-slate-100 px-6 py-5">
+                  <div>
+                    <h2 className="text-xl font-extrabold text-slate-800">{submission ? 'Resubmit work' : 'Submit work'}</h2>
+                    <p className="mt-1 text-sm text-slate-400">{assignment.title}</p>
+                  </div>
+                  <Button type="button" variant="ghost" onClick={() => setSubmitOpen(false)} className="h-9 w-9 px-0 text-slate-400">×</Button>
+                </div>
+                <div className="space-y-5 px-6 py-6">
+                  <div>
+                    <label className="mb-2 block text-[13px] font-semibold text-slate-800">
+                      Attachments <span className="font-normal text-slate-400">(optional)</span>
+                    </label>
+                    <FileUpload
+                      multiple
+                      selectedFiles={selectedFiles}
+                      existingAttachments={(submission?.attachments ?? []).map((attachment) => ({
+                        id: attachment.id,
+                        originalFileName: attachment.originalFileName,
+                        downloadUrl: attachment.downloadUrl,
+                        sizeBytes: attachment.sizeBytes,
+                      }))}
+                      onFilesSelected={setSelectedFiles}
+                      allowedTypesText="PDF, DOCX, TXT, ZIP, PNG, JPG (Max 10MB)"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="submission-description" className="mb-2 block text-[13px] font-semibold text-slate-800">
+                      Description <span className="text-rose-500">*</span>
+                    </label>
+                    <textarea
+                      id="submission-description"
+                      rows={5}
+                      value={comment}
+                      onChange={(event) => setComment(event.target.value)}
+                      placeholder="Add a note for your teacher..."
+                      className="w-full resize-none rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/70 px-6 py-4">
+                  <Button type="button" variant="secondary" onClick={() => setSubmitOpen(false)}>Cancel</Button>
+                  <Button type="button" disabled={submitting || !canSubmitForm} onClick={() => void handleSubmit()}>
+                    {submitting ? (submission ? 'Re-submitting...' : 'Submitting...') : (submission ? 'Re-submit' : 'Submit')}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : null}
       </div>
-    </div>
+    </AppShell>
   );
 }

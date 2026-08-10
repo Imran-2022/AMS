@@ -13,6 +13,7 @@ public class SubmissionAppService : ISubmissionAppService
     private readonly IStudentEnrollmentRepository _studentEnrollmentRepository;
     private readonly IUserRepository _userRepository;
     private readonly IClassCourseRepository _classCourseRepository;
+    private readonly IGroupRepository _groupRepository;
     private readonly Microsoft.AspNetCore.Authorization.IAuthorizationService _authorizationService;
     private readonly AMS.Application.Contracts.ICurrentUserService _currentUser;
     private readonly IAttachmentAppService _attachmentAppService;
@@ -23,6 +24,7 @@ public class SubmissionAppService : ISubmissionAppService
         IStudentEnrollmentRepository studentEnrollmentRepository,
         IUserRepository userRepository,
         IClassCourseRepository classCourseRepository,
+        IGroupRepository groupRepository,
         Microsoft.AspNetCore.Authorization.IAuthorizationService authorizationService,
         AMS.Application.Contracts.ICurrentUserService currentUser,
         IAttachmentAppService attachmentAppService)
@@ -32,6 +34,7 @@ public class SubmissionAppService : ISubmissionAppService
         _studentEnrollmentRepository = studentEnrollmentRepository;
         _userRepository = userRepository;
         _classCourseRepository = classCourseRepository;
+        _groupRepository = groupRepository;
         _authorizationService = authorizationService;
         _currentUser = currentUser;
         _attachmentAppService = attachmentAppService;
@@ -213,6 +216,7 @@ public class SubmissionAppService : ISubmissionAppService
         var assignment = await _assignmentRepository.GetByIdAsync(submission.AssignmentId, cancellationToken) ?? throw new NotFoundException("Assignment not found.");
         var student = await _userRepository.GetByIdAsync(submission.StudentId, cancellationToken) ?? throw new NotFoundException("Student not found.");
         var classCourse = await _classCourseRepository.GetByIdAsync(assignment.ClassCourseId, cancellationToken) ?? throw new NotFoundException("Class/course not found.");
+        var group = classCourse.GroupId.HasValue ? await _groupRepository.GetByIdAsync(classCourse.GroupId.Value, cancellationToken) : null;
         var attachments = await _attachmentAppService.ListAsync("Submission", submission.Id);
 
         var initials = string.Concat(student.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => x[0])).ToUpperInvariant();
@@ -240,6 +244,7 @@ public class SubmissionAppService : ISubmissionAppService
             MaxMarks = assignment.MaxMarks,
             ClassCourseName = classCourse.Name,
             ClassCourseSection = classCourse.Section,
+            GroupName = group?.Name,
             Attachments = attachments
         };
     }
