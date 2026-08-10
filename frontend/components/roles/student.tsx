@@ -168,7 +168,16 @@ export function StudentDashboardPage() {
                   </Link>
                 ))
               ) : (
-                <p className="text-sm text-slate-500">No assignments available.</p>
+                <div className="flex min-h-[240px] flex-col items-center justify-center px-6 py-8 text-center">
+                  <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
+                    <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <rect x="4" y="3" width="16" height="18" rx="2" />
+                      <path d="M8 7h8M8 11h5M8 15l2 2 4-4" />
+                    </svg>
+                  </div>
+                  <p className="text-base font-bold text-slate-700">You’re all caught up</p>
+                  <p className="mt-1 max-w-sm text-sm text-slate-400">There are no upcoming assignments waiting for your submission.</p>
+                </div>
               )}
             </div>
           </div>
