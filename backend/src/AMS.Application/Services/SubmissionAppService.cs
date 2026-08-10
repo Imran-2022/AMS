@@ -100,6 +100,7 @@ public class SubmissionAppService : ISubmissionAppService
         var existing = await _submissionRepository.GetByAssignmentAndStudentAsync(assignment.Id, _currentUser.UserId, cancellationToken);
         if (existing is not null)
         {
+            if (existing.Status == SubmissionStatus.Graded) throw new ValidationException("A graded submission cannot be resubmitted.");
             if (!assignment.AllowResubmission) throw new ValidationException("Resubmission is not allowed for this assignment.");
 
             existing.Resubmit(input.ContentText, input.FileUrl, input.FileName, DateTime.UtcNow, assignment.Deadline, assignment.AllowLateSubmission);
