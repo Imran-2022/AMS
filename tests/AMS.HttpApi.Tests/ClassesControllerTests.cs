@@ -11,6 +11,25 @@ namespace AMS.HttpApi.Tests;
 public class ClassesControllerTests
 {
     [Fact]
+    public async Task GetAll_Returns_Ok_With_Classes()
+    {
+        var expected = new List<ClassCourseDto> { new() { Id = Guid.NewGuid(), Name = "Class 1" } };
+        var service = new Mock<IClassCourseAppService>(MockBehavior.Strict);
+        service.Setup(s => s.GetAllAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(expected);
+
+        var currentUser = new Mock<ICurrentUserService>(MockBehavior.Strict);
+        currentUser.SetupGet(c => c.UserId).Returns(Guid.NewGuid());
+        currentUser.SetupGet(c => c.Role).Returns("Teacher");
+
+        var controller = new ClassesController(service.Object, currentUser.Object);
+        controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+
+        var result = await controller.GetAll();
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Equal(expected, ok.Value);
+    }
+
+    [Fact]
     public async Task GetById_Returns_NotFound_When_Missing()
     {
         var service = new Mock<IClassCourseAppService>(MockBehavior.Strict);
