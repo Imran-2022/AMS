@@ -107,9 +107,8 @@ export function AdminAmsSettingsPage() {
 
   const tabButton = (label: string, value: SettingsTab) => (
     <button
-      type="button"
-      onClick={() => setActiveTab(value)}
-      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition ${
+      type="button" onClick={() => setActiveTab(value)}
+      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-sm font-semibold transition ${
         activeTab === value
           ? 'bg-brand-50 text-brand-700'
           : 'text-slate-500 hover:bg-slate-50'
@@ -123,7 +122,7 @@ export function AdminAmsSettingsPage() {
     <button
       type="button"
       onClick={onToggle}
-      className={`relative inline-flex h-10 w-16 shrink-0 rounded-full transition-colors ${
+      className={`relative inline-flex h-10 w-16 shrink-0 rounded-full cursor-pointer transition-colors ${
         enabled ? 'bg-brand-600' : 'bg-slate-200'
       }`}
       aria-pressed={enabled}
@@ -261,12 +260,11 @@ export function AdminAmsSettingsPage() {
                     <p className="text-xs text-slate-400 mt-0.5">Add a new academic session and optionally set it active.</p>
                   </div>
                   <button
-                    type="button"
-                    onClick={() => {
+                    type="button" onClick={() => {
                       setCreateError(null);
                       setShowCreateModal(true);
                     }}
-                    className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+                    className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 cursor-pointer"
                   >
                     Create academic year
                   </button>
@@ -280,9 +278,8 @@ export function AdminAmsSettingsPage() {
                 footer={
                   <div className="flex flex-col gap-3 sm:flex-row sm:justify-end sm:gap-4">
                     <button
-                      type="button"
-                      onClick={() => setShowCreateModal(false)}
-                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                      type="button" onClick={() => setShowCreateModal(false)}
+                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
                     >
                       Cancel
                     </button>
@@ -290,7 +287,7 @@ export function AdminAmsSettingsPage() {
                       type="button"
                       onClick={handleCreateYear}
                       disabled={createLoading}
-                      className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {createLoading ? 'Creating…' : 'Create academic year'}
                     </button>
@@ -384,7 +381,7 @@ export function AdminAmsSettingsPage() {
                             {!year.isActive && (
                               <button
                                 onClick={() => handleActivateYear(year.id)}
-                                className="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700"
+                                className="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700 cursor-pointer"
                               >
                                 Activate
                               </button>

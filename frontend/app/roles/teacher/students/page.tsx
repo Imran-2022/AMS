@@ -298,7 +298,7 @@ export default function StudentsPage(){
                   <p className="text-sm text-slate-400">{selected.cls}</p>
                 </div>
               </div>
-              <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-600">×</button>
+              <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer">×</button>
             </div>
             <div className="overflow-y-auto px-7 py-6 space-y-5">
               <div className="grid gap-5 sm:grid-cols-2">

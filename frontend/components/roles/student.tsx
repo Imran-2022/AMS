@@ -17,6 +17,23 @@ type StudentAssignment = {
   status: string;
 };
 
+function getStudentStatusLabel(status: string | undefined) {
+  switch (status) {
+    case 'ResubmissionRequested':
+      return 'Resubmission Requested';
+    case 'Resubmission':
+      return 'Resubmission';
+    case 'Submitted':
+      return 'Submitted';
+    case 'Graded':
+      return 'Graded';
+    case 'Not submitted':
+      return 'Not submitted';
+    default:
+      return status ?? 'Not submitted';
+  }
+}
+
 export function StudentDashboardPage() {
   const [stats, setStats] = useState<StudentDashboardStats | null>(null);
   const [assignments, setAssignments] = useState<AssignmentDto[]>([]);
@@ -49,24 +66,56 @@ export function StudentDashboardPage() {
 
   const assignmentRows = useMemo(() => {
     const submissionMap = new Map(submissions.map((submission) => [submission.assignmentId, submission]));
+
     return assignments
-      .filter((assignment) => new Date(assignment.deadline) > new Date())
-      .filter((assignment) => !submissionMap.has(assignment.id))
+      .filter((assignment) => {
+        const submission = submissionMap.get(assignment.id);
+        if (!submission) {
+          return true;
+        }
+
+        if (submission.status === 'Graded') {
+          return false;
+        }
+
+        if (submission.status === 'ResubmissionRequested') {
+          return true;
+        }
+
+        if (submission.status === 'Resubmitted') {
+          return false;
+        }
+
+        return true;
+      })
       .slice(0, 4)
       .map((assignment) => {
+        const submission = submissionMap.get(assignment.id);
         return {
           id: assignment.id,
           title: assignment.title,
           subject: assignment.subjectName,
           deadline: assignment.deadline,
           maxMarks: assignment.maxMarks,
+          status: submission?.status,
+          isResubmissionRequested: submission?.status === 'ResubmissionRequested',
         };
       });
   }, [assignments, submissions]);
 
   const pendingCount = assignments
-    .filter((assignment) => new Date(assignment.deadline) > new Date())
-    .filter((assignment) => !submissions.some((submission) => submission.assignmentId === assignment.id)).length;
+    .filter((assignment) => {
+      const submission = submissions.find((item) => item.assignmentId === assignment.id);
+      if (!submission || submission.status === 'ResubmissionRequested') {
+        return true;
+      }
+
+      if (submission.status === 'Graded' || submission.status === 'Resubmitted') {
+        return false;
+      }
+
+      return true;
+    }).length;
   const gradedCount = submissions.filter((item) => item.status === 'Graded').length;
   const gradedSubmissions = submissions.filter((item) =>
     item.status === 'Graded' &&
@@ -95,14 +144,6 @@ export function StudentDashboardPage() {
     className: '',
     classSection: '',
     academicYear: '',
-    enrolledClassesCount: 0,
-    activeAssignmentsCount: 0,
-    submittedCount: 0,
-    gradedCount: 0,
-    upcomingDeadlinesCount: 0,
-  };
-
-  const dashboardStats = stats ?? {
     enrolledClassesCount: 0,
     activeAssignmentsCount: 0,
     submittedCount: 0,
@@ -161,7 +202,7 @@ export function StudentDashboardPage() {
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
             <div className="flex items-center justify-between mb-5">
               <p className="text-base font-bold text-slate-800">Upcoming Deadlines</p>
-              <span className="badge bg-brand-50 text-brand-600">{pendingCount} not submitted</span>
+              <span className="badge bg-brand-50 text-brand-600">{pendingCount} Not Submitted</span>
             </div>
             <div className="space-y-4">
               {loading ? (
@@ -175,12 +216,17 @@ export function StudentDashboardPage() {
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <p className="text-sm font-bold text-slate-800">{item.title}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">{item.subject}</p>
+                        <p className="text-sm font-bold text-slate-700">
+                          {item.title}
+                          {item.isResubmissionRequested ? (
+                            <span className="ml-1 text-[11px] font-semibold text-rose-600">(Resubmission Requested)</span>
+                          ) : null}
+                        </p>
+                        <p className="mt-0.5 text-xs font-semibold text-slate-500">{item.subject}</p>
                       </div>
                       <div className="shrink-0 flex flex-col items-end gap-1 text-right">
-                        <p className="text-xs font-semibold text-amber-600">Max marks: {item.maxMarks}</p>
-                        <p className="text-xs font-semibold text-slate-600">
+                        <p className="text-[11.5px] font-medium text-slate-600">Max marks: {item.maxMarks}</p>
+                        <p className="text-[11.5px] font-medium text-slate-500">
                           Due {new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(item.deadline))}
                         </p>
                       </div>
@@ -476,37 +522,40 @@ export function StudentAssignmentsPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            {(['all', 'pending', 'submitted', 'graded', 'missing'] as const).map((status) => (
-              <Button
-                key={status}
-                type="button"
-                variant={currentTab === status ? 'primary' : 'ghost'}
-                onClick={() => setCurrentTab(status)}
-                className={`tab cursor-pointer px-4 py-2 text-sm font-semibold ${currentTab === status ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}>
-                {status === 'all' ? 'All' : status === 'pending' ? 'To do' : status === 'submitted' ? 'Submitted' : status === 'graded' ? 'Graded' : 'Missing'}
-                <span className="opacity-70 font-normal"> {tabCounts[status]}</span>
-              </Button>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-            <select value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)} className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100">
-              <option value="">All subjects</option>
-              {subjectOptions.map((subject) => (
-                <option key={subject} value={subject}>{subject}</option>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              {(['all', 'pending', 'submitted', 'graded', 'missing'] as const).map((status) => (
+                <Button
+                  key={status}
+                  type="button"
+                  variant={currentTab === status ? 'primary' : 'ghost'}
+                  onClick={() => setCurrentTab(status)}
+                  className={`tab cursor-pointer px-4 py-2 text-sm font-semibold ${currentTab === status ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}
+                >
+                  {status === 'all' ? 'All' : status === 'pending' ? 'To do' : status === 'submitted' ? 'Submitted' : status === 'graded' ? 'Graded' : 'Missing'}
+                  <span className="opacity-70 font-normal"> {tabCounts[status]}</span>
+                </Button>
               ))}
-            </select>
-            <div className="relative w-56">
-              <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search assignments…"
-                className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-              />
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <select value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500">
+                <option value="">All subjects</option>
+                {subjectOptions.map((subject) => (
+                  <option key={subject} value={subject}>{subject}</option>
+                ))}
+              </select>
+              <div className="relative min-w-[240px]">
+                <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search assignments…"
+                  className="w-full rounded border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-600 outline-none focus:border-brand-500"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -515,7 +564,13 @@ export function StudentAssignmentsPage() {
           {filteredAssignments.length ? (
             pagedAssignments.map((assignment) => {
               const badgeClass = statusBadgeClass(assignment.studentStatus);
-              const statusLabel = assignment.studentStatus === 'Not submitted' ? (isPastDue(assignment.deadline) ? 'Missing' : 'Due soon') : assignment.studentStatus === 'Submitted' ? 'Submitted' : assignment.studentStatus === 'Graded' ? 'Graded' : assignment.studentStatus;
+              const statusLabel = assignment.studentStatus === 'Not submitted'
+                ? (isPastDue(assignment.deadline) ? 'Missing' : 'Due soon')
+                : assignment.studentStatus === 'Submitted'
+                  ? 'Submitted'
+                  : assignment.studentStatus === 'Graded'
+                    ? 'Graded'
+                    : getStudentStatusLabel(assignment.studentStatus);
 
               return (
                 <Link href={`/roles/student/assignments/${assignment.id}`} key={assignment.id} className={`group block rounded-2xl border bg-white p-5 transition hover:border-brand-500 hover:shadow-md focus-visible:border-brand-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 ${assignment.studentStatus === 'Not submitted' && isPastDue(assignment.deadline) ? 'border-dashed border-rose-200' : 'border-slate-200'}`}>
