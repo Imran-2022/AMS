@@ -98,9 +98,7 @@ export function StudentDashboardPage() {
           deadline: assignment.deadline,
           maxMarks: assignment.maxMarks,
           status: submission?.status,
-          titleText: submission?.status === 'ResubmissionRequested'
-            ? `${assignment.title} (Resubmission Requested)`
-            : assignment.title,
+          isResubmissionRequested: submission?.status === 'ResubmissionRequested',
         };
       });
   }, [assignments, submissions]);
@@ -204,7 +202,7 @@ export function StudentDashboardPage() {
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
             <div className="flex items-center justify-between mb-5">
               <p className="text-base font-bold text-slate-800">Upcoming Deadlines</p>
-              <span className="badge bg-brand-50 text-brand-600">{pendingCount} not submitted</span>
+              <span className="badge bg-brand-50 text-brand-600">{pendingCount} Not Submitted</span>
             </div>
             <div className="space-y-4">
               {loading ? (
@@ -218,12 +216,17 @@ export function StudentDashboardPage() {
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <p className="text-sm font-bold text-slate-800">{item.titleText ?? item.title}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">{item.subject}</p>
+                        <p className="text-sm font-bold text-slate-700">
+                          {item.title}
+                          {item.isResubmissionRequested ? (
+                            <span className="ml-1 text-[11px] font-semibold text-rose-600">(Resubmission Requested)</span>
+                          ) : null}
+                        </p>
+                        <p className="mt-0.5 text-xs font-semibold text-slate-500">{item.subject}</p>
                       </div>
                       <div className="shrink-0 flex flex-col items-end gap-1 text-right">
-                        <p className="text-xs font-semibold text-amber-600">Max marks: {item.maxMarks}</p>
-                        <p className="text-xs font-semibold text-slate-600">
+                        <p className="text-[11.5px] font-medium text-slate-600">Max marks: {item.maxMarks}</p>
+                        <p className="text-[11.5px] font-medium text-slate-500">
                           Due {new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(item.deadline))}
                         </p>
                       </div>
