@@ -8,11 +8,18 @@ import { API_BASE_URL } from '@/lib/api';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
 import { createUser, deleteUser, getClassCourses, getGroupsForClass, getUsers, updateUser } from '@/lib/api';
 import { createEnrollment, deleteEnrollment, getEnrollments } from '@/lib/api/enrollments';
-import { MoreVertical, Plus } from 'lucide-react';
+import { MoreVertical, Plus, X } from 'lucide-react';
 import type { ClassCourseRecord, StudentFormData, StudentUserRecord } from './types';
 
 const STATUS_OPTIONS = ['All', 'Active', 'Inactive'] as const;
 const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
+
+function formatDate(value?: string) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toISOString().slice(0, 10);
+}
 
 export function AdminStudentsPage() {
   const [students, setStudents] = useState<StudentUserRecord[]>([]);
@@ -644,22 +651,22 @@ export function AdminStudentsPage() {
                   </div>
                   <p className="text-sm text-slate-700 mt-1">{selectedStudent.email}</p>
                   {selectedStudent.groupName ? (
-                    <p className="text-xs uppercase tracking-[0.18em] text-slate-600 mt-2">Group: {selectedStudent.groupName}</p>
+                    <p className="text-xs text-slate-600 mt-2">Group: {selectedStudent.groupName}</p>
                   ) : null}
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedStudent(null)}
-                className="text-slate-400 hover:text-slate-600 rounded-full p-3 text-xl cursor-pointer"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-slate-500 cursor-pointer"
               >
-                ×
+                <X className="h-5 w-5" />
               </button>
             </div>
             <div className="space-y-4 px-6 py-5">
               <div className="rounded border border-slate-200 bg-slate-50 px-5 py-4">
                 <div className="mb-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Account information</p>
+                  <p className="text-xs font-bold uppercase text-slate-900">Account information</p>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
@@ -672,11 +679,11 @@ export function AdminStudentsPage() {
                   </div>
                   <div>
                     <p className="text-xs font-bold uppercase text-slate-400 mb-2">Date of birth</p>
-                    <p className="text-sm text-slate-700">{selectedStudent.dateOfBirth || '—'}</p>
+                    <p className="text-sm text-slate-700">{formatDate(selectedStudent.dateOfBirth)}</p>
                   </div>
                   <div>
                     <p className="text-xs font-bold uppercase text-slate-400 mb-2">Admission date</p>
-                    <p className="text-sm text-slate-700">{selectedStudent.admissionDate || '—'}</p>
+                    <p className="text-sm text-slate-700">{formatDate(selectedStudent.admissionDate)}</p>
                   </div>
                   <div>
                     <p className="text-xs font-bold uppercase text-slate-400 mb-2">Class</p>
@@ -690,7 +697,7 @@ export function AdminStudentsPage() {
               </div>
 
               <div className="rounded border border-slate-200 px-5 py-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 mb-3">Guardian on file</p>
+                <p className="text-xs font-bold uppercase text-slate-900 mb-3">Guardian on file</p>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <p className="text-xs font-bold uppercase text-slate-400 mb-2">Name</p>
