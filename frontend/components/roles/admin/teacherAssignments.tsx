@@ -1,6 +1,6 @@
 "use client";
 
-import { AppShell } from '../../layout/AppShell';
+import { AppShell } from '@/shared/layout';
 
 export function AdminTeacherAssignmentsPage({ children }: { children?: React.ReactNode }) {
   return (

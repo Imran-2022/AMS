@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { AppShell } from '../../layout/AppShell';
+import { AppShell } from '@/shared/layout';
 import { AmsDeleteComfiramtionModal, Button, Card, Metric, PageHeader, Pill, RoleBadge, Th, Td, UserFormModal } from '../../ui';
-import { ASSIGNMENTS, USERS as INITIAL_USERS, CLASSES as INITIAL_CLASSES, SUBJECTS as INITIAL_SUBJECTS, SUBMISSIONS } from '../../data';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
 import { getAssignments, getSubmissions, getUsers as apiGetUsers, getClassCourses as apiGetClassCourses } from '@/lib/api';
 import { MoreVertical, UserPlus, UserCheck, BookOpen, ClipboardList } from 'lucide-react';
@@ -32,7 +31,7 @@ export function AdminUsersPage() {
       setUsers(mapped as UserRecord[]);
     } catch (err) {
       console.error(err);
-      setUsers(INITIAL_USERS.map((user) => ({ ...user, id: String(user.id) })) as UserRecord[]);
+      setUsers([]);
     }
   }
 

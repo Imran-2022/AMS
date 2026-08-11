@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BookOpen, ClipboardList, Copy, FileText, Layers, Pencil, Plus, Search, Send, Trash2, Eye } from 'lucide-react';
-import { AppShell } from '../../layout/AppShell';
+import { AppShell } from '@/shared/layout';
 import { AmsDeleteComfiramtionModal, AmsPagination, Button, FileUpload } from '../../ui';
 import { getAssignments, getClassCourses, getSubjects, createAssignment, duplicateAssignment as duplicateAssignmentApi, updateAssignment, deleteAssignment, publishAssignment, unpublishAssignment, uploadAttachment, listAttachments, renameAttachment, deleteAttachment } from '@/lib/api';
 import type { AssignmentDto, ClassCourseDto, SubjectDto, CreateAssignmentDto, UpdateAssignmentDto } from '@/lib/api';

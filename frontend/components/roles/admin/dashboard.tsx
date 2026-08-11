@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AppShell } from '../../layout/AppShell';
+import { AppShell } from '@/shared/layout';
 import { Button, Card, Metric, PageHeader, Pill, RoleBadge, Th, Td, AddStudentModal, AddTeacherModal, TeacherAssignmentModal } from '../../ui';
-import { ASSIGNMENTS, USERS as INITIAL_USERS, CLASSES as INITIAL_CLASSES, SUBJECTS as INITIAL_SUBJECTS, SUBMISSIONS } from '../../data';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
 import { getAssignments, getSubmissions, getUsers as apiGetUsers, getSubjects } from '@/lib/api';
 import { MoreVertical, UserPlus, UserCheck, BookOpen, ClipboardList } from 'lucide-react';
@@ -31,9 +30,6 @@ export function AdminDashboardPage() {
   const [dashboardSubjects, setDashboardSubjects] = useState<{ id: string; name: string; classCourseId: string }[]>([]);
 
   const router = useRouter();
-  const totalAdmins = INITIAL_USERS.filter((user) => user.role === 'Admin').length;
-  const totalTeachers = INITIAL_USERS.filter((user) => user.role === 'Teacher').length;
-  const totalStudents = INITIAL_USERS.filter((user) => user.role === 'Student').length;
 
   useEffect(() => {
     void loadDashboard();

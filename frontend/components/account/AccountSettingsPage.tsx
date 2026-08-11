@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, type ChangeEvent } from 'react'
-import { AppShell } from '@/components/layout/AppShell'
+import { AppShell } from '@/shared/layout'
 import { API_BASE_URL, changePassword, getCurrentUser, updateUser, type UserDto } from '@/lib/api'
 import { uploadFile } from '@/lib/api/files'
 import { setStoredUser } from '@/lib/auth'

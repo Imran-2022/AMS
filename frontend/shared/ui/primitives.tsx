@@ -1,15 +1,5 @@
 import React from 'react';
 import { ROLE } from '@/shared/constants/roles';
-export { Button } from './Button';
-export { FileUpload } from './FileUpload';
-export { UserFormModal } from './UserFormModal';
-export { TeacherAssignmentModal } from './TeacherAssignmentModal';
-export { AddStudentModal } from './AddStudentModal';
-export { AddTeacherModal } from './AddTeacherModal';
-export { Modal } from './Modal';
-export { AmsDeleteComfiramtionModal } from './AmsDeleteComfiramtionModal';
-export type { AddStudentFormData } from './AddStudentModal';
-export type { AddTeacherFormData } from './AddTeacherModal';
 
 export function Pill({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
@@ -91,7 +81,8 @@ export function Td({ children, className = '' }: { children: React.ReactNode; cl
   return <td className={`py-4 border-b border-slate-100 text-sm text-slate-700 font-medium ${className}`}>{children}</td>;
 }
 
-export { AmsPagination } from './AmsPagination';
+export { AmsPagination } from '@/components/ui/AmsPagination';
+export { ToastContainer, emitToast } from '@/components/ui/Toast';
 
 export function PageHeader({ eyebrow, title, action }: { eyebrow?: string; title: string; action?: React.ReactNode }) {
   return (
@@ -104,5 +95,3 @@ export function PageHeader({ eyebrow, title, action }: { eyebrow?: string; title
     </div>
   );
 }
-
-export { ToastContainer, emitToast } from './Toast';

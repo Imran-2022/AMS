@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { AppShell } from '../../layout/AppShell';
+import { AppShell } from '@/shared/layout';
 import { Button, AmsDeleteComfiramtionModal, AmsPagination, Modal } from '../../ui';
 import {
   createClassCourse,

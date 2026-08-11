@@ -24,7 +24,8 @@ import {
 import { clearStoredAuth, getStoredUser } from '@/lib/auth';
 import { API_BASE_URL } from '@/lib/api';
 import { ToastContainer } from '../ui';
-import { ROLE, RoleType } from '../data';
+import { ROLE } from '@/shared/constants/roles';
+import type { RoleType } from '@/shared/constants/roles';
 
 interface NavItem {
   href: string;

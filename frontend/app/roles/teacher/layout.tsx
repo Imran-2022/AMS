@@ -1,7 +1,7 @@
 "use client";
 
-import ProtectedRoute from '@/components/ProtectedRoute';
-import { AppShell } from '@/components/layout/AppShell';
+import { ProtectedRoute } from '@/shared/auth';
+import { AppShell } from '@/shared/layout';
 import { TEACHER_ROLES } from '@/lib/roles';
 
 export default function TeacherLayout({ children }: { children: React.ReactNode }) {

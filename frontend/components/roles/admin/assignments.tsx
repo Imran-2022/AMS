@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AppShell } from '../../layout/AppShell';
+import { AppShell } from '@/shared/layout';
 import { AmsPagination } from '../../ui';
 import { getAssignments, type AssignmentDto } from '@/lib/api';
 
