@@ -344,7 +344,7 @@ export function AdminStudentsPage() {
         )}
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
-          <Card>
+          <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="text-[11px] font-bold text-slate-400">TOTAL STUDENTS</p>
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
@@ -353,8 +353,8 @@ export function AdminStudentsPage() {
             </div>
             <p className="text-2xl font-extrabold text-slate-900">{isLoading ? '—' : stats?.totalStudents ?? 0}</p>
             <p className="text-xs text-slate-400 mt-1">Enrolled across all classes</p>
-          </Card>
-          <Card>
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="text-[11px] font-bold text-slate-400">ACTIVE</p>
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-500">
@@ -363,8 +363,8 @@ export function AdminStudentsPage() {
             </div>
             <p className="text-2xl font-extrabold text-slate-900">{isLoading ? '—' : students.filter((student) => student.status === 'Active').length}</p>
             <p className="text-xs text-slate-400 mt-1">Currently attending</p>
-          </Card>
-          <Card>
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="text-[11px] font-bold text-slate-400">INACTIVE</p>
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
@@ -373,8 +373,8 @@ export function AdminStudentsPage() {
             </div>
             <p className="text-2xl font-extrabold text-slate-900">{isLoading ? '—' : students.filter((student) => student.status === 'Inactive').length}</p>
             <p className="text-xs text-slate-400 mt-1">Suspended or withdrawn</p>
-          </Card>
-          <Card>
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="text-[11px] font-bold text-slate-400">NEW THIS MONTH</p>
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-500">
@@ -383,12 +383,12 @@ export function AdminStudentsPage() {
             </div>
             <p className="text-2xl font-extrabold text-slate-900">{isLoading ? '—' : students.filter((student) => student.status === 'Active').length}</p>
             <p className="text-xs text-slate-400 mt-1">Enrolled since this month</p>
-          </Card>
+          </div>
         </div>
 
         {(isLoading || students.length > 0) && (
           <>
-            <Card>
+            <div className="bg-white rounded-2xl border border-slate-200 p-4">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-wrap gap-1">
                   {STATUS_OPTIONS.map((status) => (
@@ -438,11 +438,11 @@ export function AdminStudentsPage() {
                   </div>
                 </div>
               </div>
-            </Card>
+            </div>
 
 
-            <Card className="overflow-hidden">
-              <div className="overflow-x-auto">
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+              <div className="p-4 overflow-x-auto">
                 <table className="w-full min-w-[960px] text-sm">
                   <thead>
                     <tr className="border-b border-slate-100 text-left text-xs uppercase text-slate-400">
@@ -525,6 +525,9 @@ export function AdminStudentsPage() {
                                     }}
                                     className="w-44 overflow-hidden rounded border border-slate-200 bg-white shadow-xl"
                                   >
+                                    <button type="button" onClick={() => { setSelectedStudent(student); setActionMenuFor(null); }} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">
+                                      View details
+                                    </button>
                                     <button type="button" onClick={() => handleEditStudent(student)} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">
                                       Edit student
                                     </button>
@@ -553,7 +556,7 @@ export function AdminStudentsPage() {
                 label="Showing"
                 itemLabel="students"
               />
-            </Card>
+            </div>
           </>
         )}
 

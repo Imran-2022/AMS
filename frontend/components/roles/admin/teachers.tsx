@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AmsDeleteComfiramtionModal, AmsPagination, AddTeacherModal, Button, type AddTeacherFormData } from '../../ui';
 import { AppShell } from '../../layout/AppShell';
-import { createUser, deleteUser, getUsers, updateUser } from '@/lib/api';
+import { API_BASE_URL, createUser, deleteUser, getUsers, updateUser } from '@/lib/api';
 import { getTeacherAssignments, type TeacherSubjectAssignmentDto } from '@/lib/api/teacherAssignments';
+import { X } from 'lucide-react';
 
 type TeacherRow = {
   id: string;
@@ -22,6 +23,13 @@ type TeacherRow = {
   subjectSpecialization?: string;
   avatarUrl?: string;
 };
+
+function formatDate(value?: string) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toISOString().slice(0, 10);
+}
 
 function mapUserToTeacherRow(user: {
   id: string;
@@ -77,6 +85,7 @@ export function AdminTeachersPage() {
   const [pendingDeleteTeacher, setPendingDeleteTeacher] = useState<TeacherRow | null>(null);
   const [isTeacherModalOpen, setIsTeacherModalOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<TeacherRow | null>(null);
+  const [selectedTeacher, setSelectedTeacher] = useState<TeacherRow | null>(null);
   const [teacherModalSubmitting, setTeacherModalSubmitting] = useState(false);
   const [pageSize, setPageSize] = useState(10);
   const [pageIndex, setPageIndex] = useState(0);
@@ -336,7 +345,7 @@ export function AdminTeachersPage() {
             </div>
 
             <div className="bg-white rounded-2xl border border-slate-200 overflow-visible">
-              <div id="dataTable" className="">
+              <div id="dataTable" className="p-1 overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-100 text-left">
@@ -350,10 +359,18 @@ export function AdminTeachersPage() {
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {pagedRows.map((t) => (
-                      <tr key={t.id} className="hover:bg-slate-50">
+                      <tr key={t.id} className="hover:bg-slate-50 transition-colors duration-150 cursor-pointer" onClick={() => setSelectedTeacher(t)}>
                         <td className="px-2 py-3.5">
                           <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${t.id==='mh'?'bg-brand-100 text-brand-700':'bg-slate-100 text-slate-700'}`}>{t.initials}</div>
+                            {t.avatarUrl ? (
+                              <div className="relative h-8 w-8 overflow-hidden rounded-full bg-indigo-100">
+                                <img src={t.avatarUrl.startsWith('http') ? t.avatarUrl : `${API_BASE_URL}${t.avatarUrl}`} alt={t.name} className="h-full w-full object-cover" />
+                              </div>
+                            ) : (
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-semibold">
+                                {t.initials}
+                              </div>
+                            )}
                             <span className="font-semibold text-slate-700">{t.name}</span>
                           </div>
                         </td>
@@ -379,12 +396,13 @@ export function AdminTeachersPage() {
                             <button
                               type="button" data-action-button={t.id}
                               onClick={(e) => { e.stopPropagation(); setActionMenuFor(actionMenuFor === t.id ? null : t.id); }}
-                              className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-400 inline-flex items-center justify-center cursor-pointer"
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 cursor-pointer"
                             >
                               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
                             </button>
                             {actionMenuFor === t.id ? (
                               <div data-action-menu={t.id} onClick={(ev) => ev.stopPropagation()} className="absolute right-0 top-full z-20 mt-2 w-44 overflow-hidden rounded border border-slate-200 bg-white shadow-xl">
+                                <button type="button" onClick={() => { setSelectedTeacher(t); setActionMenuFor(null); }} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">View details</button>
                                 <button type="button" onClick={() => handleEditTeacher(t)} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">Edit teacher</button>
                                 <button type="button" onClick={() => openDeleteTeacher(t)} className="w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50 cursor-pointer">Delete teacher</button>
                               </div>
@@ -460,7 +478,6 @@ export function AdminTeachersPage() {
                 .split(',')
                 .map((v) => v.trim())
                 .map((val) => {
-                  // stored values may include code like "Subject — CODE"; normalize to subject name
                   const parts = val.split('—');
                   return parts[0].trim();
                 })
@@ -472,6 +489,90 @@ export function AdminTeachersPage() {
         requirePassword={!editingTeacher}
         onSubmit={handleSaveTeacher}
       />
+
+      {selectedTeacher && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/20 p-3">
+          <div className="bg-white rounded w-full max-w-3xl overflow-hidden shadow-xl">
+            <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-4">
+                {selectedTeacher.avatarUrl ? (
+                  <img
+                    src={selectedTeacher.avatarUrl.startsWith('http') ? selectedTeacher.avatarUrl : `${API_BASE_URL}${selectedTeacher.avatarUrl}`}
+                    alt={selectedTeacher.name}
+                    className="h-24 w-24 rounded object-cover"
+                  />
+                ) : (
+                  <div className="flex h-24 w-24 items-center justify-center rounded bg-indigo-100 text-indigo-700 font-semibold text-3xl">
+                    {selectedTeacher.initials}
+                  </div>
+                )}
+                <div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h2 className="text-lg font-semibold text-slate-900">{selectedTeacher.name}</h2>
+                    <span className={`inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 ${selectedTeacher.status !== 'Active' ? 'bg-slate-100 text-slate-600' : ''}`}>
+                      <span className={`h-2.5 w-2.5 rounded-full ${selectedTeacher.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                      {selectedTeacher.status}
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-700 mt-1">{selectedTeacher.email}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedTeacher(null)}
+                className="flex h-11 w-11 items-center justify-center rounded-full text-slate-500 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="space-y-4 px-6 py-5">
+              <div className="rounded border border-slate-200 bg-slate-50 px-5 py-4">
+                <div className="mb-4">
+                  <p className="text-xs font-bold uppercase text-slate-900">Teacher information</p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Subjects</p>
+                    <p className="text-sm text-slate-700">{selectedTeacher.subjects.length ? selectedTeacher.subjects.join(', ') : 'Not assigned'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Classes</p>
+                    <p className="text-sm text-slate-700">{selectedTeacher.classesCount > 0 ? `${selectedTeacher.classesCount} ${selectedTeacher.classesCount === 1 ? 'class' : 'classes'}` : 'Not assigned'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Gender</p>
+                    <p className="text-sm text-slate-700">{selectedTeacher.gender || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Qualification</p>
+                    <p className="text-sm text-slate-700">{selectedTeacher.qualification || '—'}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded border border-slate-200 px-5 py-4">
+                <div className="mb-4">
+                  <p className="text-xs font-bold uppercase text-slate-900">Contact & joining</p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Phone</p>
+                    <p className="text-sm text-slate-700">{selectedTeacher.phone || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Joining date</p>
+                    <p className="text-sm text-slate-700">{formatDate(selectedTeacher.joiningDate)}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end border-t border-slate-100 bg-slate-50/80 px-6 py-3">
+              <Button type="button" variant="secondary" onClick={() => setSelectedTeacher(null)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }
