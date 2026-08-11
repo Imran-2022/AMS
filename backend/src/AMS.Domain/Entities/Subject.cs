@@ -25,13 +25,19 @@ public class Subject
         Name = name;
         Code = code;
         ClassCourseId = classCourseId;
-        CreatedAt = createdAt?.Kind switch
+        if (createdAt.HasValue)
         {
-            DateTimeKind.Local => createdAt.Value.ToUniversalTime(),
-            DateTimeKind.Unspecified => DateTime.SpecifyKind(createdAt.Value, DateTimeKind.Utc),
-            _ => createdAt.Value
-        };
-        if (createdAt is null) CreatedAt = DateTime.UtcNow;
+            CreatedAt = createdAt.Value.Kind switch
+            {
+                DateTimeKind.Local => createdAt.Value.ToUniversalTime(),
+                DateTimeKind.Unspecified => DateTime.SpecifyKind(createdAt.Value, DateTimeKind.Utc),
+                _ => createdAt.Value
+            };
+        }
+        else
+        {
+            CreatedAt = DateTime.UtcNow;
+        }
         UpdatedAt = updatedAt;
     }
 

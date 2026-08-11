@@ -99,6 +99,32 @@ if (studentExists is null)
     await userRepo.AddAsync(new User(s3Id, "Omar Student", "student3@ams.local", BCrypt.Net.BCrypt.HashPassword("Student123!"), UserRole.Student, studentProfile: s3Profile));
 }
 
+// -------------------------------------------------------------------------------------
+// Ensure the specific requested accounts exist (admin, student, teacher)
+// -------------------------------------------------------------------------------------
+var requestedAdmin = await userRepo.GetByEmailAsync("admin@gmail.com", CancellationToken.None);
+if (requestedAdmin is null)
+{
+    var id = Guid.NewGuid();
+       await userRepo.AddAsync(new User(id, "admin", "admin@gmail.com", BCrypt.Net.BCrypt.HashPassword("admin"), UserRole.Admin, createdAt: DateTime.UtcNow));
+}
+
+var requestedStudent = await userRepo.GetByEmailAsync("asif@gmail.com", CancellationToken.None);
+if (requestedStudent is null)
+{
+    var id = Guid.NewGuid();
+    var studentProfile = new StudentProfile(id, "ASIF-1001", "Md Asif's Parent", "parent.asif@gmail.com", "0123456789", DateTime.UtcNow);
+       await userRepo.AddAsync(new User(id, "md asif", "asif@gmail.com", BCrypt.Net.BCrypt.HashPassword("student"), UserRole.Student, createdAt: DateTime.UtcNow, studentProfile: studentProfile));
+}
+
+var requestedTeacher = await userRepo.GetByEmailAsync("imran@gmail.com", CancellationToken.None);
+if (requestedTeacher is null)
+{
+    var id = Guid.NewGuid();
+    var teacherProfile = new TeacherProfile(id, "EMP-IMRAN-1", "General", "BEd", DateTime.UtcNow);
+       await userRepo.AddAsync(new User(id, "imran", "imran@gmail.com", BCrypt.Net.BCrypt.HashPassword("teacher"), UserRole.Teacher, createdAt: DateTime.UtcNow, teacherProfile: teacherProfile));
+}
+
 var classDefinitions = await classDefRepo.GetAllAsync(CancellationToken.None);
 var classNames = new[] { "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve" };
 var missingClassNames = classNames.Except(classDefinitions.Select(cd => cd.Name)).ToList();
