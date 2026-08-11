@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getAssignment, getMySubmissions, createSubmission, updateSubmission, uploadAttachment, downloadAttachmentToBrowser, type AssignmentDto, type SubmissionDto } from '@/lib/api';
+import { getAssignment, getMySubmissions, createSubmission, updateSubmission, uploadAttachment, downloadAttachmentToBrowser, getSubmission, deleteAttachment, renameAttachment, type AssignmentDto, type SubmissionDto } from '@/lib/api';
 import { Button } from '@/components/ui';
 import { FileUpload } from '@/components/ui';
 import { AppShell } from '@/components/layout/AppShell';
@@ -22,6 +22,8 @@ export default function StudentAssignmentDetailPage() {
   const [comment, setComment] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [originalComment, setOriginalComment] = useState('');
+  const [originalAttachmentIds, setOriginalAttachmentIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!assignmentId) {
@@ -41,7 +43,10 @@ export default function StudentAssignmentDetailPage() {
           setAssignment(data);
           const currentSubmission = submissions.find((item) => item.assignmentId === data.id) ?? null;
           setSubmission(currentSubmission);
-          setComment(currentSubmission?.contentText ?? '');
+          const initial = currentSubmission?.contentText ?? '';
+          setComment(initial);
+          setOriginalComment(initial);
+          setOriginalAttachmentIds((currentSubmission?.attachments ?? []).map((a) => a.id));
         }
       } catch (err) {
         if (!cancelled) {
@@ -102,11 +107,15 @@ export default function StudentAssignmentDetailPage() {
     (assignment?.allowResubmission || submission.status === 'ResubmissionRequested')
   );
   const canSubmit = Boolean(assignment) && (!submission || canResubmit);
-  const canSubmitForm = canSubmit && comment.trim().length > 0;
+  const currentAttachmentIds = submission?.attachments?.map((a) => a.id) ?? [];
+  const attachmentsChanged = JSON.stringify(currentAttachmentIds.sort()) !== JSON.stringify(originalAttachmentIds.sort());
+  const hasChanges = comment.trim() !== originalComment.trim() || selectedFiles.length > 0 || attachmentsChanged;
+  const canSubmitForm = canSubmit && hasChanges && (comment.trim().length > 0 || selectedFiles.length > 0 || attachmentsChanged);
 
   async function handleSubmit() {
     if (!assignment || !canSubmit) return;
-    if (!comment.trim()) {
+    if (!hasChanges) return;
+    if (!comment.trim() && selectedFiles.length === 0 && !attachmentsChanged) {
       setError('Description is required.');
       return;
     }
@@ -116,6 +125,7 @@ export default function StudentAssignmentDetailPage() {
         ? await updateSubmission(submission.id, { contentText: comment })
         : await createSubmission({ assignmentId: assignment.id, contentText: comment });
 
+
       if (selectedFiles.length > 0) {
         await Promise.all(selectedFiles.map((file) => uploadAttachment('Submission', nextSubmission.id, file)));
       }
@@ -123,10 +133,34 @@ export default function StudentAssignmentDetailPage() {
       setSubmission(nextSubmission);
       setSubmitOpen(false);
       setSelectedFiles([]);
+      setOriginalComment(comment);
+      setOriginalAttachmentIds((nextSubmission.attachments ?? []).map((a) => a.id));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to submit assignment.');
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleRemoveExistingAttachment(id: string) {
+    if (!submission) return;
+    try {
+      await deleteAttachment(id);
+      const refreshed = await getSubmission(submission.id);
+      setSubmission(refreshed);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to delete attachment.');
+    }
+  }
+
+  async function handleRenameExistingAttachment(id: string, newName: string) {
+    if (!submission) return;
+    try {
+      await renameAttachment(id, newName);
+      const refreshed = await getSubmission(submission.id);
+      setSubmission(refreshed);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to rename attachment.');
     }
   }
 
@@ -281,6 +315,8 @@ export default function StudentAssignmentDetailPage() {
                         sizeBytes: attachment.sizeBytes,
                       }))}
                       onFilesSelected={setSelectedFiles}
+                      onRemoveExistingAttachment={(id) => void handleRemoveExistingAttachment(id)}
+                      onRenameExistingAttachment={(id, name) => void handleRenameExistingAttachment(id, name)}
                       allowedTypesText="PDF, DOCX, TXT, ZIP, PNG, JPG (Max 10MB)"
                     />
                   </div>

@@ -14,6 +14,9 @@ export function TeacherClassesPage() {
   const [enrollments, setEnrollments] = useState<StudentEnrollmentDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [classFilter, setClassFilter] = useState('All classes');
+  const [subjectFilter, setSubjectFilter] = useState('All subjects');
+  const [searchTerm, setSearchTerm] = useState('');
   const PAGE_SIZE_OPTIONS = [4, 8, 12] as const;
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(4);
   const [pageIndex, setPageIndex] = useState(0);
@@ -82,10 +85,48 @@ export function TeacherClassesPage() {
     setPageIndex(0);
   }, [classes.length]);
 
+  const availableClasses = useMemo(
+    () => ['All classes', ...Array.from(new Set(classes.map((classCourse) => classCourse.name)))],
+    [classes]
+  );
+
+  const availableSubjects = useMemo(() => {
+    if (classFilter === 'All classes') {
+      const allSubjectNames = subjects.flatMap((subject) => subject.name);
+      return ['All subjects', ...Array.from(new Set(allSubjectNames))];
+    }
+
+    const selectedClass = classes.find((classCourse) => classCourse.name === classFilter);
+    if (!selectedClass) {
+      return ['All subjects'];
+    }
+
+    const subjectNames = classSubjectsMap[selectedClass.id] ?? [];
+    return ['All subjects', ...subjectNames];
+  }, [classFilter, classSubjectsMap, classes, subjects]);
+
+  const visibleClasses = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
+    return classes.filter((classCourse) => {
+      const classSubjects = classSubjectsMap[classCourse.id] ?? [];
+      const matchesClass = classFilter === 'All classes' || classCourse.name === classFilter;
+      const matchesSubject = subjectFilter === 'All subjects' || classSubjects.includes(subjectFilter);
+      const matchesSearch = !normalizedSearch || [
+        classCourse.name,
+        classCourse.section,
+        classCourse.academicYear,
+        ...classSubjects
+      ].some((value) => String(value ?? '').toLowerCase().includes(normalizedSearch));
+
+      return matchesClass && matchesSubject && matchesSearch;
+    });
+  }, [classFilter, classSubjectsMap, classes, searchTerm, subjectFilter]);
+
   const pagedClasses = useMemo(() => {
     const start = pageIndex * pageSize;
-    return classes.slice(start, start + pageSize);
-  }, [classes, pageIndex, pageSize]);
+    return visibleClasses.slice(start, start + pageSize);
+  }, [pageIndex, pageSize, visibleClasses]);
 
   if (loading) {
     return (
@@ -119,7 +160,7 @@ export function TeacherClassesPage() {
     <AppShell role="Teacher" breadcrumb="Teacher / My Classes">
       <div className="space-y-6">
         <div>
-          <p className="text-xs font-bold tracking-[0.15em] text-brand-600">TEACHER PORTAL</p>
+          <p className="text-xs font-bold text-brand-600">TEACHER PORTAL</p>
           <h1 className="mt-0.5 text-3xl font-extrabold text-slate-800">My Classes</h1>
         </div>
 
@@ -166,25 +207,50 @@ export function TeacherClassesPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2.5">
-            <select className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white">
-              <option>All academic years</option>
-              <option>2026 – 2027</option>
-              <option>2025 – 2026</option>
-            </select>
-            <select className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white">
-              <option>All subjects</option>
-              <option>Mathematics</option>
-              <option>Physics</option>
-            </select>
-          </div>
-          <div className="relative max-w-xs">
-            <input type="text" placeholder="Search classes…" className="pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-brand-500 w-56" />
-            <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" className="rounded px-4 py-2 text-sm font-semibold bg-brand-600 text-white shadow-sm">
+                All classes <span className="ml-1 font-normal opacity-70">{classes.length}</span>
+              </button>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <select value={classFilter} onChange={(event) => {
+                setClassFilter(event.target.value);
+                setSubjectFilter('All subjects');
+              }} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500  cursor-pointer">
+                {availableClasses.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+              <select value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500 cursor-pointer">
+                {availableSubjects.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+              <div className="relative min-w-[240px]">
+                <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+                <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} type="text" placeholder="Search classes, subjects…" className="w-full rounded border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-600 outline-none focus:border-brand-500" />
+              </div>
+            </div>
           </div>
         </div>
 
+        {visibleClasses.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-8 py-20 text-center">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-500">
+              <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="4" y="3" width="16" height="18" rx="2" />
+                <path d="M8 7h8M8 11h5M8 15l2 2 4-4" />
+              </svg>
+            </div>
+            <p className="text-base font-bold text-slate-800">No classes found</p>
+            <p className="mt-2 max-w-md text-sm text-slate-500">No matching class or subject is available for your current filter.</p>
+          </div>
+        ) : (
         <div className="grid grid-cols-2 gap-5">
           {pagedClasses.map((classCourse) => {
             const subjectsForClass = classSubjectsMap[classCourse.id] ?? [];
@@ -194,7 +260,7 @@ export function TeacherClassesPage() {
             const draftAssignments = assignments.filter((item) => item.classCourseId === classCourse.id && item.status === 'Draft').length;
 
             return (
-              <Link key={classCourse.id} href={`/roles/teacher/assignments?classCourseId=${encodeURIComponent(classCourse.id)}`} className="class-card block rounded-2xl border border-slate-200 bg-white p-6 hover:border-brand-200 hover:shadow-[0_4px_16px_rgba(124,58,237,0.08)] transition duration-150">
+              <Link key={classCourse.id} href={`/roles/teacher/assignments?classCourseId=${encodeURIComponent(classCourse.id)}`} className="class-card block cursor-pointer rounded-2xl border border-slate-200 bg-white p-6 hover:border-brand-200 hover:shadow-[0_4px_16px_rgba(124,58,237,0.08)] transition duration-150">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-xl font-extrabold text-slate-800">{classCourse.name} — {classCourse.section}</p>
@@ -243,11 +309,13 @@ export function TeacherClassesPage() {
           })}
         </div>
 
-        {classes.length > 0 && (
+        )}
+
+        {visibleClasses.length > 0 && (
           <AmsPagination
             currentPage={pageIndex}
             pageSize={pageSize}
-            totalItems={classes.length}
+            totalItems={visibleClasses.length}
             pageSizeOptions={PAGE_SIZE_OPTIONS}
             onPageChange={setPageIndex}
             onPageSizeChange={(size) => {

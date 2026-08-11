@@ -79,6 +79,10 @@ function normalizeApiPayload<T>(payload: T): T {
     clone.attachmentUrl = normalizeDownloadUrl(clone.attachmentUrl);
   }
 
+  if (typeof clone.avatarUrl === 'string') {
+    clone.avatarUrl = normalizeDownloadUrl(clone.avatarUrl);
+  }
+
   if (Array.isArray(clone.attachments)) {
     clone.attachments = clone.attachments.map((item: unknown) => {
       if (!item || typeof item !== 'object') return item;
@@ -194,6 +198,7 @@ export type SubmissionDto = {
   gradedAt?: string;
   studentName: string;
   studentInitials: string;
+  avatarUrl?: string;
   assignmentTitle: string;
   classCourseName: string;
   classCourseSection: string;
