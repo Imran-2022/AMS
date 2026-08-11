@@ -320,9 +320,9 @@ export function AdminTeachersPage() {
           <>
             <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-2">
-                <button onClick={()=>setTab('All')} className={`tab px-4 py-2 rounded text-sm font-semibold ${selectedTab==='All' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>All <span className="opacity-70 font-normal">{teachers.length}</span></button>
-                <button onClick={()=>setTab('Active')} className={`tab px-4 py-2 rounded text-sm font-semibold ${selectedTab==='Active' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>Active <span className="opacity-60 font-normal">{teachers.filter(t=>t.status==='Active').length}</span></button>
-                <button onClick={()=>setTab('On leave')} className={`tab px-4 py-2 rounded text-sm font-semibold ${selectedTab==='On leave' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>On leave <span className="opacity-60 font-normal">{teachers.filter(t=>t.status==='On leave').length}</span></button>
+                <button onClick={() => setTab('All')} className={`tab cursor-pointer px-4 py-2 rounded text-sm font-semibold ${selectedTab==='All' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>All <span className="opacity-70 font-normal">{teachers.length}</span></button>
+                <button onClick={() => setTab('Active')} className={`tab cursor-pointer px-4 py-2 rounded text-sm font-semibold ${selectedTab==='Active' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>Active <span className="opacity-60 font-normal">{teachers.filter(t=>t.status==='Active').length}</span></button>
+                <button onClick={() => setTab('On leave')} className={`tab cursor-pointer px-4 py-2 rounded text-sm font-semibold ${selectedTab==='On leave' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>On leave <span className="opacity-60 font-normal">{teachers.filter(t=>t.status==='On leave').length}</span></button>
               </div>
               <div className="flex items-center gap-2.5 flex-1 justify-end min-w-[280px]">
                 <select className="text-sm border border-slate-200 rounded px-4 py-2 text-slate-600 bg-white">
@@ -377,17 +377,16 @@ export function AdminTeachersPage() {
                         <td className="px-5 py-3.5 text-right">
                           <div className="relative inline-flex">
                             <button
-                              type="button"
-                              data-action-button={t.id}
+                              type="button" data-action-button={t.id}
                               onClick={(e) => { e.stopPropagation(); setActionMenuFor(actionMenuFor === t.id ? null : t.id); }}
-                              className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-400 inline-flex items-center justify-center"
+                              className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-400 inline-flex items-center justify-center cursor-pointer"
                             >
                               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
                             </button>
                             {actionMenuFor === t.id ? (
                               <div data-action-menu={t.id} onClick={(ev) => ev.stopPropagation()} className="absolute right-0 top-full z-20 mt-2 w-44 overflow-hidden rounded border border-slate-200 bg-white shadow-xl">
-                                <button type="button" onClick={() => handleEditTeacher(t)} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">Edit teacher</button>
-                                <button type="button" onClick={() => openDeleteTeacher(t)} className="w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50">Delete teacher</button>
+                                <button type="button" onClick={() => handleEditTeacher(t)} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">Edit teacher</button>
+                                <button type="button" onClick={() => openDeleteTeacher(t)} className="w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50 cursor-pointer">Delete teacher</button>
                               </div>
                             ) : null}
                           </div>

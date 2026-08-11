@@ -375,8 +375,7 @@ export function AdminStudentsPage() {
                   {STATUS_OPTIONS.map((status) => (
                     <button
                       key={status}
-                      type="button"
-                      onClick={() => setStatusFilter(status)}
+                      type="button" onClick={() => setStatusFilter(status)}
                       className={`rounded px-4 py-2 text-sm font-semibold cursor-pointer transition ${statusFilter === status ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>
                       {status} <span className="opacity-70 font-normal">{status === 'All' ? students.length : students.filter((student) => student.status === status).length}</span>
                     </button>
@@ -476,6 +475,7 @@ export function AdminStudentsPage() {
                           <div className="relative inline-flex">
                             <button
                               type="button"
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 cursor-pointer"
                               data-action-button={student.id}
                               onClick={(event) => {
                                 event.stopPropagation();
@@ -490,7 +490,6 @@ export function AdminStudentsPage() {
                                 });
                                 setActionMenuFor(student.id);
                               }}
-                              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100"
                             >
                               <MoreVertical className="h-5 w-5" />
                             </button>
@@ -507,10 +506,10 @@ export function AdminStudentsPage() {
                                     }}
                                     className="w-44 overflow-hidden rounded border border-slate-200 bg-white shadow-xl"
                                   >
-                                    <button type="button" onClick={() => handleEditStudent(student)} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">
+                                    <button type="button" onClick={() => handleEditStudent(student)} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">
                                       Edit student
                                     </button>
-                                    <button type="button" onClick={() => openDeleteStudent(student)} className="w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50">
+                                    <button type="button" onClick={() => openDeleteStudent(student)} className="w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50 cursor-pointer">
                                       Delete student
                                     </button>
                                   </div>,

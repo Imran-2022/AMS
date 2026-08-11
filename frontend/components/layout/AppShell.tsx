@@ -123,7 +123,7 @@ function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, 
           <button
             type="button"
             onClick={onToggle}
-            className="w-9 h-9 rounded-lg flex items-center justify-center text-[#1F2430] hover:bg-[#F5F5F7] shrink-0"
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-[#1F2430] hover:bg-[#F5F5F7] shrink-0 cursor-pointer"
             aria-label="Toggle sidebar">
             <Menu className="h-5 w-5" />
           </button>

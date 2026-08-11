@@ -84,9 +84,8 @@ export function AdminAdministratorsPage() {
             <h1 className="text-3xl font-extrabold text-slate-800 mt-1">Administrators</h1>
           </div>
           <button
-            type="button"
-            onClick={() => setInviteOpen(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+            type="button" onClick={() => setInviteOpen(true)}
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 cursor-pointer"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="12" y1="5" x2="12" y2="19" />
@@ -151,9 +150,8 @@ export function AdminAdministratorsPage() {
             {(['All', 'Active', 'Pending'] as const).map((tab) => (
               <button
                 key={tab}
-                type="button"
-                onClick={() => setSelectedTab(tab)}
-                className={`rounded-xl px-4 py-2 text-sm font-semibold ${selectedTab === tab ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                type="button" onClick={() => setSelectedTab(tab)}
+                className={`rounded-xl cursor-pointer px-4 py-2 text-sm font-semibold ${selectedTab === tab ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
               >
                 {tab} <span className="opacity-70 font-normal">{tab === 'All' ? totalCount : tab === 'Active' ? activeCount : pendingCount}</span>
               </button>
@@ -247,10 +245,10 @@ export function AdminAdministratorsPage() {
                       ) : row.isPending ? (
                         <>
                           <button className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50">Resend</button>
-                          <button onClick={() => openDelete(row.email)} className="px-3 py-1.5 rounded-lg border border-rose-200 text-rose-600 text-xs font-semibold hover:bg-rose-50">Revoke</button>
+                          <button onClick={() => openDelete(row.email)} className="px-3 py-1.5 rounded-lg border border-rose-200 text-rose-600 text-xs font-semibold hover:bg-rose-50 cursor-pointer">Revoke</button>
                         </>
                       ) : (
-                        <button onClick={() => openDelete(row.name)} className="px-3 py-1.5 rounded-lg border border-rose-200 text-rose-600 text-xs font-semibold hover:bg-rose-50">Delete</button>
+                        <button onClick={() => openDelete(row.name)} className="px-3 py-1.5 rounded-lg border border-rose-200 text-rose-600 text-xs font-semibold hover:bg-rose-50 cursor-pointer">Delete</button>
                       )}
                     </div>
                   </td>
@@ -286,7 +284,7 @@ export function AdminAdministratorsPage() {
                   <h2 className="text-xl font-extrabold text-slate-800">Invite administrator</h2>
                   <p className="text-sm text-slate-400 mt-1">They'll get an email to accept and set their own password.</p>
                 </div>
-                <button type="button" onClick={() => setInviteOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <button type="button" onClick={() => setInviteOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
                   <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                     <path d="M18 6 6 18M6 6l12 12" />
                   </svg>
@@ -311,8 +309,8 @@ export function AdminAdministratorsPage() {
                 </div>
               </div>
               <div className="flex items-center justify-end gap-3 rounded-b-[28px] border-t border-slate-100 bg-slate-50/60 px-7 py-5">
-                <button type="button" onClick={() => setInviteOpen(false)} className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">Cancel</button>
-                <button type="button" className="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">Send invite</button>
+                <button type="button" onClick={() => setInviteOpen(false)} className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer">Cancel</button>
+                <button type="button" className="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 cursor-pointer">Send invite</button>
               </div>
             </div>
           </div>

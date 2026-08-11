@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { AppShell } from '../../layout/AppShell';
 import { AmsPagination } from '../../ui';
 import { getAssignments, type AssignmentDto } from '@/lib/api';
@@ -8,6 +9,7 @@ import { getAssignments, type AssignmentDto } from '@/lib/api';
 const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 
 export function AdminAssignmentsPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'All' | 'Published' | 'Drafts' | 'Overdue'>('All');
   const [selectedClass, setSelectedClass] = useState('All classes');
   const [selectedTeacher, setSelectedTeacher] = useState('All teachers');
@@ -196,9 +198,8 @@ export function AdminAssignmentsPage() {
             {(['All', 'Published', 'Drafts', 'Overdue'] as const).map((tab) => (
               <button
                 key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`tab px-4 py-2 rounded-xl text-sm font-semibold ${activeTab === tab ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+                type="button" onClick={() => setActiveTab(tab)}
+                className={`tab cursor-pointer px-4 py-2 rounded-xl text-sm font-semibold ${activeTab === tab ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
                 {tab} <span className="opacity-70 font-normal">{tab === 'All' ? totals.total : tab === 'Published' ? totals.published : tab === 'Drafts' ? totals.drafts : totals.overdue}</span>
               </button>
             ))}
@@ -286,10 +287,9 @@ export function AdminAssignmentsPage() {
                         <td className="px-5 py-3.5 text-right">
                           <div className="relative inline-block">
                             <button
-                              type="button"
-                              data-action-button={`assignment-${assignment.id}`}
+                              type="button" data-action-button={`assignment-${assignment.id}`}
                               onClick={() => toggleMenu(assignment.id)}
-                              className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-400 inline-flex items-center justify-center">
+                              className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-400 inline-flex items-center justify-center cursor-pointer">
                               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                                 <circle cx="5" cy="12" r="2" />
                                 <circle cx="12" cy="12" r="2" />
@@ -300,7 +300,7 @@ export function AdminAssignmentsPage() {
                               data-action-menu={`assignment-${assignment.id}`}
                               onClick={(ev) => ev.stopPropagation()}
                               className={`row-menu absolute right-0 mt-1 w-44 bg-white border border-slate-200 rounded-xl shadow-lg z-10 py-1.5 ${activeRowMenu === assignment.id ? '' : 'hidden'}`}>
-                              <button type="button" className="block w-full text-left px-3.5 py-2 text-sm text-slate-600 hover:bg-slate-50">View details</button>
+                              <button type="button" onClick={() => router.push(`/roles/admin/assignments/${assignment.id}`)} className="block w-full text-left px-3.5 py-2 text-sm text-slate-600 hover:bg-slate-50 cursor-pointer">View details</button>
                             </div>
                           </div>
                         </td>
@@ -340,13 +340,13 @@ export function AdminAssignmentsPage() {
               <button
                 type="button"
                 onClick={closeArchive}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50">
+                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 cursor-pointer">
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={closeArchive}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700">
+                className="flex-1 px-4 py-2.5 rounded-xl bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 cursor-pointer">
                 Archive
               </button>
             </div>

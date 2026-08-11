@@ -694,8 +694,7 @@ export function AdminClassesPage() {
                   </div>
                   <div className="relative inline-flex">
                     <button
-                      type="button"
-                      data-action-button={`class-${cls.id}`}
+                      type="button" data-action-button={`class-${cls.id}`}
                       onClick={(event) => {
                         event.stopPropagation();
                         setActionMenuFor(actionMenuFor === `class-${cls.id}` ? null : `class-${cls.id}`);
@@ -825,8 +824,7 @@ export function AdminClassesPage() {
                       <td className="px-5 py-3.5 text-right">
                         <div className="relative inline-flex">
                           <button
-                            type="button"
-                            data-action-button={`subject-${subject.id}`}
+                            type="button" data-action-button={`subject-${subject.id}`}
                             onClick={(event) => {
                               event.stopPropagation();
                               setActionMenuFor(actionMenuFor === `subject-${subject.id}` ? null : `subject-${subject.id}`);
@@ -924,8 +922,7 @@ export function AdminClassesPage() {
                 <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Class <span className="text-rose-500">*</span></label>
                 <div ref={classDefinitionMenuRef} className="relative" data-class-definition-menu>
                   <button
-                    type="button"
-                    onClick={() => setClassDefinitionMenuOpen((open) => !open)}
+                    type="button" onClick={() => setClassDefinitionMenuOpen((open) => !open)}
                     className="relative w-full cursor-pointer rounded border border-slate-300 bg-white px-4 py-2.5 pr-12 text-left text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                   >
                     <span className="block truncate">{selectedClassDefinitionLabel}</span>
@@ -942,8 +939,7 @@ export function AdminClassesPage() {
                         {classDefinitions.map((cd) => (
                           <button
                             key={cd.id}
-                            type="button"
-                            onClick={() => {
+                            type="button" onClick={() => {
                               setClassForm({ ...classForm, classDefinitionId: cd.id });
                               setClassDefinitionMenuOpen(false);
                             }}

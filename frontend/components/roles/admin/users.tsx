@@ -116,9 +116,8 @@ export function AdminUsersPage() {
             {['All', 'Admin', 'Teacher', 'Student'].map((option) => (
               <button
                 key={option}
-                type="button"
-                onClick={() => setFilter(option as typeof filter)}
-                className={`rounded-full px-4 py-2 text-sm font-medium transition ${filter === option ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'}`}>
+                type="button" onClick={() => setFilter(option as typeof filter)}
+                className={`rounded-full cursor-pointer px-4 py-2 text-sm font-medium transition ${filter === option ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'}`}>
                 {option}
               </button>
             ))}
@@ -214,15 +213,13 @@ export function AdminUsersPage() {
                   <Td className="text-right">
                     <div className="inline-flex items-center gap-2">
                       <button
-                        type="button"
-                        onClick={() => openEditUser(user)}
-                        className="rounded-full border border-slate-300 bg-white px-3 py-1 text-sm text-slate-600 transition hover:border-indigo-300 hover:text-slate-900">
+                        type="button" onClick={() => openEditUser(user)}
+                        className="rounded-full border border-slate-300 bg-white px-3 py-1 text-sm text-slate-600 transition hover:border-indigo-300 hover:text-slate-900 cursor-pointer">
                         Edit
                       </button>
                       <button
-                        type="button"
-                        onClick={() => confirmDeleteUser(user)}
-                        className="rounded-full border border-rose-200 bg-white px-3 py-1 text-sm text-rose-600 transition hover:bg-rose-50">
+                        type="button" onClick={() => confirmDeleteUser(user)}
+                        className="rounded-full border border-rose-200 bg-white px-3 py-1 text-sm text-rose-600 transition hover:bg-rose-50 cursor-pointer">
                         Delete
                       </button>
                     </div>

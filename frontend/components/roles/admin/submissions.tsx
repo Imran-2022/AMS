@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { AmsPagination } from '../../ui';
 import { AppShell } from '../../layout/AppShell';
 import { getSubmissions, type SubmissionDto } from '@/lib/api';
@@ -22,6 +23,7 @@ const avatarClasses: Record<string, string> = {
 const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 
 export function AdminSubmissionsPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'All' | 'Graded' | 'Pending' | 'Missing'>('All');
   const [selectedClass, setSelectedClass] = useState('All classes');
   const [selectedAssignment, setSelectedAssignment] = useState('All assignments');
@@ -163,9 +165,8 @@ export function AdminSubmissionsPage() {
             {(['All', 'Graded', 'Pending', 'Missing'] as const).map((tab) => (
               <button
                 key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`tab px-4 py-2 rounded-xl text-sm font-semibold ${activeTab === tab ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+                type="button" onClick={() => setActiveTab(tab)}
+                className={`tab cursor-pointer px-4 py-2 rounded-xl text-sm font-semibold ${activeTab === tab ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
                 {tab} <span className="opacity-70 font-normal">{tab === 'All' ? totals.total : tab === 'Graded' ? totals.graded : tab === 'Pending' ? totals.pending : totals.missing}</span>
               </button>
             ))}
@@ -242,6 +243,7 @@ export function AdminSubmissionsPage() {
                         <button
                           type="button"
                           disabled={submission.status === 'Missing'}
+                          onClick={() => router.push(`/roles/admin/submissions/${submission.id}`)}
                           className={`px-3 py-1.5 rounded-lg border text-xs font-semibold ${submission.status === 'Missing' ? 'border-slate-200 text-slate-400 cursor-not-allowed' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                           View
                         </button>
