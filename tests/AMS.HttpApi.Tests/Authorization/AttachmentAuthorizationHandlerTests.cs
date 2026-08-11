@@ -38,7 +38,7 @@ public class AttachmentAuthorizationHandlerTests
         var studentId = Guid.NewGuid();
 
         var attachment = new Domain.Entities.Attachment(Guid.NewGuid(), "Submission", submissionId, "orig.pdf", file, "application/pdf", 1234L, Guid.NewGuid(), DateTime.UtcNow);
-        var submission = new Submission(submissionId, Guid.NewGuid(), studentId, "", null, DateTime.UtcNow, false, AMS.Domain.Shared.SubmissionStatus.Submitted);
+        var submission = new Submission(submissionId, Guid.NewGuid(), studentId, "", null, null, DateTime.UtcNow, false, AMS.Domain.Shared.SubmissionStatus.Submitted);
 
         var attachmentRepo = new Mock<IAttachmentRepository>();
         attachmentRepo.Setup(r => r.GetByStoredFileNameAsync(file, It.IsAny<CancellationToken>())).ReturnsAsync(attachment);

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { getAssignment, getMySubmissions, createSubmission, updateSubmission, uploadAttachment, downloadAttachmentToBrowser, getSubmission, deleteAttachment, renameAttachment, type AssignmentDto, type SubmissionDto } from '@/lib/api';
 import { Button } from '@/components/ui';
 import { FileUpload } from '@/components/ui';
-import { AppShell } from '@/components/layout/AppShell';
+import { AppShell } from '@/shared/layout';
 
 export default function StudentAssignmentDetailPage() {
   const params = useParams();

@@ -19,7 +19,7 @@ public class AuthorizationRbacTests
         var ownerStudentId = Guid.NewGuid();
         var otherStudentId = Guid.NewGuid();
 
-        var submission = new Submission(submissionId, Guid.NewGuid(), ownerStudentId, "", null, DateTime.UtcNow, false, AMS.Domain.Shared.SubmissionStatus.Submitted);
+        var submission = new Submission(submissionId, Guid.NewGuid(), ownerStudentId, "", null, null, DateTime.UtcNow, false, AMS.Domain.Shared.SubmissionStatus.Submitted);
 
         var submissionRepo = new Mock<ISubmissionRepository>();
         submissionRepo.Setup(r => r.GetByIdAsync(submissionId, It.IsAny<CancellationToken>())).ReturnsAsync(submission);
@@ -49,7 +49,7 @@ public class AuthorizationRbacTests
         var assignmentId = Guid.NewGuid();
         var teacherId = Guid.NewGuid();
 
-        var submission = new Submission(submissionId, assignmentId, Guid.NewGuid(), "", null, DateTime.UtcNow, false, AMS.Domain.Shared.SubmissionStatus.Submitted);
+        var submission = new Submission(submissionId, assignmentId, Guid.NewGuid(), "", null, null, DateTime.UtcNow, false, AMS.Domain.Shared.SubmissionStatus.Submitted);
         var assignment = new Assignment(assignmentId, "t", "d", Guid.NewGuid(), Guid.NewGuid(), teacherId, DateTime.UtcNow.AddDays(1), 100, AMS.Domain.Shared.AssignmentStatus.Published, true, true, DateTime.UtcNow);
 
         var submissionRepo = new Mock<ISubmissionRepository>();

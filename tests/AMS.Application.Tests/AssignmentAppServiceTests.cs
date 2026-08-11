@@ -27,7 +27,7 @@ public class AssignmentAppServiceTests
         var subjectId = Guid.NewGuid();
 
         userRepo.Setup(r => r.GetByIdAsync(teacherId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AppUser(teacherId, "Teacher Name", "teacher@example.com", "hash", UserRole.Teacher));
+            .ReturnsAsync(new User(teacherId, "Teacher Name", "teacher@example.com", "hash", UserRole.Teacher));
         teacherAssignmentRepo.Setup(r => r.GetAsync(teacherId, subjectId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((TeacherSubjectAssignment?)null);
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AppShell } from '../../layout/AppShell';
+import { AppShell } from '@/shared/layout';
 import { Button } from '../../ui/Button';
 import { getAssignments, getClassCourses, getSubjects, createAssignment, publishAssignment, uploadAttachment, getCurrentUser, getSubmissions } from '@/lib/api';
 import { getTeacherDashboardStats, type TeacherDashboardStats } from '@/lib/api/dashboard';

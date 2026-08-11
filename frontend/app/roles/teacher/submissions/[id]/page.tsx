@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { AppShell } from '@/components/layout/AppShell';
+import { AppShell } from '@/shared/layout';
 import { Button } from '@/components/ui/Button';
 import { FileText, X } from 'lucide-react';
 import { getSubmission, gradeSubmission, updateSubmissionStatus, downloadAttachmentToBrowser, type SubmissionDto } from '@/lib/api';

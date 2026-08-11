@@ -14,7 +14,7 @@ public class ClassCourseAppServiceTests
     {
         var repo = new FakeClassCourseRepository(new[]
         {
-            new ClassCourse(Guid.NewGuid(), "Grade 10", "A", "2026 – 2027", Guid.NewGuid(), Guid.NewGuid())
+            new ClassCourse(Guid.NewGuid(), "Grade 10", "A", Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid())
         });
         var service = new ClassCourseAppService(repo, new FakeTeacherAssignmentRepository(), new FakeClassDefinitionRepository(Array.Empty<ClassDefinition>()));
 
@@ -22,7 +22,7 @@ public class ClassCourseAppServiceTests
         {
             Name = "Grade 10",
             Section = "A",
-            AcademicYear = "2026 – 2027",
+            AcademicYearId = repo.Classes[0].AcademicYearId,
             ClassDefinitionId = repo.Classes[0].ClassDefinitionId,
             GroupId = repo.Classes[0].GroupId
         }, Guid.NewGuid(), nameof(UserRole.Admin)));
@@ -41,7 +41,7 @@ public class ClassCourseAppServiceTests
         {
             Name = "Nine",
             Section = "A",
-            AcademicYear = "2026 – 2027",
+            AcademicYearId = Guid.NewGuid(),
             ClassDefinitionId = classDefinition.Id,
             GroupId = null
         }, Guid.NewGuid(), nameof(UserRole.Admin)));

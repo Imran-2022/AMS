@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FileText, Search } from 'lucide-react';
-import { AppShell } from '../../layout/AppShell';
+import { AppShell } from '@/shared/layout';
 import { AmsPagination, Button } from '../../ui';
 import { getAssignments, getSubmissions } from '@/lib/api';
 import type { AssignmentDto, SubmissionDto } from '@/lib/api';

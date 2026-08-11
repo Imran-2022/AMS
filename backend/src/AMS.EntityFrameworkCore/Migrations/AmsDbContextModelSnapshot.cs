@@ -58,113 +58,6 @@ namespace AMS.EntityFrameworkCore.Migrations
                     b.ToTable("academic_years", (string)null);
                 });
 
-            modelBuilder.Entity("AMS.Domain.Entities.AppUser", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Address")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("address");
-
-                    b.Property<DateTime?>("AdmissionDate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("admission_date");
-
-                    b.Property<string>("AvatarUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("avatar_url");
-
-                    b.Property<DateTime?>("DateOfBirth")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("date_of_birth");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("email");
-
-                    b.Property<string>("EmployeeId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("employee_id");
-
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("full_name");
-
-                    b.Property<string>("Gender")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("gender");
-
-                    b.Property<string>("GuardianEmail")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("guardian_email");
-
-                    b.Property<string>("GuardianName")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("guardian_name");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<DateTime?>("JoiningDate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("joining_date");
-
-                    b.Property<string>("ParentMobile")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("parent_mobile");
-
-                    b.Property<string>("PasswordHash")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("password_hash");
-
-                    b.Property<string>("PhoneNumber")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("phone_number");
-
-                    b.Property<string>("Qualification")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("qualification");
-
-                    b.Property<int>("Role")
-                        .HasColumnType("integer")
-                        .HasColumnName("role");
-
-                    b.Property<string>("StudentId")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("student_id");
-
-                    b.Property<string>("SubjectSpecialization")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("subject_specialization");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Email")
-                        .IsUnique();
-
-                    b.ToTable("app_users", (string)null);
-                });
-
             modelBuilder.Entity("AMS.Domain.Entities.Assignment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -229,6 +122,9 @@ namespace AMS.EntityFrameworkCore.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("title");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ClassCourseId");
@@ -291,15 +187,17 @@ namespace AMS.EntityFrameworkCore.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("AcademicYear")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("academic_year");
+                    b.Property<Guid>("AcademicYearId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("academic_year_id");
 
-                    b.Property<Guid?>("ClassDefinitionId")
+                    b.Property<Guid>("ClassDefinitionId")
                         .HasColumnType("uuid")
                         .HasColumnName("class_definition_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<Guid?>("GroupId")
                         .HasColumnType("uuid")
@@ -317,10 +215,22 @@ namespace AMS.EntityFrameworkCore.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("section");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("AcademicYear", "ClassDefinitionId", "GroupId", "Section")
-                        .HasDatabaseName("IX_class_unique_combination");
+                    b.HasIndex("AcademicYearId");
+
+                    b.HasIndex("GroupId");
+
+                    b.HasIndex("ClassDefinitionId", "Name")
+                        .HasDatabaseName("IX_groups_class_definition_name");
+
+                    b.HasIndex("ClassDefinitionId", "GroupId", "AcademicYearId", "Section")
+                        .IsUnique()
+                        .HasDatabaseName("IX_class_courses_unique_combination");
 
                     b.ToTable("class_courses", (string)null);
                 });
@@ -379,11 +289,59 @@ namespace AMS.EntityFrameworkCore.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("class_course_id");
 
+                    b.Property<DateTime>("EnrolledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
                     b.HasKey("StudentId", "ClassCourseId");
 
                     b.HasIndex("ClassCourseId");
 
                     b.ToTable("student_enrollments", (string)null);
+                });
+
+            modelBuilder.Entity("AMS.Domain.Entities.StudentProfile", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateTime>("AdmissionDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("admission_date");
+
+                    b.Property<string>("GuardianEmail")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("guardian_email");
+
+                    b.Property<string>("GuardianName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("guardian_name");
+
+                    b.Property<string>("ParentMobile")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("parent_mobile");
+
+                    b.Property<string>("StudentId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("student_id");
+
+                    b.HasKey("UserId");
+
+                    b.HasIndex("StudentId")
+                        .IsUnique();
+
+                    b.ToTable("student_profiles", (string)null);
                 });
 
             modelBuilder.Entity("AMS.Domain.Entities.Subject", b =>
@@ -402,11 +360,17 @@ namespace AMS.EntityFrameworkCore.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("code");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -491,6 +455,42 @@ namespace AMS.EntityFrameworkCore.Migrations
                     b.ToTable("submissions", (string)null);
                 });
 
+            modelBuilder.Entity("AMS.Domain.Entities.TeacherProfile", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("EmployeeId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("employee_id");
+
+                    b.Property<DateTime>("JoiningDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("joining_date");
+
+                    b.Property<string>("Qualification")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("qualification");
+
+                    b.Property<string>("SubjectSpecialization")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("subject_specialization");
+
+                    b.HasKey("UserId");
+
+                    b.HasIndex("EmployeeId")
+                        .IsUnique();
+
+                    b.ToTable("teacher_profiles", (string)null);
+                });
+
             modelBuilder.Entity("AMS.Domain.Entities.TeacherSubjectAssignment", b =>
                 {
                     b.Property<Guid>("TeacherId")
@@ -507,84 +507,244 @@ namespace AMS.EntityFrameworkCore.Migrations
 
                     b.HasKey("TeacherId", "SubjectId");
 
+                    b.HasIndex("ClassCourseId");
+
                     b.HasIndex("SubjectId");
 
                     b.ToTable("teacher_subject_assignments", (string)null);
                 });
 
+            modelBuilder.Entity("AMS.Domain.Entities.User", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("address");
+
+                    b.Property<string>("AvatarUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("avatar_url");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DateOfBirth")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_of_birth");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("Gender")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("gender");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("password_hash");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("phone_number");
+
+                    b.Property<int>("Role")
+                        .HasColumnType("integer")
+                        .HasColumnName("role");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("Role")
+                        .HasDatabaseName("IX_users_role");
+
+                    b.ToTable("users", (string)null);
+                });
+
             modelBuilder.Entity("AMS.Domain.Entities.Assignment", b =>
                 {
-                    b.HasOne("AMS.Domain.Entities.ClassCourse", null)
+                    b.HasOne("AMS.Domain.Entities.ClassCourse", "ClassCourse")
                         .WithMany()
                         .HasForeignKey("ClassCourseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("AMS.Domain.Entities.Subject", null)
+                    b.HasOne("AMS.Domain.Entities.Subject", "Subject")
                         .WithMany()
                         .HasForeignKey("SubjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("AMS.Domain.Entities.AppUser", null)
+                    b.HasOne("AMS.Domain.Entities.User", "Teacher")
                         .WithMany()
                         .HasForeignKey("TeacherId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("ClassCourse");
+
+                    b.Navigation("Subject");
+
+                    b.Navigation("Teacher");
+                });
+
+            modelBuilder.Entity("AMS.Domain.Entities.ClassCourse", b =>
+                {
+                    b.HasOne("AMS.Domain.Entities.AcademicYear", "AcademicYear")
+                        .WithMany()
+                        .HasForeignKey("AcademicYearId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AMS.Domain.Entities.ClassDefinition", "ClassDefinition")
+                        .WithMany()
+                        .HasForeignKey("ClassDefinitionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AMS.Domain.Entities.Group", "Group")
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("AcademicYear");
+
+                    b.Navigation("ClassDefinition");
+
+                    b.Navigation("Group");
                 });
 
             modelBuilder.Entity("AMS.Domain.Entities.StudentEnrollment", b =>
                 {
-                    b.HasOne("AMS.Domain.Entities.ClassCourse", null)
+                    b.HasOne("AMS.Domain.Entities.ClassCourse", "ClassCourse")
                         .WithMany()
                         .HasForeignKey("ClassCourseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("AMS.Domain.Entities.AppUser", null)
+                    b.HasOne("AMS.Domain.Entities.User", "Student")
                         .WithMany()
                         .HasForeignKey("StudentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("ClassCourse");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("AMS.Domain.Entities.StudentProfile", b =>
+                {
+                    b.HasOne("AMS.Domain.Entities.User", "User")
+                        .WithOne("StudentProfile")
+                        .HasForeignKey("AMS.Domain.Entities.StudentProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("AMS.Domain.Entities.Subject", b =>
                 {
-                    b.HasOne("AMS.Domain.Entities.ClassCourse", null)
+                    b.HasOne("AMS.Domain.Entities.ClassCourse", "ClassCourse")
                         .WithMany()
                         .HasForeignKey("ClassCourseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("ClassCourse");
                 });
 
             modelBuilder.Entity("AMS.Domain.Entities.Submission", b =>
                 {
-                    b.HasOne("AMS.Domain.Entities.Assignment", null)
+                    b.HasOne("AMS.Domain.Entities.Assignment", "Assignment")
                         .WithMany()
                         .HasForeignKey("AssignmentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("AMS.Domain.Entities.AppUser", null)
+                    b.HasOne("AMS.Domain.Entities.User", "Student")
                         .WithMany()
                         .HasForeignKey("StudentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Assignment");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("AMS.Domain.Entities.TeacherProfile", b =>
+                {
+                    b.HasOne("AMS.Domain.Entities.User", "User")
+                        .WithOne("TeacherProfile")
+                        .HasForeignKey("AMS.Domain.Entities.TeacherProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("AMS.Domain.Entities.TeacherSubjectAssignment", b =>
                 {
-                    b.HasOne("AMS.Domain.Entities.Subject", null)
+                    b.HasOne("AMS.Domain.Entities.ClassCourse", "ClassCourse")
+                        .WithMany()
+                        .HasForeignKey("ClassCourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AMS.Domain.Entities.Subject", "Subject")
                         .WithMany()
                         .HasForeignKey("SubjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("AMS.Domain.Entities.AppUser", null)
+                    b.HasOne("AMS.Domain.Entities.User", "Teacher")
                         .WithMany()
                         .HasForeignKey("TeacherId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("ClassCourse");
+
+                    b.Navigation("Subject");
+
+                    b.Navigation("Teacher");
+                });
+
+            modelBuilder.Entity("AMS.Domain.Entities.User", b =>
+                {
+                    b.Navigation("StudentProfile");
+
+                    b.Navigation("TeacherProfile");
                 });
 #pragma warning restore 612, 618
         }

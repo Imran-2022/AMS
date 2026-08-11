@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { AppShell } from '../../layout/AppShell';
+import { AppShell } from '@/shared/layout';
 import { AmsPagination } from '../../ui';
 import { getAssignments, getClassCourses, getEnrollments, getSubjects } from '@/lib/api';
 import type { AssignmentDto, ClassCourseDto, StudentEnrollmentDto, SubjectDto } from '@/lib/api';

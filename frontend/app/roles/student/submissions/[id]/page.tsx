@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { AppShell } from '@/components/layout/AppShell';
+import { AppShell } from '@/shared/layout';
 import { Button, FileUpload } from '@/components/ui';
 import { getSubmission, downloadAttachmentToBrowser, getAssignment, updateSubmission, uploadAttachment, deleteAttachment, renameAttachment, type SubmissionDto, type AssignmentDto } from '@/lib/api';
 

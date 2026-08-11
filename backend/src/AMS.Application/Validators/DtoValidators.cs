@@ -148,7 +148,7 @@ public class CreateClassCourseDtoValidator : AbstractValidator<CreateClassCourse
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Section).NotEmpty().MaximumLength(50);
-        RuleFor(x => x.AcademicYear).NotEmpty().MaximumLength(50);
+        RuleFor(x => x.AcademicYearId).NotEmpty();
         RuleFor(x => x.GroupId)
             .NotEmpty()
             .When(x => x.ClassDefinitionId is not null && IsHigherSecondaryClass(x.ClassDefinitionId.Value))
@@ -175,10 +175,9 @@ public class UpdateClassCourseDtoValidator : AbstractValidator<UpdateClassCourse
             .When(x => x.Section is not null)
             .MaximumLength(50);
 
-        RuleFor(x => x.AcademicYear)
+        RuleFor(x => x.AcademicYearId)
             .NotEmpty()
-            .When(x => x.AcademicYear is not null)
-            .MaximumLength(50);
+            .When(x => x.AcademicYearId is not null);
     }
 }
 
