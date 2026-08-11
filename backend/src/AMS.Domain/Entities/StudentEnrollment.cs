@@ -22,13 +22,14 @@ public class StudentEnrollment
         StudentId = studentId;
         ClassCourseId = classCourseId;
         IsActive = isActive;
-        EnrolledAt = enrolledAt?.Kind switch
+
+        var effectiveEnrolledAt = enrolledAt ?? DateTime.UtcNow;
+        EnrolledAt = effectiveEnrolledAt.Kind switch
         {
-            DateTimeKind.Local => enrolledAt.Value.ToUniversalTime(),
-            DateTimeKind.Unspecified => DateTime.SpecifyKind(enrolledAt.Value, DateTimeKind.Utc),
-            _ => enrolledAt.Value
+            DateTimeKind.Local => effectiveEnrolledAt.ToUniversalTime(),
+            DateTimeKind.Unspecified => DateTime.SpecifyKind(effectiveEnrolledAt, DateTimeKind.Utc),
+            _ => effectiveEnrolledAt
         };
-        if (enrolledAt is null) EnrolledAt = DateTime.UtcNow;
     }
 
     public void Deactivate()
