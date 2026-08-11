@@ -102,14 +102,6 @@ export function StudentDashboardPage() {
     upcomingDeadlinesCount: 0,
   };
 
-  const dashboardStats = stats ?? {
-    enrolledClassesCount: 0,
-    activeAssignmentsCount: 0,
-    submittedCount: 0,
-    gradedCount: 0,
-    upcomingDeadlinesCount: 0,
-  };
-
   return (
     <AppShell role="Student" breadcrumb="Student / Dashboard">
       <div className="space-y-6">

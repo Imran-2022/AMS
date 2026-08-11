@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { getAssignment, updateAssignment, downloadAttachmentToBrowser, type AssignmentDto } from '@/lib/api';
 
 export default function TeacherAssignmentDetailPage() {
+  const router = useRouter();
   const params = useParams();
   const rawId = Array.isArray(params?.id) ? params.id[0] : params?.id;
   const assignmentId = typeof rawId === 'string' ? rawId : '';
@@ -98,6 +99,11 @@ export default function TeacherAssignmentDetailPage() {
     }
   };
 
+  const goToSubmissions = () => {
+    if (!assignment?.id) return;
+    router.push(`/roles/teacher/submissions?assignmentId=${encodeURIComponent(assignment.id)}`);
+  };
+
   return (
     <div className="flex h-screen overflow-hidden">
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -155,7 +161,20 @@ export default function TeacherAssignmentDetailPage() {
                 <div className="bg-white rounded-2xl border border-slate-200 p-6">
                   <div className="flex items-center justify-between mb-4">
                     <p className="eyebrow">PROGRESS</p>
-                    <button className="text-xs font-semibold text-brand-600 hover:text-brand-700">View submissions →</button>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className="cursor-pointer text-xs font-black text-brand-700 transition-colors hover:text-brand-900"
+                      onClick={goToSubmissions}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          goToSubmissions();
+                        }
+                      }}
+                    >
+                      View submissions →
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-sm mb-2">
                     <span className="font-bold text-slate-700">{assignment?.submittedCount ?? 0} submitted</span>
