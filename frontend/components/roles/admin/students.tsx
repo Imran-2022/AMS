@@ -6,7 +6,7 @@ import { AppShell } from '../../layout/AppShell';
 import { AmsDeleteComfiramtionModal, AmsPagination, Button, Card, Pill, Th, Td, AddStudentModal, type AddStudentFormData } from '../../ui';
 import { API_BASE_URL } from '@/lib/api';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
-import { createUser, deleteUser, getClassCourses, getUsers, updateUser } from '@/lib/api';
+import { createUser, deleteUser, getClassCourses, getGroupsForClass, getUsers, updateUser } from '@/lib/api';
 import { createEnrollment, deleteEnrollment, getEnrollments } from '@/lib/api/enrollments';
 import { MoreVertical, Plus } from 'lucide-react';
 import type { ClassCourseRecord, StudentFormData, StudentUserRecord } from './types';
@@ -28,7 +28,9 @@ export function AdminStudentsPage() {
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<StudentUserRecord | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<StudentUserRecord | null>(null);
   const [pendingDeleteStudent, setPendingDeleteStudent] = useState<StudentUserRecord | null>(null);
+  const [groupNameMap, setGroupNameMap] = useState<Record<string, string>>({});
   const [studentModalSubmitting, setStudentModalSubmitting] = useState(false);
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
   const [pageIndex, setPageIndex] = useState(0);
@@ -59,10 +61,18 @@ export function AdminStudentsPage() {
         getAdminDashboardStats(),
       ]);
 
+      const classDefinitionIds = Array.from(new Set(classes.filter((cls) => cls.classDefinitionId).map((cls) => cls.classDefinitionId!)));
+      const groupsByDefinition = await Promise.all(classDefinitionIds.map((classDefinitionId) => getGroupsForClass(classDefinitionId)));
+      const groupMap = groupsByDefinition.flat().reduce<Record<string, string>>((map, group) => {
+        map[group.id] = group.name;
+        return map;
+      }, {});
+
       const classMap = Object.fromEntries(classes.map((cls) => [cls.id, cls]));
       const enrollmentMap = Object.fromEntries(enrollments.map((enrollment) => [enrollment.studentId, enrollment.classCourseId]));
 
       setClassCourses(classes);
+      setGroupNameMap(groupMap);
       setStats(dashboardStats);
 
       const studentRecords = users
@@ -70,6 +80,7 @@ export function AdminStudentsPage() {
         .map((user) => {
           const classCourseId = enrollmentMap[user.id];
           const classCourse = classMap[classCourseId];
+          const groupName = classCourse?.groupId ? groupMap[classCourse.groupId] ?? classCourse.groupId : undefined;
           return {
             id: user.id,
             fullName: user.fullName,
@@ -86,6 +97,7 @@ export function AdminStudentsPage() {
             dateOfBirth: user.dateOfBirth ?? '',
             admissionDate: user.admissionDate ?? '',
             avatarUrl: user.avatarUrl,
+            groupName,
           } as StudentUserRecord;
         });
 
@@ -305,7 +317,7 @@ export function AdminStudentsPage() {
         </div>
 
         {error && (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">
+          <div className="rounded border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-rose-100 text-rose-600">
@@ -438,7 +450,7 @@ export function AdminStudentsPage() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {paginatedStudents.map((student) => (
-                      <tr key={student.id} className="hover:bg-slate-50 transition-colors duration-150">
+                      <tr key={student.id} className="hover:bg-slate-50 transition-colors duration-150 cursor-pointer" onClick={() => setSelectedStudent(student)}>
                         <Td className="px-2 py-3.5">
                           <div className="flex items-center gap-3">
                             {student.avatarUrl ? (
@@ -539,8 +551,8 @@ export function AdminStudentsPage() {
         )}
 
         {!isLoading && !error && filteredStudents.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white py-20 px-6 text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-500">
+          <div className="flex flex-col items-center justify-center rounded border border-slate-200 bg-white py-20 px-6 text-center">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded bg-indigo-50 text-indigo-500">
               <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
                 <circle cx="9" cy="7" r="4" />
@@ -597,6 +609,112 @@ export function AdminStudentsPage() {
         studentIdReadOnly
         onSubmit={handleSaveStudent}
       />
+
+      {selectedStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/20 p-3">
+          <div className="bg-white rounded w-full max-w-3xl overflow-hidden shadow-xl">
+            <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-4">
+                {selectedStudent.avatarUrl ? (
+                  <img
+                    src={selectedStudent.avatarUrl.startsWith('http') ? selectedStudent.avatarUrl : `${API_BASE_URL}${selectedStudent.avatarUrl}`}
+                    alt={selectedStudent.fullName}
+                    className="h-24 w-24 rounded object-cover"
+                    onError={(event) => {
+                      event.currentTarget.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="flex h-24 w-24 items-center justify-center rounded bg-indigo-100 text-indigo-700 font-semibold text-3xl">
+                    {selectedStudent.fullName
+                      .split(' ')
+                      .map((part) => part[0])
+                      .join('')
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h2 className="text-lg font-semibold text-slate-900">{selectedStudent.fullName}</h2>
+                    <span className={`inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 ${selectedStudent.status !== 'Active' ? 'bg-slate-100 text-slate-600' : ''}`}>
+                      <span className={`h-2.5 w-2.5 rounded-full ${selectedStudent.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                      {selectedStudent.status}
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-700 mt-1">{selectedStudent.email}</p>
+                  {selectedStudent.groupName ? (
+                    <p className="text-xs uppercase tracking-[0.18em] text-slate-600 mt-2">Group: {selectedStudent.groupName}</p>
+                  ) : null}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedStudent(null)}
+                className="text-slate-400 hover:text-slate-600 rounded-full p-3 text-xl cursor-pointer"
+              >
+                ×
+              </button>
+            </div>
+            <div className="space-y-4 px-6 py-5">
+              <div className="rounded border border-slate-200 bg-slate-50 px-5 py-4">
+                <div className="mb-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Account information</p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Student ID</p>
+                    <p className="text-sm text-slate-700">{selectedStudent.studentId || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Gender</p>
+                    <p className="text-sm text-slate-700">{selectedStudent.gender || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Date of birth</p>
+                    <p className="text-sm text-slate-700">{selectedStudent.dateOfBirth || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Admission date</p>
+                    <p className="text-sm text-slate-700">{selectedStudent.admissionDate || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Class</p>
+                    <p className="text-sm text-slate-700">{selectedStudent.classCourseName || 'Unassigned'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Section</p>
+                    <p className="text-sm text-slate-700">{selectedStudent.section || '—'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded border border-slate-200 px-5 py-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 mb-3">Guardian on file</p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Name</p>
+                    <p className="text-sm text-slate-700">{selectedStudent.guardianName || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Email</p>
+                    <p className="text-sm text-slate-700">{selectedStudent.guardianEmail || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Mobile No</p>
+                    <p className="text-sm text-slate-700">{selectedStudent.parentMobile || '—'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end border-t border-slate-100 bg-slate-50/80 px-6 py-3">
+              <Button type="button" variant="secondary" onClick={() => setSelectedStudent(null)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <AmsDeleteComfiramtionModal
         open={Boolean(pendingDeleteStudent)}

@@ -14,6 +14,7 @@ export type StudentUserRecord = {
   dateOfBirth?: string;
   admissionDate?: string;
   avatarUrl?: string;
+  groupName?: string;
 };
 
 export type ClassCourseRecord = {
