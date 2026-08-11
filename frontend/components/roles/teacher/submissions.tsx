@@ -8,7 +8,7 @@ import { AmsPagination, Button } from '../../ui';
 import { getAssignments, getSubmissions } from '@/lib/api';
 import type { AssignmentDto, SubmissionDto } from '@/lib/api';
 
-type StatusFilter = 'all' | 'pending' | 'graded' | 'needs_revision';
+type StatusFilter = 'all' | 'pending' | 'graded';
 
 type GradeModalState = SubmissionDto | null;
 
@@ -103,21 +103,19 @@ export function TeacherSubmissionsPage() {
   const stats = useMemo(() => {
     const total = submissions.length;
     const pending = submissions.filter((submission) => ['Submitted', 'Late', 'UnderReview', 'Resubmitted'].includes(submission.status)).length;
-    const graded = submissions.filter((submission) => submission.status === 'Graded').length;
     const needsRevision = submissions.filter((submission) => submission.status === 'ResubmissionRequested').length;
+    const graded = submissions.filter((submission) => submission.status === 'Graded').length;
 
-    return { total, pending, graded, needsRevision };
+    return { total, pending, needsRevision, pendingWithRevision: pending + needsRevision, graded };
   }, [submissions]);
 
   const visibleSubmissions = useMemo(() => {
     return submissions.filter((submission) => {
-      const isPending = ['Submitted', 'Late', 'UnderReview', 'Resubmitted'].includes(submission.status);
+      const isPending = ['Submitted', 'Late', 'UnderReview', 'Resubmitted', 'ResubmissionRequested'].includes(submission.status);
       const matchesTab =
         activeTab === 'all' ||
         (activeTab === 'pending' && isPending) ||
-        (activeTab === 'graded' && submission.status === 'Graded') ||
-        (activeTab === 'needs_revision' && submission.status === 'ResubmissionRequested');
-
+        (activeTab === 'graded' && submission.status === 'Graded');
       const matchesClass = classFilter === 'All classes' || submission.classCourseName === classFilter;
       const matchesSection = sectionFilter === 'All sections' || submission.classCourseSection === sectionFilter;
       const matchesAssignment = assignmentFilter === 'All assignments' || submission.assignmentTitle === assignmentFilter;
@@ -210,7 +208,7 @@ export function TeacherSubmissionsPage() {
         <div className="rounded-2xl border border-slate-200 bg-white p-4">
           <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex flex-wrap items-center gap-2">
-              {(['all', 'pending', 'graded', 'needs_revision'] as const).map((status) => (
+              {(['all', 'pending', 'graded'] as const).map((status) => (
                 <Button
                   key={status}
                   type="button"
@@ -218,8 +216,8 @@ export function TeacherSubmissionsPage() {
                   onClick={() => setActiveTab(status)}
                   className={`tab cursor-pointer px-4 py-2 text-sm font-semibold ${activeTab === status ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}
                 >
-                  {status === 'all' ? 'All' : status === 'pending' ? 'Pending' : status === 'graded' ? 'Graded' : 'Needs revision'}
-                  <span className="opacity-70 font-normal"> {status === 'all' ? stats.total : status === 'pending' ? stats.pending : status === 'graded' ? stats.graded : stats.needsRevision}</span>
+                  {status === 'all' ? 'All' : status === 'pending' ? 'Pending' : 'Graded'}
+                  <span className="opacity-70 font-normal"> {status === 'all' ? stats.total : status === 'pending' ? stats.pendingWithRevision : stats.graded}</span>
                 </Button>
               ))}
             </div>
@@ -275,15 +273,36 @@ export function TeacherSubmissionsPage() {
                     <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">SUBMITTED</th>
                     <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">STATUS</th>
                     <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">MARKS</th>
-                    <th className="w-28 px-5 py-3.5 text-right text-[11px] font-bold text-slate-400">ACTIONS</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {visibleSubmissions.map((submission) => (
-                    <tr key={submission.id}>
+                    <tr
+                      key={submission.id}
+                      tabIndex={0}
+                      className="cursor-pointer hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none transition-colors"
+                      onClick={() => router.push(`/roles/teacher/submissions/${submission.id}`)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          router.push(`/roles/teacher/submissions/${submission.id}`);
+                        }
+                      }}
+                    >
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
+                          {submission.avatarUrl ? (
+                            <img
+                              src={submission.avatarUrl}
+                              alt={submission.studentName}
+                              className="h-8 w-8 shrink-0 rounded-full object-cover"
+                              onError={(event) => {
+                                event.currentTarget.style.display = 'none';
+                                event.currentTarget.nextElementSibling?.removeAttribute('hidden');
+                              }}
+                            />
+                          ) : null}
+                          <div hidden={Boolean(submission.avatarUrl)} className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
                             {submission.studentInitials}
                           </div>
                           <span className="font-semibold text-slate-700">{submission.studentName}</span>
@@ -298,11 +317,6 @@ export function TeacherSubmissionsPage() {
                       </td>
                       <td className="px-2 py-3.5 text-slate-600">
                         {submission.status === 'Graded' ? `${submission.marks ?? 0}/${submission.maxMarks ?? 35}` : '—'}
-                      </td>
-                      <td className="px-5 py-3.5 text-right">
-                        <button type="button" onClick={() => router.push(`/roles/teacher/submissions/${submission.id}`)} className={`cursor-pointer rounded-lg px-3.5 py-1.5 text-xs font-semibold ${submission.status === 'Graded' ? 'border border-slate-200 text-slate-600 hover:bg-slate-50' : 'bg-brand-600 text-white hover:bg-brand-700'}`}>
-                          {submission.status === 'Graded' ? 'View' : 'Grade'}
-                        </button>
                       </td>
                     </tr>
                   ))}

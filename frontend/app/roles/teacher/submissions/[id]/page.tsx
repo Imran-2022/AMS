@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/Button';
@@ -194,8 +195,21 @@ export default function TeacherSubmissionDetailPage() {
           <>
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-100 text-base font-bold text-brand-700">
-                  {submission.studentInitials}
+                <div className="relative h-12 w-12 shrink-0">
+                  {submission.avatarUrl ? (
+                    <img
+                      src={submission.avatarUrl}
+                      alt={submission.studentName}
+                      className="h-12 w-12 rounded-full object-cover"
+                      onError={(event) => {
+                        event.currentTarget.style.display = 'none';
+                        event.currentTarget.nextElementSibling?.removeAttribute('hidden');
+                      }}
+                    />
+                  ) : null}
+                  <div hidden={Boolean(submission.avatarUrl)} className="absolute inset-0 flex items-center justify-center rounded-full bg-brand-100 text-base font-bold text-brand-700">
+                    {submission.studentInitials}
+                  </div>
                 </div>
                 <div>
                   <div className="flex items-center gap-3">
@@ -296,39 +310,59 @@ export default function TeacherSubmissionDetailPage() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-5">
-                <div>
-                  <label className="mb-2 block text-[13px] font-semibold text-slate-800">Marks <span className="text-rose-500">*</span></label>
-                  <div className="flex items-center gap-2">
-                    <input id="marksInput" value={marks} onChange={(event) => setMarks(event.target.value)} type="number" min="0" max={submission.maxMarks ?? 35} placeholder="0" className="w-28 rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100" />
-                    <span className="text-sm text-slate-500">out of <span className="font-bold text-slate-700">{submission.maxMarks ?? 35}</span></span>
+              <div className="space-y-5">
+                <Link
+                  href={`/roles/teacher/assignments/${submission.assignmentId}`}
+                  className="block rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-brand-300 hover:text-brand-600"
+                >
+                  <p className="mb-3 text-[11px] font-bold tracking-[0.06em] text-slate-400">ASSIGNMENT</p>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-base font-bold text-slate-800 transition hover:text-brand-600">
+                      {submission.assignmentTitle}
+                    </p>
+                    <span className="shrink-0 text-slate-400" aria-hidden="true">
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="m9 18 6-6-6-6" />
+                      </svg>
+                    </span>
                   </div>
-                  <p className="mt-2 text-[11.5px] text-slate-400">Max marks for this assignment: {submission.maxMarks ?? 35}.</p>
-                </div>
+                  <p className="mt-0.5 text-sm text-slate-400">{submission.classCourseName}{submission.classCourseSection ? ` · ${submission.classCourseSection}` : ''}</p>
+                </Link>
 
-                <div>
-                  <label className="mb-2 block text-[13px] font-semibold text-slate-800">Feedback for student</label>
-                  <textarea value={feedback} onChange={(event) => setFeedback(event.target.value)} rows={5} placeholder="Add comments on their work…" className="min-h-[160px] w-full resize-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100" />
-                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-5">
+                  <div>
+                    <label className="mb-2 block text-[13px] font-semibold text-slate-800">Marks <span className="text-rose-500">*</span></label>
+                    <div className="flex items-center gap-2">
+                      <input id="marksInput" value={marks} onChange={(event) => setMarks(event.target.value)} type="number" min="0" max={submission.maxMarks ?? 35} placeholder="0" className="w-28 rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100" />
+                      <span className="text-sm text-slate-500">out of <span className="font-bold text-slate-700">{submission.maxMarks ?? 35}</span></span>
+                    </div>
+                    <p className="mt-2 text-[11.5px] text-slate-400">Max marks for this assignment: {submission.maxMarks ?? 35}.</p>
+                  </div>
 
-                <div>
-                  <label className="mb-2 block text-[13px] font-semibold text-slate-800">Submission status</label>
-                  <select value={status} onChange={(event) => setStatus(event.target.value)} className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100">
-                    <option value="Submitted">Submitted</option>
-                    <option value="Graded">Graded</option>
-                    <option value="ResubmissionRequested">Resubmission Requested</option>
-                  </select>
-                  <p className="mt-2 text-[11.5px] text-slate-400">Changing status notifies the student automatically.</p>
-                </div>
+                  <div>
+                    <label className="mb-2 block text-[13px] font-semibold text-slate-800">Feedback for student</label>
+                    <textarea value={feedback} onChange={(event) => setFeedback(event.target.value)} rows={5} placeholder="Add comments on their work…" className="min-h-[160px] w-full resize-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100" />
+                  </div>
 
-                {saveError ? (
-                  <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{saveError}</div>
-                ) : null}
+                  <div>
+                    <label className="mb-2 block text-[13px] font-semibold text-slate-800">Submission status</label>
+                    <select value={status} onChange={(event) => setStatus(event.target.value)} className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100">
+                      <option value="Submitted">Submitted</option>
+                      <option value="Graded">Graded</option>
+                      <option value="ResubmissionRequested">Resubmission Requested</option>
+                    </select>
+                    <p className="mt-2 text-[11.5px] text-slate-400">Changing status notifies the student automatically.</p>
+                  </div>
 
-                <div className="flex items-center justify-end gap-3 pt-2">
-                  <button type="button" disabled={saving} onClick={() => void saveGrade()} className="cursor-pointer rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70">
-                    {saving ? 'Saving...' : 'Save & notify student'}
-                  </button>
+                  {saveError ? (
+                    <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{saveError}</div>
+                  ) : null}
+
+                  <div className="flex items-center justify-end gap-3 pt-2">
+                    <button type="button" disabled={saving} onClick={() => void saveGrade()} className="cursor-pointer rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70">
+                      {saving ? 'Saving...' : 'Save & notify student'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

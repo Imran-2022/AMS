@@ -240,6 +240,7 @@ public class SubmissionAppService : ISubmissionAppService
             GradedAt = submission.GradedAt,
             StudentName = student.FullName,
             StudentInitials = initials,
+            AvatarUrl = student.AvatarUrl,
             AssignmentTitle = assignment.Title,
             MaxMarks = assignment.MaxMarks,
             ClassCourseName = classCourse.Name,
