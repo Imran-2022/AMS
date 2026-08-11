@@ -171,6 +171,7 @@ export function AddStudentModal({
       }
     >
       <div className="space-y-7">
+        {/* ## Add student modal - Image upload (optional) - commented out for now
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-2xl bg-indigo-50 border-2 border-dashed border-indigo-200 flex items-center justify-center text-indigo-400 shrink-0">
             <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -187,6 +188,7 @@ export function AddStudentModal({
             <p className={hintClass}>Optional · JPG or PNG, up to 2MB</p>
           </div>
         </div>
+        */}
 
         <div>
           <p className={sectionTitleClass}>BASIC INFORMATION</p>

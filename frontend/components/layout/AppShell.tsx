@@ -88,11 +88,12 @@ const NAV: Record<RoleType, NavItem[]> = {
     { href: '/roles/admin/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
     { href: '/roles/admin/students', label: 'Students', Icon: UserPlus },
     { href: '/roles/admin/teachers', label: 'Teachers', Icon: UserCheck },
-    { href: '/roles/admin/administrators', label: 'Administrators', Icon: ShieldCheck },
+    // { href: '/roles/admin/administrators', label: 'Administrators', Icon: ShieldCheck },
     { href: '/roles/admin/classes', label: 'Classes & Subjects', Icon: BookOpen },
+    { href: '/roles/admin/teacher-assignments', label: 'Teacher assignments', Icon: Users },
     { href: '/roles/admin/assignments', label: 'Assignments', Icon: ClipboardList },
     { href: '/roles/admin/submissions', label: 'Submissions', Icon: Inbox },
-    { href: '/roles/admin/ams-settings', label: 'AMS Settings', Icon: Settings },
+    // { href: '/roles/admin/ams-settings', label: 'AMS Settings', Icon: Settings },
   ],
   Teacher: [
     { href: '/roles/teacher/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
@@ -123,7 +124,7 @@ function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, 
           <button
             type="button"
             onClick={onToggle}
-            className="w-9 h-9 rounded-lg flex items-center justify-center text-[#1F2430] hover:bg-[#F5F5F7] shrink-0"
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-[#1F2430] hover:bg-[#F5F5F7] shrink-0 cursor-pointer"
             aria-label="Toggle sidebar">
             <Menu className="h-5 w-5" />
           </button>

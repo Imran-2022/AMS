@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { AmsPagination } from '../../ui';
 import { AppShell } from '../../layout/AppShell';
 import { getSubmissions, type SubmissionDto } from '@/lib/api';
@@ -22,7 +23,8 @@ const avatarClasses: Record<string, string> = {
 const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 
 export function AdminSubmissionsPage() {
-  const [activeTab, setActiveTab] = useState<'All' | 'Graded' | 'Pending' | 'Missing'>('All');
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<'All' | 'Graded' | 'Pending'>('All');
   const [selectedClass, setSelectedClass] = useState('All classes');
   const [selectedAssignment, setSelectedAssignment] = useState('All assignments');
   const [search, setSearch] = useState('');
@@ -59,8 +61,7 @@ export function AdminSubmissionsPage() {
     const total = submissions.length;
     const graded = submissions.filter((item) => item.status === 'Graded').length;
     const pending = submissions.filter((item) => item.status === 'Pending review').length;
-    const missing = submissions.filter((item) => item.status === 'Missing').length;
-    return { total, graded, pending, missing };
+    return { total, graded, pending };
   }, [submissions]);
 
   const visibleSubmissions = useMemo(() => {
@@ -69,8 +70,7 @@ export function AdminSubmissionsPage() {
       const matchesTab =
         activeTab === 'All' ||
         (activeTab === 'Graded' && submission.status === 'Graded') ||
-        (activeTab === 'Pending' && submission.status === 'Pending review') ||
-        (activeTab === 'Missing' && submission.status === 'Missing');
+        (activeTab === 'Pending' && submission.status === 'Pending review');
 
       const submissionClass = `${submission.classCourseName} — ${submission.classCourseSection}`;
       const matchesClass = selectedClass === 'All classes' || submissionClass === selectedClass;
@@ -80,8 +80,6 @@ export function AdminSubmissionsPage() {
       return matchesTab && matchesClass && matchesAssignment && matchesSearch;
     });
   }, [activeTab, selectedClass, selectedAssignment, search, submissions]);
-
-  const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
   const [pageIndex, setPageIndex] = useState(0);
 
@@ -142,31 +140,16 @@ export function AdminSubmissionsPage() {
             <p className="text-xs text-slate-400 mt-1">Submitted, awaiting marks</p>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-[11px] font-bold text-slate-400">MISSING</p>
-              <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="15" y1="9" x2="9" y2="15" />
-                  <line x1="9" y1="9" x2="15" y2="15" />
-                </svg>
-              </div>
-            </div>
-            <p className="text-2xl font-extrabold text-slate-800">{totals.missing}</p>
-            <p className="text-xs text-slate-400 mt-1">Never submitted, past deadline</p>
-          </div>
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
-            {(['All', 'Graded', 'Pending', 'Missing'] as const).map((tab) => (
+            {(['All', 'Graded', 'Pending'] as const).map((tab) => (
               <button
                 key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`tab px-4 py-2 rounded-xl text-sm font-semibold ${activeTab === tab ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
-                {tab} <span className="opacity-70 font-normal">{tab === 'All' ? totals.total : tab === 'Graded' ? totals.graded : tab === 'Pending' ? totals.pending : totals.missing}</span>
+                type="button" onClick={() => setActiveTab(tab)}
+                className={`tab cursor-pointer px-4 py-2 rounded text-sm font-semibold ${activeTab === tab ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+                {tab} <span className="opacity-70 font-normal">{tab === 'All' ? totals.total : tab === 'Graded' ? totals.graded : totals.pending}</span>
               </button>
             ))}
           </div>
@@ -213,17 +196,35 @@ export function AdminSubmissionsPage() {
                     <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">SUBMITTED</th>
                     <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">STATUS</th>
                     <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">MARKS</th>
-                    <th className="w-16 px-5 py-3.5 text-right text-[11px] font-bold text-slate-400">ACTIONS</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {pagedSubmissions.map((submission) => (
-                    <tr key={submission.id}>
+                    <tr
+                    key={submission.id}
+                    tabIndex={0}
+                    onClick={() => router.push(`/roles/admin/submissions/${submission.id}`)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        router.push(`/roles/admin/submissions/${submission.id}`);
+                      }
+                    }}
+                    className="cursor-pointer hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none transition-colors"
+                  >
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${avatarClasses.brand}`}>
-                            {submission.studentInitials}
-                          </div>
+                          {submission.avatarUrl ? (
+                            <img
+                              src={submission.avatarUrl}
+                              alt={submission.studentName}
+                              className="w-8 h-8 rounded-full object-cover shrink-0"
+                            />
+                          ) : (
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${avatarClasses.brand}`}>
+                              {submission.studentInitials}
+                            </div>
+                          )}
                           <span className="font-semibold text-slate-700">{submission.studentName}</span>
                         </div>
                       </td>
@@ -237,14 +238,6 @@ export function AdminSubmissionsPage() {
                       </td>
                       <td className={`px-2 py-3.5 ${submission.marks == null ? 'text-slate-400' : 'font-semibold text-slate-700'}`}>
                         {submission.marks == null ? '—' : submission.marks}
-                      </td>
-                      <td className="px-5 py-3.5 text-right">
-                        <button
-                          type="button"
-                          disabled={submission.status === 'Missing'}
-                          className={`px-3 py-1.5 rounded-lg border text-xs font-semibold ${submission.status === 'Missing' ? 'border-slate-200 text-slate-400 cursor-not-allowed' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
-                          View
-                        </button>
                       </td>
                     </tr>
                   ))}

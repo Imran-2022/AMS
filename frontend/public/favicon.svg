@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Solid background -->
+  <rect width="200" height="200" fill="#4F46E5"/>
+  
+  <!-- Graduation cap -->
+  <g transform="translate(100, 60)">
+    <!-- Mortarboard -->
+    <rect x="-45" y="-8" width="90" height="16" fill="#FFFFFF" rx="2"/>
+    <!-- Cap point -->
+    <polygon points="0,-35 -15,-8 15,-8" fill="#FFFFFF"/>
+    <!-- Tassel -->
+    <line x1="0" y1="-8" x2="0" y2="35" stroke="#FCD34D" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="0" cy="40" r="6" fill="#FCD34D"/>
+  </g>
+  
+  <!-- Book pages -->
+  <g transform="translate(100, 130)">
+    <!-- Left page -->
+    <rect x="-32" y="-18" width="28" height="36" fill="#FFFFFF" stroke="#4F46E5" stroke-width="2" rx="1"/>
+    <!-- Right page -->
+    <rect x="4" y="-18" width="28" height="36" fill="#E0E7FF" stroke="#4F46E5" stroke-width="2" rx="1"/>
+    <!-- Book spine -->
+    <rect x="-2" y="-18" width="4" height="36" fill="#4F46E5"/>
+    <!-- Lines on left page -->
+    <line x1="-26" y1="-8" x2="-10" y2="-8" stroke="#4F46E5" stroke-width="1.5"/>
+    <line x1="-26" y1="-2" x2="-10" y2="-2" stroke="#4F46E5" stroke-width="1.5"/>
+    <line x1="-26" y1="4" x2="-10" y2="4" stroke="#4F46E5" stroke-width="1.5"/>
+    <line x1="-26" y1="10" x2="-10" y2="10" stroke="#4F46E5" stroke-width="1.5"/>
+  </g>
+</svg>
