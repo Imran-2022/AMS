@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { AppShell } from '../../layout/AppShell';
-import { Button, AmsDeleteComfiramtionModal, AmsPagination, TeacherAssignmentModal } from '../../ui';
+import { Button, AmsDeleteComfiramtionModal, AmsPagination, Modal } from '../../ui';
 import {
   createClassCourse,
   updateClassCourse,
@@ -19,7 +19,7 @@ import {
   getActiveAcademicYear,
 } from '@/lib/api';
 import { getEnrollments } from '@/lib/api/enrollments';
-import { createTeacherAssignment, deleteTeacherAssignment, getTeacherAssignments } from '@/lib/api/teacherAssignments';
+import { createTeacherAssignment, getTeacherAssignments } from '@/lib/api/teacherAssignments';
 import type { ClassCourseDto, SubjectDto, UserDto } from '@/lib/api';
 import type { TeacherSubjectAssignmentDto } from '@/lib/api/teacherAssignments';
 
@@ -39,7 +39,7 @@ export function AdminClassesPage() {
   const [assignments, setAssignments] = useState<TeacherSubjectAssignmentDto[]>([]);
   const [selectedClass, setSelectedClass] = useState('All classes');
   const [search, setSearch] = useState('');
-  const [activeModal, setActiveModal] = useState<'class' | 'subject' | 'assign' | 'delete' | null>(null);
+  const [activeModal, setActiveModal] = useState<'class' | 'subject' | 'assign' | 'view-subjects' | 'delete' | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; type: 'class' | 'subject'; label: string } | null>(null);
   const [classForm, setClassForm] = useState({ classDefinitionId: '', groupId: '', name: '', section: '', year: '' });
   const [classDefinitions, setClassDefinitions] = useState<{ id: string; name: string }[]>([]);
@@ -56,6 +56,7 @@ export function AdminClassesPage() {
   const [assignClassMenuOpen, setAssignClassMenuOpen] = useState(false);
   const assignClassMenuRef = useRef<HTMLDivElement | null>(null);
   const [actionMenuFor, setActionMenuFor] = useState<string | null>(null);
+  const [viewSubjectsForClass, setViewSubjectsForClass] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [classStudentCountsState, setClassStudentCountsState] = useState<Record<string, number>>({});
   const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
@@ -232,58 +233,27 @@ export function AdminClassesPage() {
 
       setClasses(apiClasses);
       setSubjects(apiSubjects);
-      setTeachers(apiUsers.filter((user) => user.role === 'Teacher'));
+      setTeachers((apiUsers as UserDto[]).filter((user) => user.role === 'Teacher'));
       setAssignments(apiAssignments);
 
-      // build enrollment counts per class
-      const enrollmentCounts = apiEnrollments.reduce<Record<string, number>>((acc, e) => {
+      const enrollmentCounts = apiEnrollments.reduce<Record<string, number>>((acc: Record<string, number>, e: any) => {
         acc[e.classCourseId] = (acc[e.classCourseId] ?? 0) + 1;
         return acc;
       }, {});
-      // attach counts to classes state by replacing classes with enriched objects is not necessary; store counts locally
-      // we'll compute classStudentCounts in a memo below
-      // store enrollmentCounts via closure by setting a ref (simpler: compute classStudentCounts memo using apiEnrollments and setSubjects/classes)
-      // For simplicity, set subjects/classes as before and compute counts later
-      // Save enrollmentCounts to a local state? we'll compute via useMemo from classes and apiEnrollments stored in a ref — but to keep minimal, set a new state
       setClassStudentCountsState(enrollmentCounts);
-      // fetch groups for the currently selected class definition (if any)
-      if (classForm.classDefinitionId) {
-        try {
-          const groups = await getGroupsForClass(classForm.classDefinitionId);
-          // sort preferred order: Science, Arts, Commerce
-          const preferred = ['Science', 'Arts', 'Commerce'];
-          groups.sort((a, b) => Math.max(0, preferred.indexOf(a.name)) - Math.max(0, preferred.indexOf(b.name)));
-          setAvailableGroups(groups);
-          // ensure groupNameMap updated
-          setGroupNameMap((m) => {
-            const next = { ...m };
-            groups.forEach((g) => (next[g.id] = g.name));
-            return next;
-          });
-          // default select Science when opening/refreshing groups
-          const science = groups.find((g) => g.name.toLowerCase() === 'science');
-          if (science && !classForm.groupId) {
-            setClassForm((c) => ({ ...c, groupId: science.id }));
-          } else if (!groups.some((g) => g.id === classForm.groupId)) {
-            setClassForm((c) => ({ ...c, groupId: '' }));
-          }
-        } catch (err) {
-          console.error('Failed to load groups in loadData', err);
-          setAvailableGroups([]);
-        }
-      } else {
-        setAvailableGroups([]);
-      }
     } catch (err) {
       console.error(err);
       setError('Unable to load class data. Please refresh the page.');
     }
   }
 
-  function openModal(modal: 'class' | 'subject' | 'assign') {
+  function openModal(modal: 'class' | 'subject' | 'assign' | 'view-subjects', classCourseId?: string) {
+    setActionMenuFor(null);
+    setViewSubjectsForClass(null);
+
     if (modal === 'class') {
       setEditingClass(null);
-      const activeYear = academicYears.find(y => y.isActive)?.id ?? academicYears[0]?.id ?? '';
+      const activeYear = academicYears.find((y) => y.isActive)?.id ?? academicYears[0]?.id ?? '';
       setClassForm({ classDefinitionId: classDefinitions[0]?.id ?? '', groupId: '', name: '', section: '', year: activeYear });
       // fetch groups for the default class definition immediately to ensure dropdown is fresh
       (async () => {
@@ -306,7 +276,17 @@ export function AdminClassesPage() {
 
     if (modal === 'subject') {
       setEditingSubject(null);
-      setSubjectForm({ name: '', code: '', gradeId: classDefinitions[0]?.id ?? '', groupId: '' });
+      const selectedClass = classes.find((cls) => cls.id === classCourseId);
+      setSubjectForm({
+        name: '',
+        code: '',
+        gradeId: selectedClass?.classDefinitionId ?? classDefinitions[0]?.id ?? '',
+        groupId: selectedClass?.groupId ?? '',
+      });
+    }
+
+    if (modal === 'view-subjects') {
+      setViewSubjectsForClass(classCourseId ?? null);
     }
 
     if (modal === 'assign') {
@@ -321,10 +301,11 @@ export function AdminClassesPage() {
 
   function closeModal() {
     setActiveModal(null);
+    setViewSubjectsForClass(null);
     setEditingSubject(null);
     setSubjectForm({ name: '', code: '', gradeId: classDefinitions[0]?.id ?? '', groupId: '' });
     setEditingClass(null);
-    const activeYear = academicYears.find(y => y.isActive)?.id ?? academicYears[0]?.id ?? '';
+    const activeYear = academicYears.find((y) => y.isActive)?.id ?? academicYears[0]?.id ?? '';
     setClassForm({ classDefinitionId: classDefinitions[0]?.id ?? '', groupId: '', name: '', section: '', year: activeYear });
   }
 
@@ -661,22 +642,29 @@ export function AdminClassesPage() {
         ) : null}
 
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-bold text-slate-700">Class roster</p>
-              <p className="text-xs text-slate-400 mt-0.5">Manage classes and see enrollment at a glance.</p>
+            <div className="flex items-center justify-between">
+            
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                onClick={() => openModal('subject')}
+                className="px-4 py-2.5 flex items-center gap-2"
+                variant="secondary"
+              >
+                + Add subject
+              </Button>
+              <Button
+                type="button"
+                onClick={() => openModal('class')}
+                className="px-4 py-2.5 flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Add class
+              </Button>
             </div>
-            <Button
-              type="button"
-              onClick={() => openModal('class')}
-              className="px-4 py-2.5 flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              Add class
-            </Button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -712,6 +700,22 @@ export function AdminClassesPage() {
                         <Button
                           type="button"
                           variant="ghost"
+                          onClick={() => openModal('subject', cls.id)}
+                          className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
+                        >
+                          Add subjects
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => openModal('view-subjects', cls.id)}
+                          className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
+                        >
+                          View subjects
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
                           onClick={() => openEditClass(cls)}
                           className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
                         >
@@ -738,146 +742,95 @@ export function AdminClassesPage() {
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div>
-              <p className="text-sm font-bold text-slate-700">Subjects &amp; teacher assignments</p>
-              <p className="text-xs text-slate-400 mt-0.5">Manage subject ownership and teacher alignment.</p>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <Button
+        {/* Subjects & teacher assignments moved to Teacher Assignments page */}
+
+        <div className={`${activeModal === 'subject' ? 'flex' : 'hidden'} fixed inset-0 z-50 items-center justify-center bg-slate-900/40 p-4`}>
+          <div className="bg-white rounded w-full max-w-md shadow-2xl">
+            <div className="flex items-start justify-between px-7 pt-6 pb-5 border-b border-slate-100">
+              <h2 className="text-xl font-extrabold text-slate-800">{editingSubject ? 'Edit subject' : 'Add subject'}</h2>
+              <button
                 type="button"
-                variant="secondary"
-                onClick={() => openModal('subject')}
-                className="px-4 py-2.5"
+                onClick={closeModal}
+                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-slate-400 transition hover:text-slate-600 focus:outline-none"
+                aria-label="Close modal"
               >
-                Add subject
-              </Button>
-              <Button
-                type="button"
-                onClick={() => openModal('assign')}
-                className="px-4 py-2.5"
-              >
-                Assign teacher
-              </Button>
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
             </div>
-          </div>
-
-          <div className="bg-white rounded border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap">
-            <select
-              value={selectedClass}
-              onChange={(event) => setSelectedClass(event.target.value)}
-              className="text-sm border border-slate-200 rounded px-3 py-2.5 text-slate-600 bg-white"
-            >
-              <option>All classes</option>
-              {classOptions.map((option) => (
-                <option key={option.id} value={option.label}>{option.label}</option>
-              ))}
-            </select>
-            <div className="relative flex-1 max-w-xs ml-auto">
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                type="text"
-                placeholder="Search subjects…"
-                className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded text-sm outline-none focus:border-brand-500"
-              />
-              <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-            </div>
-          </div>
-
-          <div className="bg-white rounded border border-slate-200 overflow-visible">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 text-left">
-                  <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">SUBJECT</th>
-                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">CODE</th>
-                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">CLASS</th>
-                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">TEACHER</th>
-                  <th className="w-20 px-5 py-3.5 text-right text-[11px] font-bold text-slate-400">ACTIONS</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {pagedSubjects.map((subject) => {
-                  const course = classCourseMap[subject.classCourseId];
-                  const teacherName = assignmentMap[subject.id]?.teacherName ?? 'Unassigned';
-                  return (
-                    <tr key={subject.id}>
-                      <td className="px-5 py-3.5 font-semibold text-slate-700">{subject.name}</td>
-                      <td className="px-2 py-3.5 text-slate-500 font-mono text-xs">{subject.code}</td>
-                      <td className="px-2 py-3.5 text-slate-500">{course ? `${course.name} — ${course.section}${course.groupId ? ` (${groupNameMap[course.groupId] ?? ''})` : ''}` : 'Unassigned'}</td>
-                      <td className="px-2 py-3.5">
-                        {teacherName === 'Unassigned' ? (
-                          <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-[11.5px] font-bold text-amber-600">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                            Unassigned
-                          </span>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-[10px] font-bold">
-                              {teacherName.split(' ').map((p) => p[0]).join('')}
-                            </div>
-                            <span className="text-slate-600">{teacherName}</span>
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5 text-right">
-                        <div className="relative inline-flex">
-                          <button
-                            type="button" data-action-button={`subject-${subject.id}`}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setActionMenuFor(actionMenuFor === `subject-${subject.id}` ? null : `subject-${subject.id}`);
-                            }}
-                            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md p-0 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-                          >
-                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-                          </button>
-                          {actionMenuFor === `subject-${subject.id}` ? (
-                            <div
-                              data-action-menu={`subject-${subject.id}`}
-                              onClick={(ev) => ev.stopPropagation()}
-                              className="absolute right-0 top-full z-20 mt-2 w-40 overflow-hidden rounded border border-slate-200 bg-white shadow-xl"
-                            >
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                onClick={() => openEditSubject(subject)}
-                                className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
-                              >
-                                Edit subject
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                onClick={() => handleDelete('subject', subject.id, subject.name)}
-                                className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50"
-                              >
-                                Delete subject
-                              </Button>
-                            </div>
-                          ) : null}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-
-            <AmsPagination
-              currentPage={pageIndex}
-              pageSize={pageSize}
-              totalItems={filteredSubjects.length}
-              pageSizeOptions={PAGE_SIZE_OPTIONS}
-              onPageChange={setPageIndex}
-              onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
-              label="Showing"
-              itemLabel="subjects"
-            />
+            <form onSubmit={handleCreateSubject} className="px-7 py-6 space-y-5">
+              <div>
+                <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Subject name <span className="text-rose-500">*</span></label>
+                <input
+                  value={subjectForm.name}
+                  onChange={(event) => setSubjectForm({ ...subjectForm, name: event.target.value })}
+                  placeholder="e.g. Mathematics"
+                  required
+                  className="w-full rounded border border-slate-300 px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Subject code <span className="text-rose-500">*</span></label>
+                  <input
+                    value={subjectForm.code}
+                    onChange={(event) => setSubjectForm({ ...subjectForm, code: event.target.value })}
+                    placeholder="e.g. MTH-101"
+                    required
+                    className="w-full rounded border border-slate-300 px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Class <span className="text-rose-500">*</span></label>
+                  <div className="relative">
+                    <select
+                      value={subjectForm.gradeId}
+                      onChange={(event) => setSubjectForm({ ...subjectForm, gradeId: event.target.value })}
+                      required
+                      className="w-full appearance-none rounded border border-slate-300 bg-white px-4 py-2.5 pr-10 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                    >
+                      <option value="">Select class</option>
+                      {gradeOptions.map((option) => (
+                        <option key={option.id} value={option.id}>{option.label}</option>
+                      ))}
+                    </select>
+                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-500">
+                      <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd"/>
+                      </svg>
+                    </span>
+                  </div>
+                </div>
+              </div>
+              {subjectAvailableGroups.length > 0 ? (
+                <div>
+                  <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Group</label>
+                  <div className="relative">
+                    <select
+                      value={subjectForm.groupId}
+                      onChange={(event) => setSubjectForm({ ...subjectForm, groupId: event.target.value })}
+                      className="w-full appearance-none rounded border border-slate-300 bg-white px-4 py-2.5 pr-10 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                    >
+                      <option value="">Unassigned</option>
+                      {subjectAvailableGroups.map((g) => (
+                        <option key={g.id} value={g.id}>{g.name}</option>
+                      ))}
+                    </select>
+                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-500">
+                      <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd"/>
+                      </svg>
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500">Optionally select a group; subjects can vary by group.</p>
+                </div>
+              ) : null}
+              <div className="flex items-center justify-end gap-3 py-5 border-t border-slate-100 bg-slate-50/60 rounded-b-3xl">
+                <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
+                <Button type="submit">{editingSubject ? 'Save changes' : 'Create subject'}</Button>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
 
       <div className={`${activeModal === 'class' ? 'flex' : 'hidden'} fixed inset-0 z-50 items-center justify-center bg-slate-900/40 p-4`}>
         <div className="bg-white rounded w-full max-w-md shadow-2xl">
@@ -1005,129 +958,29 @@ export function AdminClassesPage() {
         </div>
       </div>
 
-      <div className={`${activeModal === 'subject' ? 'flex' : 'hidden'} fixed inset-0 z-50 items-center justify-center bg-slate-900/40 p-4`}>
-        <div className="bg-white rounded w-full max-w-md shadow-2xl">
-          <div className="flex items-start justify-between px-7 pt-6 pb-5 border-b border-slate-100">
-            <h2 className="text-xl font-extrabold text-slate-800">{editingSubject ? 'Edit subject' : 'Add subject'}</h2>
-            <button
-              type="button"
-              onClick={closeModal}
-              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-slate-400 transition hover:text-slate-600 focus:outline-none"
-              aria-label="Close modal"
-            >
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-            </button>
-          </div>
-          <form onSubmit={handleCreateSubject} className="px-7 py-6 space-y-5">
-            <div>
-              <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Subject name <span className="text-rose-500">*</span></label>
-              <input
-                value={subjectForm.name}
-                onChange={(event) => setSubjectForm({ ...subjectForm, name: event.target.value })}
-                placeholder="e.g. Mathematics"
-                required
-                className="w-full rounded border border-slate-300 px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Subject code <span className="text-rose-500">*</span></label>
-                <input
-                  value={subjectForm.code}
-                  onChange={(event) => setSubjectForm({ ...subjectForm, code: event.target.value })}
-                  placeholder="e.g. MTH-101"
-                  required
-                  className="w-full rounded border border-slate-300 px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                />
-              </div>
-              <div>
-                <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Class <span className="text-rose-500">*</span></label>
-                <div className="relative">
-                  <select
-                    value={subjectForm.gradeId}
-                    onChange={(event) => setSubjectForm({ ...subjectForm, gradeId: event.target.value })}
-                    required
-                    className="w-full appearance-none rounded border border-slate-300 bg-white px-4 py-2.5 pr-10 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                  >
-                    <option value="">Select class</option>
-                    {gradeOptions.map((option) => (
-                      <option key={option.id} value={option.id}>{option.label}</option>
-                    ))}
-                  </select>
-                  <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-500">
-                    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                      <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd"/>
-                    </svg>
-                  </span>
-                </div>
-              </div>
-            </div>
-            {subjectAvailableGroups.length > 0 ? (
-              <div>
-                <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Group</label>
-                <div className="relative">
-                  <select
-                    value={subjectForm.groupId}
-                    onChange={(event) => setSubjectForm({ ...subjectForm, groupId: event.target.value })}
-                    className="w-full appearance-none rounded border border-slate-300 bg-white px-4 py-2.5 pr-10 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                  >
-                    <option value="">Unassigned</option>
-                    {subjectAvailableGroups.map((g) => (
-                      <option key={g.id} value={g.id}>{g.name}</option>
-                    ))}
-                  </select>
-                  <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-500">
-                    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                      <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd"/>
-                    </svg>
-                  </span>
-                </div>
-                <p className="mt-2 text-xs text-slate-500">Optionally select a group; subjects can vary by group.</p>
-              </div>
-            ) : null}
-            <div className="flex items-center justify-end gap-3 py-5 border-t border-slate-100 bg-slate-50/60 rounded-b-3xl">
-              <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
-              <Button type="submit">{editingSubject ? 'Save changes' : 'Create subject'}</Button>
-            </div>
-          </form>
-        </div>
-      </div>
+      {/* Subject creation/editing moved to Teacher Assignments page */}
 
-      <TeacherAssignmentModal
-        open={activeModal === 'assign'}
-        onClose={closeModal}
-        title="Assign teacher"
-        submitLabel="Save assignment"
-        teachers={teachers.map((teacher) => ({
-          id: teacher.id,
-          fullName: teacher.fullName,
-          subjectSpecialization: teacher.subjectSpecialization,
-        }))}
-        classCourses={classes.map((cls) => ({ id: cls.id, name: cls.name, section: cls.section }))}
-        subjects={subjects.map((subject) => ({ id: subject.id, name: subject.name, code: subject.code, classCourseId: subject.classCourseId }))}
-        assignments={assignments.map((assignment) => ({ subjectId: assignment.subjectId, teacherId: assignment.teacherId }))}
-        initialValues={{
-          teacherId: assignForm.teacherId,
-          classCourseId: assignForm.classCourseId,
-          subjectId: assignForm.subjectId,
-        }}
-        isSubmitting={false}
-        onSubmit={async (values) => {
-          try {
-            await createTeacherAssignment({
-              teacherId: values.teacherId,
-              classCourseId: values.classCourseId,
-              subjectId: values.subjectId,
-            });
-            await loadData();
-            closeModal();
-          } catch (err) {
-            console.error('Teacher assignment failed:', err);
-            const message = err instanceof Error ? err.message : String(err);
-            alert(`Unable to assign the teacher. ${message}`);
-          }
-        }}
-      />
+      <Modal open={activeModal === 'view-subjects'} onClose={closeModal} title={classes.find((cls) => cls.id === viewSubjectsForClass)?.name ?? 'Class subjects'} description="View all subjects that belong to this class.">
+        <div className="space-y-4">
+          {subjects.filter((subject) => subject.classCourseId === viewSubjectsForClass).map((subject) => {
+            const teacherName = assignmentMap[subject.id]?.teacherName ?? 'Unassigned';
+            return (
+              <div key={subject.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="font-semibold text-slate-900">{subject.name}</p>
+                <p className="text-sm text-slate-500">Code: {subject.code}</p>
+                <p className="text-sm text-slate-500">Teacher: {teacherName}</p>
+              </div>
+            );
+          })}
+          {subjects.filter((subject) => subject.classCourseId === viewSubjectsForClass).length === 0 ? (
+            <p className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500">No subjects have been added to this class yet.</p>
+          ) : null}
+        </div>
+      </Modal>
+
+      {/* Teacher assignment moved to Teacher Assignments page */}
+
+      </div>
 
       <AmsDeleteComfiramtionModal
         open={activeModal === 'delete' && Boolean(deleteTarget)}
