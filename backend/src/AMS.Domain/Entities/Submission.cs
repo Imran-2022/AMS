@@ -20,11 +20,17 @@ public class Submission
     public Guid? GradedByTeacherId { get; private set; }
     public DateTime? GradedAt { get; private set; }
 
+    public Assignment Assignment { get; private set; } = null!;
+    public User Student { get; private set; } = null!;
+
     private Submission() { }
 
-    public Submission(Guid id, Guid assignmentId, Guid studentId, string contentText, string? fileUrl, DateTime submittedAt, bool isLate, SubmissionStatus status,
-        string? fileName = null, DateTime? resubmittedAt = null, int resubmissionCount = 0)
+    public Submission(Guid id, Guid assignmentId, Guid studentId, string contentText, string? fileUrl, string? fileName, DateTime submittedAt, bool isLate, SubmissionStatus status,
+        DateTime? resubmittedAt = null, int resubmissionCount = 0)
     {
+        if (assignmentId == Guid.Empty) throw new DomainException("Assignment is required.");
+        if (studentId == Guid.Empty) throw new DomainException("Student is required.");
+
         Id = id;
         AssignmentId = assignmentId;
         StudentId = studentId;

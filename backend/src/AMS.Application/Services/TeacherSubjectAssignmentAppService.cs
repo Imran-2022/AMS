@@ -35,7 +35,7 @@ public class TeacherSubjectAssignmentAppService : ITeacherSubjectAssignmentAppSe
         };
 
         var result = new List<TeacherSubjectAssignmentDto>();
-        var teacherCache = new Dictionary<Guid, AppUser>();
+        var teacherCache = new Dictionary<Guid, User>();
 
         foreach (var assignment in assignments)
         {

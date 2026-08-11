@@ -121,7 +121,7 @@ public class DashboardAppService : IDashboardAppService
             GroupName = enrolledClasses.FirstOrDefault()?.GroupId is Guid groupId
                 ? (await _groupRepository.GetByIdAsync(groupId))?.Name
                 : null,
-            AcademicYear = enrolledClasses.FirstOrDefault()?.AcademicYear ?? string.Empty,
+            AcademicYear = enrolledClasses.FirstOrDefault()?.AcademicYear?.Name ?? string.Empty,
             EnrolledClassesCount = enrollments.Count,
             ActiveAssignmentsCount = allAssignments.Count,
             SubmittedCount = submitted,

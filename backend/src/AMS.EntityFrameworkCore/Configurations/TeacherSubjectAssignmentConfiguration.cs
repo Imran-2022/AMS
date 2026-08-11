@@ -14,12 +14,12 @@ public class TeacherSubjectAssignmentConfiguration : IEntityTypeConfiguration<Te
         builder.Property(x => x.SubjectId).HasColumnName("subject_id").IsRequired();
         builder.Property(x => x.ClassCourseId).HasColumnName("class_course_id").IsRequired();
 
-        builder.HasOne<AppUser>()
+        builder.HasOne(x => x.Teacher)
             .WithMany()
             .HasForeignKey(x => x.TeacherId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne<Subject>()
+        builder.HasOne(x => x.Subject)
             .WithMany()
             .HasForeignKey(x => x.SubjectId)
             .OnDelete(DeleteBehavior.Cascade);

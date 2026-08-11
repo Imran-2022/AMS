@@ -36,15 +36,35 @@ public class ClassCourseRepository : IClassCourseRepository
                 if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync(cancellationToken);
                 using (var cmd = conn.CreateCommand())
                 {
-                    cmd.CommandText = "SELECT \"Id\", \"name\", \"section\", \"academic_year\" FROM class_courses";
-                    await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
-                    while (await reader.ReadAsync(cancellationToken))
+                    // Try reading the new `academic_year_id` column first
+                    cmd.CommandText = "SELECT \"Id\", \"name\", \"section\", \"academic_year_id\", \"class_definition_id\", \"group_id\" FROM class_courses";
+                    try
                     {
-                        var id = reader.GetFieldValue<Guid>(0);
-                        var name = reader.IsDBNull(1) ? string.Empty : reader.GetString(1);
-                        var section = reader.IsDBNull(2) ? string.Empty : reader.GetString(2);
-                        var academicYear = reader.IsDBNull(3) ? string.Empty : reader.GetString(3);
-                        results.Add(new ClassCourse(id, name, section, academicYear));
+                        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+                        while (await reader.ReadAsync(cancellationToken))
+                        {
+                            var id = reader.GetFieldValue<Guid>(0);
+                            var name = reader.IsDBNull(1) ? string.Empty : reader.GetString(1);
+                            var section = reader.IsDBNull(2) ? string.Empty : reader.GetString(2);
+                            var academicYearId = reader.IsDBNull(3) ? Guid.Empty : reader.GetFieldValue<Guid>(3);
+                            var classDefId = reader.IsDBNull(4) ? Guid.Empty : reader.GetFieldValue<Guid>(4);
+                            var groupId = reader.IsDBNull(5) ? (Guid?)null : reader.GetFieldValue<Guid>(5);
+                            results.Add(new ClassCourse(id, name, section, academicYearId, classDefId, groupId));
+                        }
+                    }
+                    catch
+                    {
+                        // Fallback to legacy `academic_year` string column
+                        cmd.CommandText = "SELECT \"Id\", \"name\", \"section\", \"academic_year\" FROM class_courses";
+                        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+                        while (await reader.ReadAsync(cancellationToken))
+                        {
+                            var id = reader.GetFieldValue<Guid>(0);
+                            var name = reader.IsDBNull(1) ? string.Empty : reader.GetString(1);
+                            var section = reader.IsDBNull(2) ? string.Empty : reader.GetString(2);
+                            var academicYear = reader.IsDBNull(3) ? string.Empty : reader.GetString(3);
+                            results.Add(new ClassCourse(id, name, section, academicYear));
+                        }
                     }
                 }
 

@@ -25,12 +25,12 @@ public class SubmissionConfiguration : IEntityTypeConfiguration<Submission>
         builder.Property(x => x.GradedByTeacherId).HasColumnName("graded_by_teacher_id");
         builder.Property(x => x.GradedAt).HasColumnName("graded_at");
 
-        builder.HasOne<Assignment>()
+        builder.HasOne(x => x.Assignment)
             .WithMany()
             .HasForeignKey(x => x.AssignmentId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne<AppUser>()
+        builder.HasOne(x => x.Student)
             .WithMany()
             .HasForeignKey(x => x.StudentId)
             .OnDelete(DeleteBehavior.Cascade);

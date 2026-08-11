@@ -60,25 +60,43 @@ if (academicYears.Count == 0)
     await academicYearRepo.AddAsync(fy2028, CancellationToken.None);
 }
 
+// Refresh academic years after potential seeding
+academicYears = await academicYearRepo.GetAllAsync(CancellationToken.None);
+var defaultAcademicYear = academicYears.FirstOrDefault(a => a.IsActive) ?? academicYears.First();
+
 var adminExists = await userRepo.GetByEmailAsync("admin@ams.local", CancellationToken.None);
 if (adminExists is null)
 {
-    await userRepo.AddAsync(new AppUser(Guid.NewGuid(), "System Admin", "admin@ams.local", BCrypt.Net.BCrypt.HashPassword("Admin123!"), UserRole.Admin));
+    var adminId = Guid.NewGuid();
+    await userRepo.AddAsync(new User(adminId, "System Admin", "admin@ams.local", BCrypt.Net.BCrypt.HashPassword("Admin123!"), UserRole.Admin));
 }
 
 var teacherExists = await userRepo.GetByEmailAsync("teacher@ams.local", CancellationToken.None);
 if (teacherExists is null)
 {
-    await userRepo.AddAsync(new AppUser(Guid.NewGuid(), "Ava Teacher", "teacher@ams.local", BCrypt.Net.BCrypt.HashPassword("Teacher123!"), UserRole.Teacher));
-    await userRepo.AddAsync(new AppUser(Guid.NewGuid(), "Ben Teacher", "teacher2@ams.local", BCrypt.Net.BCrypt.HashPassword("Teacher123!"), UserRole.Teacher));
+    var t1Id = Guid.NewGuid();
+    var t1Profile = new TeacherProfile(t1Id, "EMP-1001", "Mathematics", "MSc", DateTime.UtcNow);
+    await userRepo.AddAsync(new User(t1Id, "Ava Teacher", "teacher@ams.local", BCrypt.Net.BCrypt.HashPassword("Teacher123!"), UserRole.Teacher, teacherProfile: t1Profile));
+
+    var t2Id = Guid.NewGuid();
+    var t2Profile = new TeacherProfile(t2Id, "EMP-1002", "Science", "MSc", DateTime.UtcNow);
+    await userRepo.AddAsync(new User(t2Id, "Ben Teacher", "teacher2@ams.local", BCrypt.Net.BCrypt.HashPassword("Teacher123!"), UserRole.Teacher, teacherProfile: t2Profile));
 }
 
 var studentExists = await userRepo.GetByEmailAsync("student@ams.local", CancellationToken.None);
 if (studentExists is null)
 {
-    await userRepo.AddAsync(new AppUser(Guid.NewGuid(), "Mina Student", "student@ams.local", BCrypt.Net.BCrypt.HashPassword("Student123!"), UserRole.Student));
-    await userRepo.AddAsync(new AppUser(Guid.NewGuid(), "Noah Student", "student2@ams.local", BCrypt.Net.BCrypt.HashPassword("Student123!"), UserRole.Student));
-    await userRepo.AddAsync(new AppUser(Guid.NewGuid(), "Omar Student", "student3@ams.local", BCrypt.Net.BCrypt.HashPassword("Student123!"), UserRole.Student));
+    var s1Id = Guid.NewGuid();
+    var s1Profile = new StudentProfile(s1Id, "S-1001", "Mina's Parent", "parent1@example.com", "1234567890", DateTime.UtcNow);
+    await userRepo.AddAsync(new User(s1Id, "Mina Student", "student@ams.local", BCrypt.Net.BCrypt.HashPassword("Student123!"), UserRole.Student, studentProfile: s1Profile));
+
+    var s2Id = Guid.NewGuid();
+    var s2Profile = new StudentProfile(s2Id, "S-1002", "Noah's Parent", "parent2@example.com", "1234567891", DateTime.UtcNow);
+    await userRepo.AddAsync(new User(s2Id, "Noah Student", "student2@ams.local", BCrypt.Net.BCrypt.HashPassword("Student123!"), UserRole.Student, studentProfile: s2Profile));
+
+    var s3Id = Guid.NewGuid();
+    var s3Profile = new StudentProfile(s3Id, "S-1003", "Omar's Parent", "parent3@example.com", "1234567892", DateTime.UtcNow);
+    await userRepo.AddAsync(new User(s3Id, "Omar Student", "student3@ams.local", BCrypt.Net.BCrypt.HashPassword("Student123!"), UserRole.Student, studentProfile: s3Profile));
 }
 
 var classDefinitions = await classDefRepo.GetAllAsync(CancellationToken.None);
@@ -137,7 +155,7 @@ if (classCourse.Count == 0)
             Guid.NewGuid(),
             classDef.Name,
             index % 2 == 0 ? "A" : "B",
-            "2026-2027",
+            defaultAcademicYear.Id,
             classDef.Id,
             classDef.Name == "Eleven" ? scienceGroupId : null))
         .ToList();
@@ -170,7 +188,7 @@ if (classCourse.Count == 0)
             var assignment = new Assignment(Guid.NewGuid(), "Algebra Basics", "Complete the algebra worksheet.", oneCourse.Id, math.Id, teacher.Id, DateTime.UtcNow.AddDays(7), 100, AssignmentStatus.Published, false, true, DateTime.UtcNow);
             await assignmentRepo.AddAsync(assignment, CancellationToken.None);
 
-            var submission = new Submission(Guid.NewGuid(), assignment.Id, student.Id, "Completed worksheet.", null, DateTime.UtcNow, false, SubmissionStatus.Submitted);
+            var submission = new Submission(Guid.NewGuid(), assignment.Id, student.Id, "Completed worksheet.", null, null, DateTime.UtcNow, false, SubmissionStatus.Submitted);
             await submissionRepo.AddAsync(submission, CancellationToken.None);
         }
     }

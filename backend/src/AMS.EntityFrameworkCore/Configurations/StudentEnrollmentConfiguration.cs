@@ -13,12 +13,12 @@ public class StudentEnrollmentConfiguration : IEntityTypeConfiguration<StudentEn
         builder.Property(x => x.StudentId).HasColumnName("student_id").IsRequired();
         builder.Property(x => x.ClassCourseId).HasColumnName("class_course_id").IsRequired();
 
-        builder.HasOne<AppUser>()
+        builder.HasOne(x => x.Student)
             .WithMany()
             .HasForeignKey(x => x.StudentId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne<ClassCourse>()
+        builder.HasOne(x => x.ClassCourse)
             .WithMany()
             .HasForeignKey(x => x.ClassCourseId)
             .OnDelete(DeleteBehavior.Cascade);

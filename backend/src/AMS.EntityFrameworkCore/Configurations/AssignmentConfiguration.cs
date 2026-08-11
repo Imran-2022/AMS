@@ -24,17 +24,17 @@ public class AssignmentConfiguration : IEntityTypeConfiguration<Assignment>
         builder.Property(x => x.AllowResubmission).HasColumnName("allow_resubmission").IsRequired();
         builder.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
 
-        builder.HasOne<ClassCourse>()
+        builder.HasOne(x => x.ClassCourse)
             .WithMany()
             .HasForeignKey(x => x.ClassCourseId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne<Subject>()
+        builder.HasOne(x => x.Subject)
             .WithMany()
             .HasForeignKey(x => x.SubjectId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne<AppUser>()
+        builder.HasOne(x => x.Teacher)
             .WithMany()
             .HasForeignKey(x => x.TeacherId)
             .OnDelete(DeleteBehavior.Cascade);

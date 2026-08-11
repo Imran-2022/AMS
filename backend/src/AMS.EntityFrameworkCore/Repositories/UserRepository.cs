@@ -13,24 +13,24 @@ public class UserRepository : IUserRepository
         _dbContext = dbContext;
     }
 
-    public async Task<AppUser?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
-        => await _dbContext.AppUsers.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+    public async Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        => await _dbContext.Users.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
-    public async Task<AppUser?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
-        => await _dbContext.AppUsers.FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
+    public async Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
+        => await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
 
-    public async Task<IReadOnlyList<AppUser>> GetAllAsync(CancellationToken cancellationToken = default)
-        => await _dbContext.AppUsers.ToListAsync(cancellationToken);
+    public async Task<IReadOnlyList<User>> GetAllAsync(CancellationToken cancellationToken = default)
+        => await _dbContext.Users.ToListAsync(cancellationToken);
 
-    public async Task AddAsync(AppUser user, CancellationToken cancellationToken = default)
+    public async Task AddAsync(User user, CancellationToken cancellationToken = default)
     {
-        await _dbContext.AppUsers.AddAsync(user, cancellationToken);
+        await _dbContext.Users.AddAsync(user, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task UpdateAsync(AppUser user, CancellationToken cancellationToken = default)
+    public async Task UpdateAsync(User user, CancellationToken cancellationToken = default)
     {
-        var existing = await _dbContext.AppUsers.FindAsync(new object[] { user.Id }, cancellationToken);
+        var existing = await _dbContext.Users.FindAsync(new object[] { user.Id }, cancellationToken);
         if (existing is not null && !ReferenceEquals(existing, user))
         {
             _dbContext.Entry(existing).State = EntityState.Detached;
@@ -43,10 +43,10 @@ public class UserRepository : IUserRepository
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await _dbContext.AppUsers.FindAsync(new object[] { id }, cancellationToken);
+        var entity = await _dbContext.Users.FindAsync(new object[] { id }, cancellationToken);
         if (entity is not null)
         {
-            _dbContext.AppUsers.Remove(entity);
+            _dbContext.Users.Remove(entity);
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
     }

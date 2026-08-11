@@ -14,7 +14,7 @@ public class AuthAppServiceTests
     {
         var repo = new Mock<IUserRepository>(MockBehavior.Strict);
         repo.Setup(r => r.GetByEmailAsync("unknown@example.com", It.IsAny<CancellationToken>()))
-            .ReturnsAsync((AppUser?)null);
+            .ReturnsAsync((User?)null);
 
         var service = new AuthAppService(repo.Object);
 
@@ -27,7 +27,7 @@ public class AuthAppServiceTests
     public async Task LoginAsync_Should_Return_Null_For_Wrong_Password()
     {
         var passwordHash = BCrypt.Net.BCrypt.HashPassword("correct");
-        var user = new AppUser(Guid.NewGuid(), "Test User", "test@example.com", passwordHash, UserRole.Student);
+        var user = new User(Guid.NewGuid(), "Test User", "test@example.com", passwordHash, UserRole.Student);
 
         var repo = new Mock<IUserRepository>(MockBehavior.Strict);
         repo.Setup(r => r.GetByEmailAsync("test@example.com", It.IsAny<CancellationToken>()))
@@ -44,7 +44,7 @@ public class AuthAppServiceTests
     public async Task LoginAsync_Should_Return_User_For_Correct_Password()
     {
         var passwordHash = BCrypt.Net.BCrypt.HashPassword("correct");
-        var user = new AppUser(Guid.NewGuid(), "Test User", "test@example.com", passwordHash, UserRole.Student);
+        var user = new User(Guid.NewGuid(), "Test User", "test@example.com", passwordHash, UserRole.Student);
 
         var repo = new Mock<IUserRepository>(MockBehavior.Strict);
         repo.Setup(r => r.GetByEmailAsync("test@example.com", It.IsAny<CancellationToken>()))

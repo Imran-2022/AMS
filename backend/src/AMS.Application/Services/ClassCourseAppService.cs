@@ -62,7 +62,7 @@ public class ClassCourseAppService : IClassCourseAppService
         if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can manage classes.");
         // Prevent duplicates within the same academic year
         var existing = await _classCourseRepository.GetAllAsync(cancellationToken);
-        var duplicate = existing.Any(x => string.Equals(x.AcademicYear, input.AcademicYear, StringComparison.OrdinalIgnoreCase)
+        var duplicate = existing.Any(x => x.AcademicYearId == input.AcademicYearId
             && x.Section == input.Section
             && ((input.ClassDefinitionId != null && x.ClassDefinitionId == input.ClassDefinitionId) || (input.ClassDefinitionId == null && x.Name == input.Name))
             && ((input.GroupId == null && x.GroupId == null) || (input.GroupId != null && x.GroupId == input.GroupId)));
@@ -72,7 +72,7 @@ public class ClassCourseAppService : IClassCourseAppService
         await EnsureValidGroupSelectionAsync(input.ClassDefinitionId, input.GroupId, input.Name, cancellationToken);
 
         var nameToUse = input.Name;
-        var entity = new ClassCourse(Guid.NewGuid(), nameToUse, input.Section, input.AcademicYear, input.ClassDefinitionId, input.GroupId);
+        var entity = new ClassCourse(Guid.NewGuid(), nameToUse, input.Section, input.AcademicYearId, input.ClassDefinitionId ?? Guid.Empty, input.GroupId);
         await _classCourseRepository.AddAsync(entity, cancellationToken);
         return ToDto(entity);
     }
@@ -85,10 +85,10 @@ public class ClassCourseAppService : IClassCourseAppService
         var groupId = input.GroupId ?? entity.GroupId;
         await EnsureValidGroupSelectionAsync(classDefinitionId, groupId, input.Name ?? entity.Name, cancellationToken);
 
-        var updated = new ClassCourse(entity.Id, input.Name ?? entity.Name, input.Section ?? entity.Section, input.AcademicYear ?? entity.AcademicYear, classDefinitionId, groupId);
+        var updated = new ClassCourse(entity.Id, input.Name ?? entity.Name, input.Section ?? entity.Section, input.AcademicYearId ?? entity.AcademicYearId, classDefinitionId, groupId);
         // Prevent duplicates
         var all = await _classCourseRepository.GetAllAsync(cancellationToken);
-        var duplicate = all.Any(x => x.Id != entity.Id && string.Equals(x.AcademicYear, updated.AcademicYear, StringComparison.OrdinalIgnoreCase)
+        var duplicate = all.Any(x => x.Id != entity.Id && x.AcademicYearId == updated.AcademicYearId
             && x.Section == updated.Section
             && x.ClassDefinitionId == updated.ClassDefinitionId
             && x.GroupId == updated.GroupId);
@@ -159,7 +159,8 @@ public class ClassCourseAppService : IClassCourseAppService
         Id = entity.Id,
         Name = entity.Name,
         Section = entity.Section,
-        AcademicYear = entity.AcademicYear,
+        AcademicYearId = entity.AcademicYearId,
+        AcademicYearName = entity.AcademicYear?.Name,
         ClassDefinitionId = entity.ClassDefinitionId,
         GroupId = entity.GroupId
     };

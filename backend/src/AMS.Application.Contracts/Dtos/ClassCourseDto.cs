@@ -5,7 +5,8 @@ public class ClassCourseDto
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Section { get; set; } = string.Empty;
-    public string AcademicYear { get; set; } = string.Empty;
+    public Guid AcademicYearId { get; set; }
+    public string? AcademicYearName { get; set; }
     public Guid? ClassDefinitionId { get; set; }
     public string? ClassDefinitionName { get; set; }
     public Guid? GroupId { get; set; }
@@ -19,7 +20,7 @@ public class CreateClassCourseDto
     public Guid? GroupId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Section { get; set; } = string.Empty;
-    public string AcademicYear { get; set; } = string.Empty;
+    public Guid AcademicYearId { get; set; }
 }
 
 public class UpdateClassCourseDto
@@ -28,5 +29,5 @@ public class UpdateClassCourseDto
     public Guid? GroupId { get; set; }
     public string? Name { get; set; }
     public string? Section { get; set; }
-    public string? AcademicYear { get; set; }
+    public Guid? AcademicYearId { get; set; }
 }

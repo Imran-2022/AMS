@@ -32,7 +32,7 @@ public class WebAppFactoryRbacTests : IClassFixture<WebApplicationFactory<Progra
         var ownerId = Guid.NewGuid();
         var otherId = Guid.NewGuid();
 
-        var submission = new Submission(submissionId, Guid.NewGuid(), ownerId, "", null, DateTime.UtcNow, false, AMS.Domain.Shared.SubmissionStatus.Submitted);
+        var submission = new Submission(submissionId, Guid.NewGuid(), ownerId, "", null, null, DateTime.UtcNow, false, AMS.Domain.Shared.SubmissionStatus.Submitted);
 
         var submissionRepo = new Mock<ISubmissionRepository>();
         submissionRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Guid id, CancellationToken _) => id == submissionId ? submission : null);
@@ -68,7 +68,7 @@ public class WebAppFactoryRbacTests : IClassFixture<WebApplicationFactory<Progra
         var assignmentId = Guid.NewGuid();
         var teacherId = Guid.NewGuid();
 
-        var submission = new Submission(submissionId, assignmentId, Guid.NewGuid(), "", null, DateTime.UtcNow, false, AMS.Domain.Shared.SubmissionStatus.Submitted);
+        var submission = new Submission(submissionId, assignmentId, Guid.NewGuid(), "", null, null, DateTime.UtcNow, false, AMS.Domain.Shared.SubmissionStatus.Submitted);
         var assignment = new Domain.Entities.Assignment(assignmentId, "t", "d", Guid.NewGuid(), Guid.NewGuid(), teacherId, DateTime.UtcNow.AddDays(1), 100, AMS.Domain.Shared.AssignmentStatus.Published, true, true, DateTime.UtcNow);
 
         var submissionRepo = new Mock<ISubmissionRepository>();
@@ -82,7 +82,7 @@ public class WebAppFactoryRbacTests : IClassFixture<WebApplicationFactory<Progra
             services.AddSingleton<IAssignmentRepository>(assignmentRepo.Object);
 
             var userRepo = new Mock<AMS.Domain.Repositories.IUserRepository>();
-            userRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(new AMS.Domain.Entities.AppUser(Guid.NewGuid(), "Student Name", "s@example.com", "hash", AMS.Domain.Shared.UserRole.Student));
+            userRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(new AMS.Domain.Entities.User(Guid.NewGuid(), "Student Name", "s@example.com", "hash", AMS.Domain.Shared.UserRole.Student));
             services.AddSingleton<AMS.Domain.Repositories.IUserRepository>(userRepo.Object);
 
             var classCourseRepo = new Mock<AMS.Domain.Repositories.IClassCourseRepository>();
@@ -109,7 +109,7 @@ public class WebAppFactoryRbacTests : IClassFixture<WebApplicationFactory<Progra
         var submissionId = Guid.NewGuid();
         var attachmentId = Guid.NewGuid();
         var attachment = new Attachment(attachmentId, "Submission", submissionId, "report.pdf", storedFileName, "application/pdf", 42, ownerId, DateTime.UtcNow);
-        var submission = new Submission(submissionId, assignmentId, ownerId, "", null, DateTime.UtcNow, false, AMS.Domain.Shared.SubmissionStatus.Submitted);
+        var submission = new Submission(submissionId, assignmentId, ownerId, "", null, null, DateTime.UtcNow, false, AMS.Domain.Shared.SubmissionStatus.Submitted);
 
         var attachmentRepo = new Mock<IAttachmentRepository>();
         attachmentRepo.Setup(r => r.GetByStoredFileNameAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((string fileName, CancellationToken _) => fileName == storedFileName ? attachment : null);
@@ -149,7 +149,7 @@ public class WebAppFactoryRbacTests : IClassFixture<WebApplicationFactory<Progra
         var submissionId = Guid.NewGuid();
         var attachmentId = Guid.NewGuid();
         var attachment = new Attachment(attachmentId, "Submission", submissionId, "report.pdf", storedFileName, "application/pdf", 42, ownerId, DateTime.UtcNow);
-        var submission = new Submission(submissionId, assignmentId, ownerId, "", null, DateTime.UtcNow, false, AMS.Domain.Shared.SubmissionStatus.Submitted);
+        var submission = new Submission(submissionId, assignmentId, ownerId, "", null, null, DateTime.UtcNow, false, AMS.Domain.Shared.SubmissionStatus.Submitted);
 
         var attachmentRepo = new Mock<IAttachmentRepository>();
         attachmentRepo.Setup(r => r.GetByStoredFileNameAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((string fileName, CancellationToken _) => fileName == storedFileName ? attachment : null);

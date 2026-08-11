@@ -114,7 +114,7 @@ public class SubmissionAppService : ISubmissionAppService
             return await ToDtoAsync(existing, cancellationToken).ConfigureAwait(false);
         }
 
-        var submission = new Submission(Guid.NewGuid(), assignment.Id, _currentUser.UserId, input.ContentText, input.FileUrl, DateTime.UtcNow, false, SubmissionStatus.Submitted, input.FileName);
+        var submission = new Submission(Guid.NewGuid(), assignment.Id, _currentUser.UserId, input.ContentText, input.FileUrl, input.FileName, DateTime.UtcNow, false, SubmissionStatus.Submitted);
         submission.Submit(DateTime.UtcNow, assignment.Deadline, assignment.AllowLateSubmission, assignment);
         await _submissionRepository.AddAsync(submission, cancellationToken);
         return await ToDtoAsync(submission, cancellationToken).ConfigureAwait(false);

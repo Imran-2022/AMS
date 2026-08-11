@@ -88,7 +88,7 @@ public class StudentEnrollmentAppService : IEnrollmentAppService
         foreach (var studentEnrollment in studentEnrollments)
         {
             var enrolledClass = await _classCourseRepository.GetByIdAsync(studentEnrollment.ClassCourseId, cancellationToken);
-            if (enrolledClass is not null && string.Equals(enrolledClass.AcademicYear, classCourse.AcademicYear, StringComparison.OrdinalIgnoreCase))
+            if (enrolledClass is not null && enrolledClass.AcademicYearId == classCourse.AcademicYearId)
             {
                 throw new ValidationException("A student can only be enrolled in one class per academic year.");
             }
