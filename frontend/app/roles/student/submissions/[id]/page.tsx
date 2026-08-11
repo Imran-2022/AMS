@@ -73,6 +73,25 @@ export default function StudentSubmissionDetailPage() {
 
   const isGraded = submission?.status === 'Graded';
 
+  const getStudentStatusLabel = (status: string | undefined) => {
+    switch (status) {
+      case 'Graded':
+        return 'Graded';
+      case 'ResubmissionRequested':
+        return 'Resubmission Requested';
+      case 'Resubmitted':
+        return 'Resubmitted';
+      case 'Resubmission':
+        return 'Resubmission';
+      case 'Excused':
+        return 'Excused';
+      case 'Submitted':
+        return 'Submitted';
+      default:
+        return status ?? 'Submitted';
+    }
+  };
+
   const statusBadge = (() => {
     if (submission?.status === 'Graded') {
       return {
@@ -82,8 +101,24 @@ export default function StudentSubmissionDetailPage() {
       };
     }
 
+    if (submission?.status === 'ResubmissionRequested') {
+      return {
+        label: 'Resubmission Requested',
+        className: 'bg-rose-50 text-rose-700',
+        dotClassName: 'bg-rose-500',
+      };
+    }
+
+    if (submission?.status === 'Excused') {
+      return {
+        label: 'Excused',
+        className: 'bg-slate-100 text-slate-700',
+        dotClassName: 'bg-slate-500',
+      };
+    }
+
     return {
-      label: submission?.status ?? 'Submitted',
+      label: getStudentStatusLabel(submission?.status),
       className: 'bg-sky-50 text-sky-600',
       dotClassName: 'bg-sky-500',
     };

@@ -17,6 +17,23 @@ type StudentAssignment = {
   status: string;
 };
 
+function getStudentStatusLabel(status: string | undefined) {
+  switch (status) {
+    case 'ResubmissionRequested':
+      return 'Resubmission Requested';
+    case 'Resubmission':
+      return 'Resubmission';
+    case 'Submitted':
+      return 'Submitted';
+    case 'Graded':
+      return 'Graded';
+    case 'Not submitted':
+      return 'Not submitted';
+    default:
+      return status ?? 'Not submitted';
+  }
+}
+
 export function StudentDashboardPage() {
   const [stats, setStats] = useState<StudentDashboardStats | null>(null);
   const [assignments, setAssignments] = useState<AssignmentDto[]>([]);
@@ -49,24 +66,58 @@ export function StudentDashboardPage() {
 
   const assignmentRows = useMemo(() => {
     const submissionMap = new Map(submissions.map((submission) => [submission.assignmentId, submission]));
+
     return assignments
-      .filter((assignment) => new Date(assignment.deadline) > new Date())
-      .filter((assignment) => !submissionMap.has(assignment.id))
+      .filter((assignment) => {
+        const submission = submissionMap.get(assignment.id);
+        if (!submission) {
+          return true;
+        }
+
+        if (submission.status === 'Graded') {
+          return false;
+        }
+
+        if (submission.status === 'ResubmissionRequested') {
+          return true;
+        }
+
+        if (submission.status === 'Resubmitted') {
+          return false;
+        }
+
+        return true;
+      })
       .slice(0, 4)
       .map((assignment) => {
+        const submission = submissionMap.get(assignment.id);
         return {
           id: assignment.id,
           title: assignment.title,
           subject: assignment.subjectName,
           deadline: assignment.deadline,
           maxMarks: assignment.maxMarks,
+          status: submission?.status,
+          titleText: submission?.status === 'ResubmissionRequested'
+            ? `${assignment.title} (Resubmission Requested)`
+            : assignment.title,
         };
       });
   }, [assignments, submissions]);
 
   const pendingCount = assignments
-    .filter((assignment) => new Date(assignment.deadline) > new Date())
-    .filter((assignment) => !submissions.some((submission) => submission.assignmentId === assignment.id)).length;
+    .filter((assignment) => {
+      const submission = submissions.find((item) => item.assignmentId === assignment.id);
+      if (!submission || submission.status === 'ResubmissionRequested') {
+        return true;
+      }
+
+      if (submission.status === 'Graded' || submission.status === 'Resubmitted') {
+        return false;
+      }
+
+      return true;
+    }).length;
   const gradedCount = submissions.filter((item) => item.status === 'Graded').length;
   const gradedSubmissions = submissions.filter((item) =>
     item.status === 'Graded' &&
@@ -167,7 +218,7 @@ export function StudentDashboardPage() {
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <p className="text-sm font-bold text-slate-800">{item.title}</p>
+                        <p className="text-sm font-bold text-slate-800">{item.titleText ?? item.title}</p>
                         <p className="text-xs text-slate-400 mt-0.5">{item.subject}</p>
                       </div>
                       <div className="shrink-0 flex flex-col items-end gap-1 text-right">
@@ -510,7 +561,13 @@ export function StudentAssignmentsPage() {
           {filteredAssignments.length ? (
             pagedAssignments.map((assignment) => {
               const badgeClass = statusBadgeClass(assignment.studentStatus);
-              const statusLabel = assignment.studentStatus === 'Not submitted' ? (isPastDue(assignment.deadline) ? 'Missing' : 'Due soon') : assignment.studentStatus === 'Submitted' ? 'Submitted' : assignment.studentStatus === 'Graded' ? 'Graded' : assignment.studentStatus;
+              const statusLabel = assignment.studentStatus === 'Not submitted'
+                ? (isPastDue(assignment.deadline) ? 'Missing' : 'Due soon')
+                : assignment.studentStatus === 'Submitted'
+                  ? 'Submitted'
+                  : assignment.studentStatus === 'Graded'
+                    ? 'Graded'
+                    : getStudentStatusLabel(assignment.studentStatus);
 
               return (
                 <Link href={`/roles/student/assignments/${assignment.id}`} key={assignment.id} className={`group block rounded-2xl border bg-white p-5 transition hover:border-brand-500 hover:shadow-md focus-visible:border-brand-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 ${assignment.studentStatus === 'Not submitted' && isPastDue(assignment.deadline) ? 'border-dashed border-rose-200' : 'border-slate-200'}`}>

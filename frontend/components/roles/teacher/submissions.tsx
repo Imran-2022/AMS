@@ -35,7 +35,7 @@ function getStatusLabel(status: string) {
     case 'Graded':
       return 'Graded';
     case 'ResubmissionRequested':
-      return 'Needs revision';
+      return 'Resubmission Requested';
     case 'Late':
       return 'Late';
     case 'UnderReview':

@@ -89,7 +89,7 @@ export default function TeacherSubmissionDetailPage() {
         case 'Graded':
           return 'Graded';
         case 'ResubmissionRequested':
-          return 'Needs revision';
+          return 'Resubmission Requested';
         case 'Excused':
           return 'Excused';
         default:
@@ -302,7 +302,7 @@ export default function TeacherSubmissionDetailPage() {
                   <select value={status} onChange={(event) => setStatus(event.target.value)} className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100">
                     <option value="Submitted">Submitted</option>
                     <option value="Graded">Graded</option>
-                    <option value="ResubmissionRequested">Needs revision — ask to resubmit</option>
+                    <option value="ResubmissionRequested">Resubmission Requested</option>
                     <option value="Excused">Excused — no penalty</option>
                   </select>
                   <p className="mt-2 text-[11.5px] text-slate-400">Changing status notifies the student automatically.</p>
