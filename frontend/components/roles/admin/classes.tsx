@@ -12,15 +12,13 @@ import {
   deleteSubject,
   getClassCourses,
   getSubjects,
-  getUsers,
   getClassDefinitions,
   getGroupsForClass,
   getAcademicYears,
-  getActiveAcademicYear,
 } from '@/lib/api';
 import { getEnrollments } from '@/lib/api/enrollments';
-import { createTeacherAssignment, getTeacherAssignments } from '@/lib/api/teacherAssignments';
-import type { ClassCourseDto, SubjectDto, UserDto } from '@/lib/api';
+import { getTeacherAssignments } from '@/lib/api/teacherAssignments';
+import type { ClassCourseDto, SubjectDto } from '@/lib/api';
 import type { TeacherSubjectAssignmentDto } from '@/lib/api/teacherAssignments';
 
 function isHigherSecondaryClassName(className?: string) {
@@ -35,11 +33,8 @@ function isHigherSecondaryClassName(className?: string) {
 export function AdminClassesPage() {
   const [classes, setClasses] = useState<ClassCourseDto[]>([]);
   const [subjects, setSubjects] = useState<SubjectDto[]>([]);
-  const [teachers, setTeachers] = useState<UserDto[]>([]);
   const [assignments, setAssignments] = useState<TeacherSubjectAssignmentDto[]>([]);
-  const [selectedClass, setSelectedClass] = useState('All classes');
-  const [search, setSearch] = useState('');
-  const [activeModal, setActiveModal] = useState<'class' | 'subject' | 'assign' | 'view-subjects' | 'delete' | null>(null);
+  const [activeModal, setActiveModal] = useState<'class' | 'subject' | 'view-subjects' | 'delete' | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; type: 'class' | 'subject'; label: string } | null>(null);
   const [classForm, setClassForm] = useState({ classDefinitionId: '', groupId: '', name: '', section: '', year: '' });
   const [classDefinitions, setClassDefinitions] = useState<{ id: string; name: string }[]>([]);
@@ -50,11 +45,8 @@ export function AdminClassesPage() {
   const [subjectForm, setSubjectForm] = useState({ name: '', code: '', gradeId: '', groupId: '' });
   const [subjectAvailableGroups, setSubjectAvailableGroups] = useState<{ id: string; name: string }[]>([]);
   const [editingSubject, setEditingSubject] = useState<SubjectDto | null>(null);
-  const [assignForm, setAssignForm] = useState({ classDefinitionId: '', classCourseId: '', subjectId: '', teacherId: '' });
   const [classDefinitionMenuOpen, setClassDefinitionMenuOpen] = useState(false);
   const classDefinitionMenuRef = useRef<HTMLDivElement | null>(null);
-  const [assignClassMenuOpen, setAssignClassMenuOpen] = useState(false);
-  const assignClassMenuRef = useRef<HTMLDivElement | null>(null);
   const [actionMenuFor, setActionMenuFor] = useState<string | null>(null);
   const [viewSubjectsForClass, setViewSubjectsForClass] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -158,23 +150,6 @@ export function AdminClassesPage() {
     }
   }
 
-  useEffect(() => {
-    if (classes.length && !subjectForm) {
-      setSubjectForm((current) => ({ ...current, classCourseId: classes[0].id }));
-    }
-  }, [classes, subjectForm]);
-
-  useEffect(() => {
-    if (subjects.length && !assignForm.subjectId) {
-      setAssignForm((current) => ({ ...current, subjectId: subjects[0].id }));
-    }
-  }, [subjects, assignForm.subjectId]);
-
-  useEffect(() => {
-    if (teachers.length && !assignForm.teacherId) {
-      setAssignForm((current) => ({ ...current, teacherId: teachers[0].id }));
-    }
-  }, [teachers, assignForm.teacherId]);
 
   useEffect(() => {
     function handleDocumentClick(event: MouseEvent) {
@@ -205,35 +180,18 @@ export function AdminClassesPage() {
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, [classDefinitionMenuOpen]);
 
-  useEffect(() => {
-    if (!assignClassMenuOpen) return;
-
-    function handleOutsideClick(event: MouseEvent) {
-      const target = event.target as Node;
-      if (!assignClassMenuRef.current || assignClassMenuRef.current.contains(target)) {
-        return;
-      }
-      setAssignClassMenuOpen(false);
-    }
-
-    document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
-  }, [assignClassMenuOpen]);
-
   async function loadData() {
     try {
       setError(null);
-      const [apiClasses, apiSubjects, apiUsers, apiAssignments, apiEnrollments] = await Promise.all([
+      const [apiClasses, apiSubjects, apiAssignments, apiEnrollments] = await Promise.all([
         getClassCourses(),
         getSubjects(),
-        getUsers(),
         getTeacherAssignments(),
         getEnrollments(),
       ]);
 
       setClasses(apiClasses);
       setSubjects(apiSubjects);
-      setTeachers((apiUsers as UserDto[]).filter((user) => user.role === 'Teacher'));
       setAssignments(apiAssignments);
 
       const enrollmentCounts = apiEnrollments.reduce<Record<string, number>>((acc: Record<string, number>, e: any) => {
@@ -247,7 +205,7 @@ export function AdminClassesPage() {
     }
   }
 
-  function openModal(modal: 'class' | 'subject' | 'assign' | 'view-subjects', classCourseId?: string) {
+  function openModal(modal: 'class' | 'subject' | 'view-subjects', classCourseId?: string) {
     setActionMenuFor(null);
     setViewSubjectsForClass(null);
 
@@ -287,13 +245,6 @@ export function AdminClassesPage() {
 
     if (modal === 'view-subjects') {
       setViewSubjectsForClass(classCourseId ?? null);
-    }
-
-    if (modal === 'assign') {
-      const defaultClassDefinitionId = classDefinitions[0]?.id ?? '';
-      const defaultClassCourseId = classes.find((cls) => cls.classDefinitionId === defaultClassDefinitionId)?.id ?? classes[0]?.id ?? '';
-      const defaultSubjectId = subjects.find((subject) => subject.classCourseId === defaultClassCourseId)?.id ?? '';
-      setAssignForm({ classDefinitionId: defaultClassDefinitionId, classCourseId: defaultClassCourseId, subjectId: defaultSubjectId, teacherId: teachers[0]?.id ?? '' });
     }
 
     setActiveModal(modal);
@@ -440,57 +391,10 @@ export function AdminClassesPage() {
     setActiveModal('subject');
   }
 
-  async function handleAssignTeacher(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    const selectedTeacherId = assignForm.teacherId?.trim();
-    const selectedClassCourseId = assignForm.classCourseId?.trim();
-    const subject = subjects.find((item) => item.id === assignForm.subjectId);
-
-    if (!assignForm.classDefinitionId || !selectedClassCourseId) {
-      alert('Please select a valid class and section to assign.');
-      return;
-    }
-
-    if (!subject) {
-      alert('Please select a valid subject to assign.');
-      return;
-    }
-
-    if (!selectedTeacherId || !teachers.some((teacher) => teacher.id === selectedTeacherId)) {
-      alert('Please select a valid teacher to assign.');
-      return;
-    }
-
-    try {
-      await createTeacherAssignment({
-        teacherId: selectedTeacherId,
-        subjectId: subject.id,
-        classCourseId: selectedClassCourseId,
-      });
-
-      await loadData();
-      closeModal();
-    } catch (err) {
-      console.error('Teacher assignment failed:', err);
-      const message = err instanceof Error ? err.message : String(err);
-      alert(`Unable to assign the teacher. ${message}`);
-    }
-  }
-
-  const classCourseMap = useMemo(
-    () => Object.fromEntries(classes.map((cls) => [cls.id, cls])) as Record<string, ClassCourseDto>,
-    [classes]
-  );
 
   const assignmentMap = useMemo(
     () => Object.fromEntries(assignments.map((assignment) => [assignment.subjectId, assignment])),
     [assignments]
-  );
-
-  const classOptions = useMemo(
-    () => classes.map((cls) => ({ id: cls.id, label: `${cls.name} — ${cls.section}` })),
-    [classes]
   );
 
   const gradeOptions = useMemo(
@@ -498,77 +402,12 @@ export function AdminClassesPage() {
     [classDefinitions]
   );
 
-  const teacherOptions = useMemo(() => {
-    const subject = subjects.find((s) => s.id === assignForm.subjectId) ?? null;
-
-    // Build a set of teacherIds who already have this subject assigned
-    const assignedTeacherIds = new Set<string>(
-      (subject ? assignments.filter((a) => a.subjectId === subject.id).map((a) => a.teacherId) : [])
-    );
-
-    // Normalize helper: from stored "Name — CODE" or plain name to name
-    const normalize = (raw?: string) =>
-      (raw ?? '')
-        .split(',')
-        .map((v) => v.trim())
-        .map((val) => val.split('—')[0].trim())
-        .filter(Boolean);
-
-    if (!subject) {
-      // No subject selected — show all teachers
-      return teachers.map((teacher) => ({ id: teacher.id, label: teacher.fullName }));
-    }
-
-    const want = subject.name;
-
-    const filtered = teachers.filter((teacher) => {
-      // include if teacher already assigned to this subject
-      if (assignedTeacherIds.has(teacher.id)) return true;
-
-      const specs = normalize(teacher.subjectSpecialization);
-      return specs.some((s) => s.toLowerCase() === want.toLowerCase());
-    });
-
-    return filtered.map((t) => ({ id: t.id, label: t.fullName }));
-  }, [teachers, subjects, assignForm.subjectId, assignments]);
-
-  const sectionOptions = useMemo(
-    () => classes.map((cls) => ({ id: cls.id, label: `${cls.name} — ${cls.section}` })),
-    [classes]
-  );
-
-  const subjectAssignmentsBySubject = useMemo(
-    () =>
-      assignments.reduce<Record<string, TeacherSubjectAssignmentDto[]>>((acc, assignment) => {
-        acc[assignment.subjectId] = [...(acc[assignment.subjectId] ?? []), assignment];
-        return acc;
-      }, {}),
-    [assignments]
-  );
-
-  const filteredSubjects = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    return subjects.filter((subject) => {
-      const course = classCourseMap[subject.classCourseId];
-      const clsLabel = course ? `${course.name} — ${course.section}` : 'Unassigned';
-      const teacherName = assignmentMap[subject.id]?.teacherName ?? 'Unassigned';
-      const matchesClass = selectedClass === 'All classes' || clsLabel === selectedClass;
-      const matchesSearch =
-        !term ||
-        subject.name.toLowerCase().includes(term) ||
-        subject.code.toLowerCase().includes(term) ||
-        clsLabel.toLowerCase().includes(term) ||
-        teacherName.toLowerCase().includes(term);
-      return matchesClass && matchesSearch;
-    });
-  }, [search, selectedClass, subjects, classCourseMap, assignmentMap]);
-
-  const pagedSubjects = useMemo(() => {
+  const pagedClasses = useMemo(() => {
     const start = pageIndex * pageSize;
-    return filteredSubjects.slice(start, start + pageSize);
-  }, [filteredSubjects, pageIndex, pageSize]);
+    return classes.slice(start, start + pageSize);
+  }, [classes, pageIndex, pageSize]);
 
-  const pageCount = useMemo(() => Math.max(1, Math.ceil(filteredSubjects.length / pageSize)), [filteredSubjects.length, pageSize]);
+  const pageCount = useMemo(() => Math.max(1, Math.ceil(classes.length / pageSize)), [classes.length, pageSize]);
 
   useEffect(() => {
     if (pageIndex >= pageCount) {
@@ -576,49 +415,9 @@ export function AdminClassesPage() {
     }
   }, [pageCount, pageIndex]);
 
-  const classDefinitionOptions = useMemo(
-    () => classDefinitions.map((definition) => ({ id: definition.id, label: definition.name })),
-    [classDefinitions]
-  );
-
   const selectedClassDefinition = classDefinitions.find((definition) => definition.id === classForm.classDefinitionId);
   const selectedClassDefinitionLabel = selectedClassDefinition?.name ?? 'Select class';
   const requiresGroupSelection = isHigherSecondaryClassName(selectedClassDefinition?.name);
-
-  const selectedAssignClassDefinitionLabel = assignForm.classDefinitionId
-    ? classDefinitions.find((definition) => definition.id === assignForm.classDefinitionId)?.name ?? 'Select class'
-    : 'Select class';
-
-  const sectionOptionsForClass = useMemo(
-    () =>
-      classes
-        .filter((cls) => !assignForm.classDefinitionId || cls.classDefinitionId === assignForm.classDefinitionId)
-        .map((cls) => ({
-          id: cls.id,
-          label: `${cls.name} — ${cls.section}${cls.groupId ? ` (${groupNameMap[cls.groupId] ?? ''})` : ''}`,
-        })),
-    [classes, assignForm.classDefinitionId, groupNameMap]
-  );
-
-  const subjectSelectOptions = useMemo(() => {
-    return subjects
-      .filter((subject) => {
-        if (assignForm.classCourseId) {
-          return subject.classCourseId === assignForm.classCourseId;
-        }
-
-        if (assignForm.classDefinitionId) {
-          const course = classCourseMap[subject.classCourseId];
-          return course?.classDefinitionId === assignForm.classDefinitionId;
-        }
-
-        return false;
-      })
-      .map((subject) => ({
-        id: subject.id,
-        label: `${subject.name} — ${subject.code}`,
-      }));
-  }, [subjects, assignForm.classCourseId, assignForm.classDefinitionId, classCourseMap]);
 
   const classSubjectCounts = useMemo(
     () =>
@@ -666,7 +465,7 @@ export function AdminClassesPage() {
 
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {classes.map((cls) => (
+            {pagedClasses.map((cls) => (
               <div key={cls.id} className="bg-white rounded border border-slate-200 p-5">
                   <div className="flex items-start justify-between">
                   <div>
@@ -738,6 +537,17 @@ export function AdminClassesPage() {
               </div>
             ))}
           </div>
+
+          <AmsPagination
+            currentPage={pageIndex}
+            pageSize={pageSize}
+            totalItems={classes.length}
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
+            onPageChange={setPageIndex}
+            onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
+            label="Showing"
+            itemLabel="classes"
+          />
         </div>
 
         {/* Subjects & teacher assignments moved to Teacher Assignments page */}
