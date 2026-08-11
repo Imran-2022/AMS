@@ -125,6 +125,7 @@ export default function StudentAssignmentDetailPage() {
         ? await updateSubmission(submission.id, { contentText: comment })
         : await createSubmission({ assignmentId: assignment.id, contentText: comment });
 
+
       if (selectedFiles.length > 0) {
         await Promise.all(selectedFiles.map((file) => uploadAttachment('Submission', nextSubmission.id, file)));
       }

@@ -90,6 +90,8 @@ export default function TeacherSubmissionDetailPage() {
           return 'Graded';
         case 'ResubmissionRequested':
           return 'Resubmission Requested';
+        case 'Resubmitted':
+          return 'Resubmitted';
         case 'Excused':
           return 'Excused';
         default:
@@ -103,6 +105,8 @@ export default function TeacherSubmissionDetailPage() {
           return 'bg-emerald-50 text-emerald-700';
         case 'ResubmissionRequested':
           return 'bg-rose-50 text-rose-700';
+        case 'Resubmitted':
+          return 'bg-amber-50 text-amber-700';
         case 'Excused':
           return 'bg-slate-100 text-slate-700';
         default:
@@ -116,6 +120,8 @@ export default function TeacherSubmissionDetailPage() {
           return 'bg-emerald-500';
         case 'ResubmissionRequested':
           return 'bg-rose-500';
+        case 'Resubmitted':
+          return 'bg-amber-500';
         case 'Excused':
           return 'bg-slate-500';
         default:
@@ -207,6 +213,12 @@ export default function TeacherSubmissionDetailPage() {
                 {statusBadge.label}
               </span>
             </div>
+
+            {submission.status === 'Resubmitted' ? (
+              <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm text-amber-800">
+                The student has resubmitted this assignment after a resubmission request. Please review the updated work.
+              </div>
+            ) : null}
 
             <div className="grid grid-cols-[1fr_380px] gap-5 items-start">
               <div className="space-y-5">
@@ -303,7 +315,6 @@ export default function TeacherSubmissionDetailPage() {
                     <option value="Submitted">Submitted</option>
                     <option value="Graded">Graded</option>
                     <option value="ResubmissionRequested">Resubmission Requested</option>
-                    <option value="Excused">Excused — no penalty</option>
                   </select>
                   <p className="mt-2 text-[11.5px] text-slate-400">Changing status notifies the student automatically.</p>
                 </div>

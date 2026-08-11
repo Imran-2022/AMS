@@ -247,7 +247,12 @@ export function TeacherDashboardPage() {
                 <button key={submission.id} type="button" className="block w-full cursor-pointer border border-slate-100 rounded-xl p-4 text-left transition hover:bg-slate-50 focus:bg-slate-50 focus:outline-none" onClick={() => goToSubmissionDetail(submission.id)}>
                   <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="text-sm font-bold tracking-wide text-slate-800">{submission.assignmentTitle}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold tracking-wide text-slate-800">{submission.assignmentTitle}</p>
+                        {submission.status === 'Resubmitted' && (
+                          <span className="text-xs font-semibold text-amber-600 bg-amber-50 rounded-full px-2 py-0.5">Resubmitted</span>
+                        )}
+                      </div>
                       <p className="text-xs text-slate-400 mt-0.5">
                         {submission.classCourseName}
                         {submission.classCourseSection ? ` · ${submission.classCourseSection}` : ''}
