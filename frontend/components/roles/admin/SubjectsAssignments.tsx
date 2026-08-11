@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { Button, AmsPagination, Modal, TeacherAssignmentModal, AmsDeleteComfiramtionModal } from '../../ui';
+import { Button, PageHeader, AmsPagination, Modal, TeacherAssignmentModal, AmsDeleteComfiramtionModal } from '../../ui';
 import {
   getClassCourses,
   getSubjects,
@@ -159,9 +159,15 @@ export default function SubjectsAssignments() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-          <Button type="button" onClick={() => openModal('assign')} className="px-4 py-2.5">Assign teacher</Button>
-      </div>
+      <PageHeader
+        eyebrow="Administration"
+        title="Teacher assignments"
+        action={
+          <Button type="button" onClick={() => openModal('assign')} className="px-4 py-2.5">
+            Assign teacher
+          </Button>
+        }
+      />
 
       <div className="bg-white rounded border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap">
         <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="text-sm border border-slate-200 rounded px-3 py-2.5 text-slate-600 bg-white">
