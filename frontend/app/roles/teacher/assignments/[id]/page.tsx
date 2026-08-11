@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { AppShell } from '@/components/layout/AppShell';
+import { Button } from '@/components/ui/Button';
 import { getAssignment, updateAssignment, downloadAttachmentToBrowser, type AssignmentDto } from '@/lib/api';
 
 export default function TeacherAssignmentDetailPage() {
@@ -105,17 +107,23 @@ export default function TeacherAssignmentDetailPage() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <div className="flex-1 overflow-y-auto space-y-5">
-          <div className="flex items-start justify-between flex-wrap gap-3">
-            <div>
-              <div className="flex items-center gap-3 mt-1">
-                <h1 className="text-3xl font-extrabold text-slate-800">{assignmentTitle}</h1>
-                <span className="badge bg-emerald-50 text-emerald-600"><span className="badge-dot bg-emerald-500" />{assignment?.status ?? 'Draft'}</span>
-              </div>
+    <AppShell role="Teacher" breadcrumb="Teacher / Assignment">
+      <div className="space-y-5">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-3 mt-1">
+              <h1 className="text-3xl font-extrabold text-slate-800">{assignmentTitle}</h1>
+              <span className="badge bg-emerald-50 text-emerald-600"><span className="badge-dot bg-emerald-500" />{assignment?.status ?? 'Draft'}</span>
             </div>
           </div>
+
+          <Button type="button" variant="secondary" onClick={() => router.back()} className="!h-11 !gap-2 !px-4 !py-2 !text-sm !whitespace-nowrap">
+            <svg aria-hidden="true" className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+            Back
+          </Button>
+        </div>
 
           {error ? (
             <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 text-rose-700 text-sm">
@@ -124,18 +132,18 @@ export default function TeacherAssignmentDetailPage() {
           ) : null}
 
           {loading ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 text-sm text-slate-500">
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 text-sm text-slate-500">
               Loading assignment details...
             </div>
           ) : (
-            <div className="grid grid-cols-[1fr_340px] gap-5 items-start">
+            <div className="grid grid-cols-[1fr_340px] gap-4 items-start">
               <div className="space-y-5">
-                <div className="bg-white rounded-2xl border border-slate-200 p-6">
+                <div className="bg-white rounded-2xl border border-slate-200 p-5">
                   <p className="eyebrow mb-3">DESCRIPTION</p>
                   <p className="text-sm text-slate-600 leading-relaxed">{assignmentDescription}</p>
                 </div>
 
-                <div className="bg-white rounded-2xl border border-slate-200 p-6">
+                <div className="bg-white rounded-2xl border border-slate-200 p-5">
                   <p className="eyebrow">ATTACHMENTS</p>
                   <p className="text-xs text-slate-400 mt-0.5 mb-4">Reference files students can download.</p>
                   <div className="space-y-2.5">
@@ -158,7 +166,7 @@ export default function TeacherAssignmentDetailPage() {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl border border-slate-200 p-6">
+                <div className="bg-white rounded-2xl border border-slate-200 p-5">
                   <div className="flex items-center justify-between mb-4">
                     <p className="eyebrow">PROGRESS</p>
                     <span
@@ -249,8 +257,7 @@ export default function TeacherAssignmentDetailPage() {
               </div>
             </div>
           )}
-        </div>
       </div>
-    </div>
+    </AppShell>
   );
 }

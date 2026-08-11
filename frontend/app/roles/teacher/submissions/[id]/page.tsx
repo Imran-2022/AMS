@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { AppShell } from '@/components/layout/AppShell';
+import { Button } from '@/components/ui/Button';
 import { FileText, X } from 'lucide-react';
 import { getSubmission, gradeSubmission, updateSubmissionStatus, downloadAttachmentToBrowser, type SubmissionDto } from '@/lib/api';
 
@@ -182,20 +183,13 @@ export default function TeacherSubmissionDetailPage() {
 
   return (
     <AppShell role="Teacher" breadcrumb="Teacher / Grade Submission">
-      <div className="space-y-5 p-6 pb-28">
-        <a href="/roles/teacher/submissions" className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-600">
-          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="m15 18-6-6 6-6" />
-          </svg>
-          Back to submissions
-        </a>
-
+      <div className="space-y-5">
         {error ? (
           <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>
         ) : null}
 
         {loading ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">Loading submission...</div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-500">Loading submission...</div>
         ) : submission ? (
           <>
             <div className="flex items-center justify-between flex-wrap gap-3">
@@ -204,14 +198,22 @@ export default function TeacherSubmissionDetailPage() {
                   {submission.studentInitials}
                 </div>
                 <div>
-                  <h1 className="text-2xl font-extrabold text-slate-800">{submission.studentName}</h1>
+                  <div className="flex items-center gap-3">
+                    <h1 className="text-2xl font-extrabold text-slate-800">{submission.studentName}</h1>
+                    <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11.5px] font-bold ${statusBadge.classes}`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${statusBadge.dotClasses}`} />
+                      {statusBadge.label}
+                    </span>
+                  </div>
                   <p className="text-sm text-slate-400">{submission.assignmentTitle} · {submission.classCourseName}{submission.classCourseSection ? ` - ${submission.classCourseSection}` : ''}</p>
                 </div>
               </div>
-              <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11.5px] font-bold ${statusBadge.classes}`}>
-                <span className={`h-1.5 w-1.5 rounded-full ${statusBadge.dotClasses}`} />
-                {statusBadge.label}
-              </span>
+              <Button type="button" variant="secondary" onClick={() => router.back()} className="!h-11 !gap-2 !px-4 !py-2 !text-sm !whitespace-nowrap">
+                <svg aria-hidden="true" className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m15 18-6-6 6-6" />
+                </svg>
+                Back
+              </Button>
             </div>
 
             {submission.status === 'Resubmitted' ? (
@@ -220,9 +222,9 @@ export default function TeacherSubmissionDetailPage() {
               </div>
             ) : null}
 
-            <div className="grid grid-cols-[1fr_380px] gap-5 items-start">
+            <div className="grid grid-cols-[1fr_380px] gap-4 items-start">
               <div className="space-y-5">
-                <div className="rounded-2xl border border-slate-200 bg-white p-6">
+                <div className="rounded-2xl border border-slate-200 bg-white p-5">
                   <div className="mb-3 flex items-center justify-between">
                     <p className="text-[11px] font-bold tracking-[0.06em] text-slate-400">SUBMITTED WORK</p>
                     <p className="text-xs text-slate-400">{submittedText}</p>
@@ -279,7 +281,7 @@ export default function TeacherSubmissionDetailPage() {
                   )}
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-6">
+                <div className="rounded-2xl border border-slate-200 bg-white p-5">
                   <p className="text-[11px] font-bold tracking-[0.06em] text-slate-400">SUBMISSION DESCRIPTION</p>
                   <p className="mt-3 text-sm leading-relaxed text-slate-600">“{submission.contentText || 'No description provided.'}”</p>
                 </div>
@@ -294,7 +296,7 @@ export default function TeacherSubmissionDetailPage() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-5">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-5">
                 <div>
                   <label className="mb-2 block text-[13px] font-semibold text-slate-800">Marks <span className="text-rose-500">*</span></label>
                   <div className="flex items-center gap-2">
@@ -324,7 +326,7 @@ export default function TeacherSubmissionDetailPage() {
                 ) : null}
 
                 <div className="flex items-center justify-end gap-3 pt-2">
-                  <button type="button" disabled={saving} onClick={() => void saveGrade()} className="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70">
+                  <button type="button" disabled={saving} onClick={() => void saveGrade()} className="cursor-pointer rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70">
                     {saving ? 'Saving...' : 'Save & notify student'}
                   </button>
                 </div>

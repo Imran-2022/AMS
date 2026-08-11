@@ -218,12 +218,12 @@ export function TeacherClassesPage() {
               <select value={classFilter} onChange={(event) => {
                 setClassFilter(event.target.value);
                 setSubjectFilter('All subjects');
-              }} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500">
+              }} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500  cursor-pointer">
                 {availableClasses.map((option) => (
                   <option key={option} value={option}>{option}</option>
                 ))}
               </select>
-              <select value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500">
+              <select value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500 cursor-pointer">
                 {availableSubjects.map((option) => (
                   <option key={option} value={option}>{option}</option>
                 ))}

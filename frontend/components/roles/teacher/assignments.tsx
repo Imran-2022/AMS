@@ -576,13 +576,13 @@ export function TeacherAssignmentsPage() {
         <div className="rounded-2xl border border-slate-200 bg-white p-4">
           <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex flex-wrap items-center gap-2">
-              <button type="button" onClick={() => setFilter('all')} className={`rounded px-4 py-2 text-sm font-semibold transition ${filter === 'all' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+              <button type="button" onClick={() => setFilter('all')} className={`cursor-pointer rounded px-4 py-2 text-sm font-semibold transition ${filter === 'all' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
                 All <span className="ml-1 font-normal opacity-70">{stats.total}</span>
               </button>
-              <button type="button" onClick={() => setFilter('published')} className={`rounded px-4 py-2 text-sm font-semibold transition ${filter === 'published' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+              <button type="button" onClick={() => setFilter('published')} className={`cursor-pointer rounded px-4 py-2 text-sm font-semibold transition ${filter === 'published' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
                 Published <span className="ml-1 font-normal opacity-70">{stats.published}</span>
               </button>
-              <button type="button" onClick={() => setFilter('drafts')} className={`rounded px-4 py-2 text-sm font-semibold transition ${filter === 'drafts' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+              <button type="button" onClick={() => setFilter('drafts')} className={`cursor-pointer rounded px-4 py-2 text-sm font-semibold transition ${filter === 'drafts' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
                 Drafts <span className="ml-1 font-normal opacity-70">{stats.drafts}</span>
               </button>
             </div>
@@ -635,13 +635,23 @@ export function TeacherAssignmentsPage() {
         ) : (
           <div className="space-y-4">
             {pagedAssignments.map((assignment) => (
-              <div key={assignment.id} className="rounded-2xl border border-slate-200 bg-white p-5">
+              <div
+                key={assignment.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => router.push(`/roles/teacher/assignments/${assignment.id}`)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    router.push(`/roles/teacher/assignments/${assignment.id}`);
+                  }
+                }}
+                className="rounded-2xl border border-slate-200 bg-white p-5 cursor-pointer transition hover:border-brand-200 hover:shadow-[0_4px_16px_rgba(124,58,237,0.08)]"
+              >
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                   <div className="flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Link href={`/roles/teacher/assignments/${assignment.id}`} className="cursor-pointer text-base font-bold text-slate-900 hover:text-brand-600 hover:underline">
-                        {assignment.title}
-                      </Link>
+                      <span className="text-base font-bold text-slate-900">{assignment.title}</span>
                       <span className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[11px] font-bold ${assignment.status === 'Published' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
                         <span className={`h-2 w-2 rounded-full ${assignment.status === 'Published' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                         {assignment.status}
@@ -674,11 +684,20 @@ export function TeacherAssignmentsPage() {
                   </div>
 
                   <div className="relative xl:shrink-0">
-                    <button type="button" onClick={(event) => { event.stopPropagation(); setOpenMenuId(openMenuId === assignment.id ? null : assignment.id); }} className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100" data-menu-trigger="true">
+                    <button
+                      type="button"
+                      aria-label="Open assignment actions"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setOpenMenuId(openMenuId === assignment.id ? null : assignment.id);
+                      }}
+                      className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:ring-offset-2 focus:ring-offset-white"
+                      data-menu-trigger="true"
+                    >
                       <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" /></svg>
                     </button>
                     {openMenuId === assignment.id && (
-                      <div className="absolute right-0 z-20 mt-2 w-52 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl" onClick={(event) => event.stopPropagation()}>
+                      <div className="absolute right-0 z-20 mt-2 w-52 rounded border border-slate-200 bg-white p-1.5 shadow-xl" onClick={(event) => event.stopPropagation()}>
                         <button type="button" onClick={() => openCreateModal(assignment)} className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
                           <Pencil className="h-4 w-4" /> Edit
                         </button>
@@ -729,7 +748,7 @@ export function TeacherAssignmentsPage() {
                   <h2 className="text-xl font-extrabold text-slate-900">{editingAssignment ? 'Edit assignment' : 'Create assignment'}</h2>
                   <p className="mt-1 text-sm text-slate-500">Fill in the details, then save as a draft or publish.</p>
                 </div>
-                <button type="button" onClick={closeModal} className="text-slate-400 hover:text-slate-600">
+                <button type="button" onClick={closeModal} className="text-slate-400 hover:text-slate-600 cursor-pointer">
                   <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
                 </button>
               </div>
