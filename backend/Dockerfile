@@ -31,6 +31,7 @@ RUN dotnet publish src/AMS.DbMigrator/AMS.DbMigrator.csproj -c Release -o /app/m
 ########################
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS api
 WORKDIR /app
+RUN apt-get update && apt-get install -y libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/*
 RUN mkdir -p /app/App_Data/Uploads
 COPY --from=build /app/api .
 COPY entrypoint-api.sh ./
@@ -43,6 +44,7 @@ ENTRYPOINT ["./entrypoint-api.sh"]
 ########################
 FROM mcr.microsoft.com/dotnet/runtime:10.0 AS migrator
 WORKDIR /app
+RUN apt-get update && apt-get install -y libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/migrator .
 COPY entrypoint-migrator.sh ./
 RUN chmod +x entrypoint-migrator.sh
