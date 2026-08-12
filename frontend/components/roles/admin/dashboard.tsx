@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/shared/layout';
-import { Button, Card, Metric, PageHeader, Pill, RoleBadge, Th, Td, AddStudentModal, AddTeacherModal, TeacherAssignmentModal } from '../../ui';
+import { Button, Card, Metric, PageHeader, Pill, RoleBadge, Th, Td, AddStudentModal, AddTeacherModal, TeacherAssignmentModal } from '@/shared/ui';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
 import { getAssignments, getSubmissions, getUsers as apiGetUsers, getSubjects } from '@/lib/api';
 import { MoreVertical, UserPlus, UserCheck, BookOpen, ClipboardList } from 'lucide-react';
@@ -40,6 +40,12 @@ export function AdminDashboardPage() {
   const goToAssignmentDetail = (assignmentId: string) => router.push(`/roles/admin/assignments/${assignmentId}`);
   const goToSubmissionDetail = (submissionId: string) => router.push(`/roles/admin/submissions/${submissionId}`);
 
+  const CLASSES_WITH_GROUPS = ['Nine', 'Ten', 'Eleven', 'Twelve'];
+
+  function classHasGroups(className?: string): boolean {
+    return className ? CLASSES_WITH_GROUPS.includes(className) : false;
+  }
+
   async function loadDashboard() {
     try {
       setIsLoading(true);
@@ -60,6 +66,8 @@ export function AdminDashboardPage() {
         name: cls.name,
         section: cls.section,
         academicYear: cls.academicYear,
+        groupId: cls.groupId,
+        groupName: cls.groupName,
       })));
       setDashboardTeachers(users.filter((user: any) => user.role === 'Teacher').map((teacher: any) => ({
         id: teacher.id,
@@ -260,8 +268,23 @@ export function AdminDashboardPage() {
                 role: 'Student',
                 isActive: values.status === 'Active',
                 parentMobile: values.parentMobile ?? '',
+                studentId: values.studentId,
+                gender: values.gender || undefined,
+                guardianName: values.guardianName || undefined,
+                guardianEmail: values.guardianEmail || undefined,
+                dateOfBirth: values.dateOfBirth || undefined,
+                admissionDate: values.admissionDate || undefined,
               });
-              const selectedClass = dashboardClassCourses.find((cls) => cls.name === values.className && cls.section === values.section);
+
+              // For classes 9-12, also filter by group
+              let selectedClass = dashboardClassCourses.find((cls) => cls.name === values.className && cls.section === values.section);
+              
+              if (classHasGroups(values.className) && values.group) {
+                selectedClass = dashboardClassCourses.find(
+                  (cls) => cls.name === values.className && cls.section === values.section && cls.groupName === values.group
+                );
+              }
+
               if (selectedClass) {
                 await createEnrollment({ studentId: created.id, classCourseId: selectedClass.id });
               }

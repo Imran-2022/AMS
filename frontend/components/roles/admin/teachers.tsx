@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AmsDeleteComfiramtionModal, AmsPagination, AddTeacherModal, Button, type AddTeacherFormData } from '../../ui';
+import { AmsDeleteComfiramtionModal, AmsPagination, AddTeacherModal, Button, type AddTeacherFormData } from '@/shared/ui';
 import { AppShell } from '@/shared/layout';
 import { API_BASE_URL, createUser, deleteUser, getUsers, updateUser } from '@/lib/api';
 import { getTeacherAssignments, type TeacherSubjectAssignmentDto } from '@/lib/api/teacherAssignments';
