@@ -59,7 +59,7 @@ function getBreadcrumb(pathname: string, role: RoleType | undefined) {
       settings: 'Settings',
       'ams-settings': 'AMS Settings',
       enrollments: 'Enrollments',
-      'teacher-assignments': 'Teacher assignments',
+      'teacher-assignments': 'Teacher Allocation',
       users: 'Users',
     },
     teacher: {
@@ -92,7 +92,7 @@ const NAV: Record<RoleType, NavItem[]> = {
     { href: '/roles/admin/teachers', label: 'Teachers', Icon: UserCheck },
     // { href: '/roles/admin/administrators', label: 'Administrators', Icon: ShieldCheck },
     { href: '/roles/admin/classes', label: 'Classes & Subjects', Icon: BookOpen },
-    { href: '/roles/admin/teacher-assignments', label: 'Teacher assignments', Icon: Users },
+    { href: '/roles/admin/teacher-assignments', label: 'Teacher Allocation', Icon: Users },
     { href: '/roles/admin/assignments', label: 'Assignments', Icon: ClipboardList },
     { href: '/roles/admin/submissions', label: 'Submissions', Icon: Inbox },
     // { href: '/roles/admin/ams-settings', label: 'AMS Settings', Icon: Settings },

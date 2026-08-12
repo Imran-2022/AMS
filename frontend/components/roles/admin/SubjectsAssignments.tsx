@@ -161,7 +161,7 @@ export default function SubjectsAssignments() {
     <div className="space-y-4">
       <PageHeader
         eyebrow="Administration"
-        title="Teacher assignments"
+        title="Teacher Allocation"
         action={
           <Button type="button" onClick={() => openModal('assign')} className="px-4 py-2.5">
             Assign teacher

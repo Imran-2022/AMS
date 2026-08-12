@@ -550,7 +550,7 @@ export function AdminClassesPage() {
           />
         </div>
 
-        {/* Subjects & teacher assignments moved to Teacher Assignments page */}
+        {/* Subjects & teacher allocation moved to Teacher allocation page */}
 
         <div className={`${activeModal === 'subject' ? 'flex' : 'hidden'} fixed inset-0 z-50 items-center justify-center bg-slate-900/40 p-4`}>
           <div className="bg-white rounded w-full max-w-md shadow-2xl">
@@ -766,7 +766,7 @@ export function AdminClassesPage() {
         </div>
       </div>
 
-      {/* Subject creation/editing moved to Teacher Assignments page */}
+{/* Subject creation/editing moved to Teacher allocation page */}
 
       <Modal open={activeModal === 'view-subjects'} onClose={closeModal} title={classes.find((cls) => cls.id === viewSubjectsForClass)?.name ?? 'Class subjects'} description="View all subjects that belong to this class.">
         <div className="space-y-4">
@@ -786,7 +786,7 @@ export function AdminClassesPage() {
         </div>
       </Modal>
 
-      {/* Teacher assignment moved to Teacher Assignments page */}
+      {/* Teacher assignment moved to Teacher allocation page */}
 
       </div>
 
