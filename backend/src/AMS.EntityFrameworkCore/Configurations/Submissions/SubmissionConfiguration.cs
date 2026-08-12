@@ -13,8 +13,6 @@ public class SubmissionConfiguration : IEntityTypeConfiguration<Submission>
         builder.Property(x => x.AssignmentId).HasColumnName("assignment_id").IsRequired();
         builder.Property(x => x.StudentId).HasColumnName("student_id").IsRequired();
         builder.Property(x => x.ContentText).HasColumnName("content_text").HasMaxLength(4000);
-        builder.Property(x => x.FileUrl).HasColumnName("file_url").HasMaxLength(500);
-        builder.Property(x => x.FileName).HasColumnName("file_name").HasMaxLength(255);
         builder.Property(x => x.SubmittedAt).HasColumnName("submitted_at").IsRequired();
         builder.Property(x => x.ResubmittedAt).HasColumnName("resubmitted_at");
         builder.Property(x => x.ResubmissionCount).HasColumnName("resubmission_count").IsRequired();
@@ -34,5 +32,7 @@ public class SubmissionConfiguration : IEntityTypeConfiguration<Submission>
             .WithMany()
             .HasForeignKey(x => x.StudentId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasIndex(x => new { x.AssignmentId, x.StudentId }).IsUnique();
     }
 }

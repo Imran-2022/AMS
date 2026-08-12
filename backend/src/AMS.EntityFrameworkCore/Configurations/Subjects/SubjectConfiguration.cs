@@ -18,5 +18,7 @@ public class SubjectConfiguration : IEntityTypeConfiguration<Subject>
             .WithMany()
             .HasForeignKey(x => x.ClassCourseId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasIndex(x => new { x.ClassCourseId, x.Code }).IsUnique();
     }
 }

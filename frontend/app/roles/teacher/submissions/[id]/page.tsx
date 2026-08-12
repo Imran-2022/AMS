@@ -219,22 +219,9 @@ export default function TeacherSubmissionDetailPage() {
                       {statusBadge.label}
                     </span>
                   </div>
-                  <p className="text-sm text-slate-400">{submission.assignmentTitle} · {submission.classCourseName}{submission.classCourseSection ? ` - ${submission.classCourseSection}` : ''}</p>
                 </div>
               </div>
-              <Button type="button" variant="secondary" onClick={() => router.back()} className="!h-11 !gap-2 !px-4 !py-2 !text-sm !whitespace-nowrap">
-                <svg aria-hidden="true" className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m15 18-6-6 6-6" />
-                </svg>
-                Back
-              </Button>
             </div>
-
-            {submission.status === 'Resubmitted' ? (
-              <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm text-amber-800">
-                The student has resubmitted this assignment after a resubmission request. Please review the updated work.
-              </div>
-            ) : null}
 
             <div className="grid grid-cols-[1fr_380px] gap-4 items-start">
               <div className="space-y-5">
@@ -264,22 +251,6 @@ export default function TeacherSubmissionDetailPage() {
                         </button>
                       ))}
                     </div>
-                  ) : submission.fileName ? (
-                    <div className="flex items-center gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4">
-                      <button
-                        type="button"
-                        onClick={() => submission.fileUrl ? void downloadAttachmentToBrowser(submission.fileUrl, submission.fileName ?? 'submission-file') : undefined}
-                        className="flex cursor-pointer items-center gap-3 text-left"
-                      >
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-300">
-                          <FileText className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-slate-700">{submission.fileName}</p>
-                          <p className="text-xs text-slate-400">Submitted file</p>
-                        </div>
-                      </button>
-                    </div>
                   ) : (
                     <div className="flex items-center gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-300">
@@ -297,7 +268,7 @@ export default function TeacherSubmissionDetailPage() {
 
                 <div className="rounded-2xl border border-slate-200 bg-white p-5">
                   <p className="text-[11px] font-bold tracking-[0.06em] text-slate-400">SUBMISSION DESCRIPTION</p>
-                  <p className="mt-3 text-sm leading-relaxed text-slate-600">“{submission.contentText || 'No description provided.'}”</p>
+                  <p className="mt-3 text-sm leading-relaxed text-slate-600">&ldquo;{submission.contentText || 'No description provided.'}&rdquo;</p>
                 </div>
 
                 <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-5">

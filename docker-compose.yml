@@ -1,0 +1,71 @@
+name: ams
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-amsdb}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-amsdb}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrator:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: migrator
+    environment:
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-amsdb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: api
+    restart: unless-stopped
+    environment:
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-amsdb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD}
+      Jwt__Key: ${JWT_KEY:?set JWT_KEY in .env}
+      Jwt__Issuer: ${JWT_ISSUER:-http://localhost:5000}
+      Jwt__Audience: ${JWT_AUDIENCE:-http://localhost:5000}
+      Jwt__AccessTokenExpiresMinutes: ${JWT_ACCESS_MINUTES:-15}
+      Jwt__RefreshTokenExpiresMinutes: ${JWT_REFRESH_MINUTES:-21600}
+      FrontendUrl: ${FRONTEND_URL:-http://localhost:3000}
+      FileStorage__Local__UploadsPath: /app/App_Data/Uploads
+    volumes:
+      - ams-uploads:/app/App_Data/Uploads
+    ports:
+      - "${API_PORT:-5000}:8080"
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000}
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - api
+
+volumes:
+  pg-data:
+  ams-uploads:

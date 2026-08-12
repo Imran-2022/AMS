@@ -12,5 +12,10 @@ public class GroupConfiguration : IEntityTypeConfiguration<Group>
         builder.HasKey(x => x.Id);
         builder.Property(x => x.ClassDefinitionId).HasColumnName("class_definition_id");
         builder.Property(x => x.Name).HasColumnName("name").HasMaxLength(200).IsRequired();
+
+        builder.HasOne(x => x.ClassDefinition)
+            .WithMany()
+            .HasForeignKey(x => x.ClassDefinitionId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

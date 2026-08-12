@@ -6,8 +6,6 @@ public class SubmissionDto
     public Guid AssignmentId { get; set; }
     public Guid StudentId { get; set; }
     public string ContentText { get; set; } = string.Empty;
-    public string? FileUrl { get; set; }
-    public string? FileName { get; set; }
     public DateTime SubmittedAt { get; set; }
     public DateTime? ResubmittedAt { get; set; }
     public int ResubmissionCount { get; set; }
@@ -32,15 +30,11 @@ public class CreateSubmissionDto
 {
     public Guid AssignmentId { get; set; }
     public string ContentText { get; set; } = string.Empty;
-    public string? FileUrl { get; set; }
-    public string? FileName { get; set; }
 }
 
 public class UpdateSubmissionDto
 {
     public string? ContentText { get; set; }
-    public string? FileUrl { get; set; }
-    public string? FileName { get; set; }
 }
 
 public class GradeSubmissionDto

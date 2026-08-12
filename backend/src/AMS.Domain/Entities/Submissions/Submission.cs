@@ -8,8 +8,6 @@ public class Submission
     public Guid AssignmentId { get; private set; }
     public Guid StudentId { get; private set; }
     public string ContentText { get; private set; } = null!;
-    public string? FileUrl { get; private set; }
-    public string? FileName { get; private set; }
     public DateTime SubmittedAt { get; private set; }
     public DateTime? ResubmittedAt { get; private set; }
     public int ResubmissionCount { get; private set; }
@@ -25,7 +23,7 @@ public class Submission
 
     private Submission() { }
 
-    public Submission(Guid id, Guid assignmentId, Guid studentId, string contentText, string? fileUrl, string? fileName, DateTime submittedAt, bool isLate, SubmissionStatus status,
+    public Submission(Guid id, Guid assignmentId, Guid studentId, string contentText, DateTime submittedAt, bool isLate, SubmissionStatus status,
         DateTime? resubmittedAt = null, int resubmissionCount = 0)
     {
         if (assignmentId == Guid.Empty) throw new DomainException("Assignment is required.");
@@ -35,8 +33,6 @@ public class Submission
         AssignmentId = assignmentId;
         StudentId = studentId;
         ContentText = contentText ?? string.Empty;
-        FileUrl = fileUrl;
-        FileName = fileName;
         SubmittedAt = submittedAt == default ? DateTime.UtcNow : submittedAt;
         ResubmittedAt = resubmittedAt;
         ResubmissionCount = resubmissionCount;
@@ -66,7 +62,7 @@ public class Submission
         Status = status;
     }
 
-    public void Resubmit(string contentText, string? fileUrl, string? fileName, DateTime now, DateTime deadline, bool allowLateSubmission)
+    public void Resubmit(string contentText, DateTime now, DateTime deadline, bool allowLateSubmission)
     {
         if (now > deadline && !allowLateSubmission)
         {
@@ -74,8 +70,6 @@ public class Submission
         }
 
         ContentText = contentText ?? string.Empty;
-        FileUrl = fileUrl;
-        FileName = fileName;
         ResubmittedAt = now;
         ResubmissionCount++;
         IsLate = now > deadline;
@@ -86,14 +80,12 @@ public class Submission
         GradedAt = null;
     }
 
-    public void EditBeforeDeadline(string contentText, string? fileUrl, string? fileName, DateTime now, DateTime deadline, bool allowLateSubmission)
+    public void EditBeforeDeadline(string contentText, DateTime now, DateTime deadline, bool allowLateSubmission)
     {
         if (Status == SubmissionStatus.Graded) throw new DomainException("Cannot edit a graded submission.");
         if (now > deadline && !allowLateSubmission) throw new DomainException("Submission is past the deadline and late submissions are not allowed.");
 
         ContentText = contentText ?? string.Empty;
-        FileUrl = fileUrl;
-        FileName = fileName;
         // keep original SubmittedAt; update late flag
         IsLate = now > deadline;
     }

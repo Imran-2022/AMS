@@ -11,10 +11,6 @@ public class CreateSubmissionDtoValidator : AbstractValidator<CreateSubmissionDt
         RuleFor(x => x.ContentText)
             .MaximumLength(5000)
             .When(x => !string.IsNullOrWhiteSpace(x.ContentText));
-
-        RuleFor(x => x)
-            .Must(x => !string.IsNullOrWhiteSpace(x.ContentText) || !string.IsNullOrWhiteSpace(x.FileUrl))
-            .WithMessage("Submission must include content text or a file URL.");
     }
 }
 
@@ -25,10 +21,6 @@ public class UpdateSubmissionDtoValidator : AbstractValidator<UpdateSubmissionDt
         RuleFor(x => x.ContentText)
             .MaximumLength(5000)
             .When(x => !string.IsNullOrWhiteSpace(x.ContentText));
-
-        RuleFor(x => x.FileName)
-            .MaximumLength(255)
-            .When(x => !string.IsNullOrWhiteSpace(x.FileName));
     }
 }
 

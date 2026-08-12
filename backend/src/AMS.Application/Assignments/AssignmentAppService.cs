@@ -66,7 +66,15 @@ public class AssignmentAppService : IAssignmentAppService
 
         var enrolledClassIds = await _studentEnrollmentRepository.GetByStudentAsync(currentUserId, cancellationToken);
         var enrolledIds = enrolledClassIds.Select(x => x.ClassCourseId).ToHashSet();
-        assignments = assignments.Where(x => x.Status == AssignmentStatus.Published && enrolledIds.Contains(x.ClassCourseId)).ToList();
+        var studentAssignments = new List<Assignment>();
+        foreach (var assignment in assignments)
+        {
+            if (assignment.Status != AssignmentStatus.Published) continue;
+            var subject = await _subjectRepository.GetByIdAsync(assignment.SubjectId, cancellationToken);
+            if (subject is null) continue;
+            if (enrolledIds.Contains(subject.ClassCourseId)) studentAssignments.Add(assignment);
+        }
+        assignments = studentAssignments;
         var studentResults = new List<AssignmentDto>(assignments.Count);
         foreach (var assignment in assignments)
         {
@@ -85,7 +93,8 @@ public class AssignmentAppService : IAssignmentAppService
             return await ToDtoAsync(assignment, cancellationToken).ConfigureAwait(false);
         }
 
-        var isEnrolled = await IsEnrolled(currentUserId, assignment.ClassCourseId, cancellationToken);
+        var subject = await _subjectRepository.GetByIdAsync(assignment.SubjectId, cancellationToken) ?? throw new NotFoundException("Subject not found.");
+        var isEnrolled = await IsEnrolled(currentUserId, subject.ClassCourseId, cancellationToken);
         if (assignment.Status == AssignmentStatus.Published && isEnrolled) return await ToDtoAsync(assignment, cancellationToken).ConfigureAwait(false);
         throw new ForbiddenException("You cannot access this assignment.");
     }
@@ -109,6 +118,12 @@ public class AssignmentAppService : IAssignmentAppService
             if (teacherAssignment is null) throw new ForbiddenException("Teacher is not assigned to this subject.");
         }
 
+        var subject = await _subjectRepository.GetByIdAsync(input.SubjectId, cancellationToken) ?? throw new NotFoundException("Subject not found.");
+        if (input.ClassCourseId != Guid.Empty && input.ClassCourseId != subject.ClassCourseId)
+        {
+            throw new ValidationException("Selected class course does not match the chosen subject.");
+        }
+
         DateTime NormalizeToUtc(DateTime dt)
         {
             if (dt.Kind == DateTimeKind.Utc) return dt;
@@ -118,7 +133,7 @@ public class AssignmentAppService : IAssignmentAppService
 
         var deadlineUtc = NormalizeToUtc(input.Deadline);
 
-        var assignment = new Assignment(Guid.NewGuid(), input.Title, input.Description, input.ClassCourseId, input.SubjectId, teacherId, deadlineUtc, input.MaxMarks, AssignmentStatus.Draft, input.AllowLateSubmission, input.AllowResubmission, DateTime.UtcNow, input.AttachmentUrl, input.AttachmentName);
+        var assignment = new Assignment(Guid.NewGuid(), input.Title, input.Description, input.SubjectId, teacherId, deadlineUtc, input.MaxMarks, AssignmentStatus.Draft, input.AllowLateSubmission, input.AllowResubmission, DateTime.UtcNow);
         await _assignmentRepository.AddAsync(assignment, cancellationToken);
         return await ToDtoAsync(assignment, cancellationToken).ConfigureAwait(false);
     }
@@ -137,19 +152,23 @@ public class AssignmentAppService : IAssignmentAppService
             return v.ToUniversalTime();
         }
 
+        var subjectId = input.SubjectId ?? assignment.SubjectId;
+        var subject = await _subjectRepository.GetByIdAsync(subjectId, cancellationToken) ?? throw new NotFoundException("Subject not found.");
+        if (input.ClassCourseId.HasValue && input.ClassCourseId.Value != subject.ClassCourseId)
+        {
+            throw new ValidationException("Selected class course does not match the chosen subject.");
+        }
+
         var newDeadline = NormalizeToUtcNullable(input.Deadline) ?? assignment.Deadline;
 
         assignment.UpdateDetails(
             input.Title ?? assignment.Title,
             input.Description ?? assignment.Description,
-            input.ClassCourseId ?? assignment.ClassCourseId,
-            input.SubjectId ?? assignment.SubjectId,
+            subjectId,
             newDeadline,
             input.MaxMarks ?? assignment.MaxMarks,
             input.AllowLateSubmission ?? assignment.AllowLateSubmission,
-            input.AllowResubmission ?? assignment.AllowResubmission,
-            input.AttachmentUrl ?? assignment.AttachmentUrl,
-            input.AttachmentName ?? assignment.AttachmentName);
+            input.AllowResubmission ?? assignment.AllowResubmission);
 
         await _assignmentRepository.UpdateAsync(assignment, cancellationToken);
         return await ToDtoAsync(assignment, cancellationToken).ConfigureAwait(false);
@@ -164,7 +183,6 @@ public class AssignmentAppService : IAssignmentAppService
             Guid.NewGuid(),
             existingAssignment.Title + " (Copy)",
             existingAssignment.Description,
-            existingAssignment.ClassCourseId,
             existingAssignment.SubjectId,
             existingAssignment.TeacherId,
             existingAssignment.Deadline,
@@ -172,9 +190,7 @@ public class AssignmentAppService : IAssignmentAppService
             AssignmentStatus.Draft,
             existingAssignment.AllowLateSubmission,
             existingAssignment.AllowResubmission,
-            DateTime.UtcNow,
-            existingAssignment.AttachmentUrl,
-            existingAssignment.AttachmentName);
+            DateTime.UtcNow);
 
         await _assignmentRepository.AddAsync(duplicateAssignment, cancellationToken);
         await _attachmentAppService.CloneAttachmentsAsync("Assignment", existingAssignment.Id, "Assignment", duplicateAssignment.Id);
@@ -223,13 +239,13 @@ public class AssignmentAppService : IAssignmentAppService
 
     private async Task<AssignmentDto> ToDtoAsync(Assignment assignment, CancellationToken cancellationToken = default)
     {
-        var classCourse = await _classCourseRepository.GetByIdAsync(assignment.ClassCourseId, cancellationToken) ?? throw new NotFoundException("Class/course not found.");
-        var group = classCourse.GroupId.HasValue ? await _groupRepository.GetByIdAsync(classCourse.GroupId.Value, cancellationToken) : null;
         var subject = await _subjectRepository.GetByIdAsync(assignment.SubjectId, cancellationToken) ?? throw new NotFoundException("Subject not found.");
+        var classCourse = await _classCourseRepository.GetByIdAsync(subject.ClassCourseId, cancellationToken) ?? throw new NotFoundException("Class/course not found.");
+        var group = classCourse.GroupId.HasValue ? await _groupRepository.GetByIdAsync(classCourse.GroupId.Value, cancellationToken) : null;
         var teacher = await _userRepository.GetByIdAsync(assignment.TeacherId, cancellationToken);
 
         var submissions = await _submissionRepository.GetByAssignmentAsync(assignment.Id, cancellationToken).ConfigureAwait(false);
-        var enrollments = await _studentEnrollmentRepository.GetByClassCourseAsync(assignment.ClassCourseId, cancellationToken).ConfigureAwait(false);
+        var enrollments = await _studentEnrollmentRepository.GetByClassCourseAsync(subject.ClassCourseId, cancellationToken).ConfigureAwait(false);
 
         var attachments = await _attachmentAppService.ListAsync("Assignment", assignment.Id);
 
@@ -238,9 +254,7 @@ public class AssignmentAppService : IAssignmentAppService
             Id = assignment.Id,
             Title = assignment.Title,
             Description = assignment.Description,
-            AttachmentUrl = assignment.AttachmentUrl,
-            AttachmentName = assignment.AttachmentName,
-            ClassCourseId = assignment.ClassCourseId,
+            ClassCourseId = subject.ClassCourseId,
             SubjectId = assignment.SubjectId,
             TeacherId = assignment.TeacherId,
             Deadline = assignment.Deadline,
