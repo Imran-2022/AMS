@@ -15,9 +15,12 @@ FROM node:22-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# Requires `output: 'standalone'` in next.config.js
+# Requires `output: 'standalone'` in next.config.js, which is only enabled
+# when DOCKER_BUILD=true is set (see next.config.js) - keeps Netlify builds
+# (which must NOT use standalone output) unaffected.
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV DOCKER_BUILD=true
 RUN npm run build
 
 ########################
