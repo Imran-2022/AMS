@@ -12,7 +12,6 @@ public class TeacherSubjectAssignmentConfiguration : IEntityTypeConfiguration<Te
         builder.HasKey(x => new { x.TeacherId, x.SubjectId });
         builder.Property(x => x.TeacherId).HasColumnName("teacher_id").IsRequired();
         builder.Property(x => x.SubjectId).HasColumnName("subject_id").IsRequired();
-        builder.Property(x => x.ClassCourseId).HasColumnName("class_course_id").IsRequired();
 
         builder.HasOne(x => x.Teacher)
             .WithMany()

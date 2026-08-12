@@ -20,7 +20,14 @@ public class AssignmentRepository : IAssignmentRepository
         => await _dbContext.Assignments.Where(x => x.TeacherId == teacherId).ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<Assignment>> GetPublishedForClassAsync(Guid classCourseId, CancellationToken cancellationToken = default)
-        => await _dbContext.Assignments.Where(x => x.ClassCourseId == classCourseId && x.Status == AMS.Domain.Shared.AssignmentStatus.Published).ToListAsync(cancellationToken);
+        => await _dbContext.Assignments
+            .Join(_dbContext.Subjects,
+                assignment => assignment.SubjectId,
+                subject => subject.Id,
+                (assignment, subject) => new { assignment, subject })
+            .Where(x => x.assignment.Status == AMS.Domain.Shared.AssignmentStatus.Published && x.subject.ClassCourseId == classCourseId)
+            .Select(x => x.assignment)
+            .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<Assignment>> GetAllAsync(CancellationToken cancellationToken = default)
         => await _dbContext.Assignments.ToListAsync(cancellationToken);

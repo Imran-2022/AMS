@@ -46,7 +46,7 @@ public class TeacherSubjectAssignmentAppService : ITeacherSubjectAssignmentAppSe
             }
 
             var subject = await _subjectRepository.GetByIdAsync(assignment.SubjectId, cancellationToken) ?? throw new NotFoundException("Subject not found.");
-            var classCourse = await _classCourseRepository.GetByIdAsync(assignment.ClassCourseId, cancellationToken) ?? throw new NotFoundException("Class/course not found.");
+            var classCourse = await _classCourseRepository.GetByIdAsync(subject.ClassCourseId, cancellationToken) ?? throw new NotFoundException("Class/course not found.");
 
             result.Add(new TeacherSubjectAssignmentDto
             {
@@ -54,7 +54,7 @@ public class TeacherSubjectAssignmentAppService : ITeacherSubjectAssignmentAppSe
                 TeacherName = teacher.FullName,
                 SubjectId = assignment.SubjectId,
                 SubjectName = subject.Name,
-                ClassCourseId = assignment.ClassCourseId,
+                ClassCourseId = subject.ClassCourseId,
                 ClassCourseName = classCourse.Name
             });
         }
@@ -73,7 +73,7 @@ public class TeacherSubjectAssignmentAppService : ITeacherSubjectAssignmentAppSe
         var subject = await _subjectRepository.GetByIdAsync(input.SubjectId, cancellationToken) ?? throw new NotFoundException("Subject not found.");
         if (subject.ClassCourseId != input.ClassCourseId) throw new ValidationException("Selected subject does not belong to the chosen class.");
 
-        var assignment = new TeacherSubjectAssignment(input.TeacherId, input.SubjectId, input.ClassCourseId);
+        var assignment = new TeacherSubjectAssignment(input.TeacherId, input.SubjectId);
         await _assignmentRepository.AddAsync(assignment, cancellationToken);
 
         return new TeacherSubjectAssignmentDto
@@ -82,7 +82,7 @@ public class TeacherSubjectAssignmentAppService : ITeacherSubjectAssignmentAppSe
             TeacherName = teacher.FullName,
             SubjectId = assignment.SubjectId,
             SubjectName = subject.Name,
-            ClassCourseId = assignment.ClassCourseId,
+            ClassCourseId = subject.ClassCourseId,
             ClassCourseName = classCourse.Name
         };
     }

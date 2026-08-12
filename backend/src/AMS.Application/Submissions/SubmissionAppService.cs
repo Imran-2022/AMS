@@ -14,6 +14,7 @@ public class SubmissionAppService : ISubmissionAppService
     private readonly IUserRepository _userRepository;
     private readonly IClassCourseRepository _classCourseRepository;
     private readonly IGroupRepository _groupRepository;
+    private readonly ISubjectRepository _subjectRepository;
     private readonly Microsoft.AspNetCore.Authorization.IAuthorizationService _authorizationService;
     private readonly AMS.Application.Contracts.ICurrentUserService _currentUser;
     private readonly IAttachmentAppService _attachmentAppService;
@@ -25,6 +26,7 @@ public class SubmissionAppService : ISubmissionAppService
         IUserRepository userRepository,
         IClassCourseRepository classCourseRepository,
         IGroupRepository groupRepository,
+        ISubjectRepository subjectRepository,
         Microsoft.AspNetCore.Authorization.IAuthorizationService authorizationService,
         AMS.Application.Contracts.ICurrentUserService currentUser,
         IAttachmentAppService attachmentAppService)
@@ -35,6 +37,7 @@ public class SubmissionAppService : ISubmissionAppService
         _userRepository = userRepository;
         _classCourseRepository = classCourseRepository;
         _groupRepository = groupRepository;
+        _subjectRepository = subjectRepository;
         _authorizationService = authorizationService;
         _currentUser = currentUser;
         _attachmentAppService = attachmentAppService;
@@ -101,7 +104,8 @@ public class SubmissionAppService : ISubmissionAppService
 
         var assignment = await _assignmentRepository.GetByIdAsync(input.AssignmentId, cancellationToken) ?? throw new NotFoundException("Assignment not found.");
         if (assignment.Status != AssignmentStatus.Published) throw new ValidationException("Assignment is not published.");
-        if (!await IsEnrolled(_currentUser.UserId, assignment.ClassCourseId)) throw new ForbiddenException("You are not enrolled in this class.");
+        var subject = await _subjectRepository.GetByIdAsync(assignment.SubjectId, cancellationToken) ?? throw new NotFoundException("Subject not found.");
+        if (!await IsEnrolled(_currentUser.UserId, subject.ClassCourseId)) throw new ForbiddenException("You are not enrolled in this class.");
 
         var existing = await _submissionRepository.GetByAssignmentAndStudentAsync(assignment.Id, _currentUser.UserId, cancellationToken);
         if (existing is not null)
@@ -109,12 +113,12 @@ public class SubmissionAppService : ISubmissionAppService
             if (existing.Status == SubmissionStatus.Graded) throw new ValidationException("A graded submission cannot be resubmitted.");
             if (!assignment.AllowResubmission) throw new ValidationException("Resubmission is not allowed for this assignment.");
 
-            existing.Resubmit(input.ContentText, input.FileUrl, input.FileName, DateTime.UtcNow, assignment.Deadline, assignment.AllowLateSubmission);
+            existing.Resubmit(input.ContentText, DateTime.UtcNow, assignment.Deadline, assignment.AllowLateSubmission);
             await _submissionRepository.UpdateAsync(existing, cancellationToken);
             return await ToDtoAsync(existing, cancellationToken).ConfigureAwait(false);
         }
 
-        var submission = new Submission(Guid.NewGuid(), assignment.Id, _currentUser.UserId, input.ContentText, input.FileUrl, input.FileName, DateTime.UtcNow, false, SubmissionStatus.Submitted);
+        var submission = new Submission(Guid.NewGuid(), assignment.Id, _currentUser.UserId, input.ContentText, DateTime.UtcNow, false, SubmissionStatus.Submitted);
         submission.Submit(DateTime.UtcNow, assignment.Deadline, assignment.AllowLateSubmission, assignment);
         await _submissionRepository.AddAsync(submission, cancellationToken);
         return await ToDtoAsync(submission, cancellationToken).ConfigureAwait(false);
@@ -136,12 +140,12 @@ public class SubmissionAppService : ISubmissionAppService
         
         if (submission.Status == SubmissionStatus.ResubmissionRequested)
         {
-            submission.Resubmit(input.ContentText ?? submission.ContentText, input.FileUrl ?? submission.FileUrl, input.FileName ?? submission.FileName, DateTime.UtcNow, assignment.Deadline, assignment.AllowLateSubmission);
+            submission.Resubmit(input.ContentText ?? submission.ContentText, DateTime.UtcNow, assignment.Deadline, assignment.AllowLateSubmission);
         }
         else
         {
             // Allow editing before deadline (or if late submissions allowed). Disallow edits to graded submissions.
-            submission.EditBeforeDeadline(input.ContentText ?? submission.ContentText, input.FileUrl ?? submission.FileUrl, input.FileName ?? submission.FileName, DateTime.UtcNow, assignment.Deadline, assignment.AllowLateSubmission);
+            submission.EditBeforeDeadline(input.ContentText ?? submission.ContentText, DateTime.UtcNow, assignment.Deadline, assignment.AllowLateSubmission);
         }
 
         await _submissionRepository.UpdateAsync(submission, cancellationToken);
@@ -215,7 +219,8 @@ public class SubmissionAppService : ISubmissionAppService
     {
         var assignment = await _assignmentRepository.GetByIdAsync(submission.AssignmentId, cancellationToken) ?? throw new NotFoundException("Assignment not found.");
         var student = await _userRepository.GetByIdAsync(submission.StudentId, cancellationToken) ?? throw new NotFoundException("Student not found.");
-        var classCourse = await _classCourseRepository.GetByIdAsync(assignment.ClassCourseId, cancellationToken) ?? throw new NotFoundException("Class/course not found.");
+        var subject = await _subjectRepository.GetByIdAsync(assignment.SubjectId, cancellationToken) ?? throw new NotFoundException("Subject not found.");
+        var classCourse = await _classCourseRepository.GetByIdAsync(subject.ClassCourseId, cancellationToken) ?? throw new NotFoundException("Class/course not found.");
         var group = classCourse.GroupId.HasValue ? await _groupRepository.GetByIdAsync(classCourse.GroupId.Value, cancellationToken) : null;
         var attachments = await _attachmentAppService.ListAsync("Submission", submission.Id);
 
@@ -227,8 +232,6 @@ public class SubmissionAppService : ISubmissionAppService
             AssignmentId = submission.AssignmentId,
             StudentId = submission.StudentId,
             ContentText = submission.ContentText,
-            FileUrl = submission.FileUrl,
-            FileName = submission.FileName,
             SubmittedAt = submission.SubmittedAt,
             ResubmittedAt = submission.ResubmittedAt,
             ResubmissionCount = submission.ResubmissionCount,
