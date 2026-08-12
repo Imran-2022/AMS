@@ -431,22 +431,18 @@ export function AdminClassesPage() {
   }, [classes, selectedGradeDefinitionId, selectedGradeFilter]);
 
   const groupOptions = useMemo(() => {
-    if (
-      selectedGradeFilter === 'All classes' ||
-      selectedSectionFilter === 'All sections' ||
-      !selectedGradeDefinitionId
-    ) {
+    if (selectedGradeFilter === 'All classes' || !selectedGradeDefinitionId) {
       return [];
     }
 
     const groups = classes
-      .filter(
-        (cls) =>
-          cls.classDefinitionId === selectedGradeDefinitionId &&
-          cls.section === selectedSectionFilter &&
-          cls.groupId
+      .filter((cls) => cls.classDefinitionId === selectedGradeDefinitionId && Boolean(cls.groupId))
+      .filter((cls) =>
+        selectedSectionFilter === 'All sections'
+          ? true
+          : cls.section === selectedSectionFilter
       )
-      .map((cls) => ({ id: cls.groupId, name: groupNameMap[cls.groupId ?? ''] ?? cls.groupId ?? '' }));
+      .map((cls) => ({ id: cls.groupId as string, name: groupNameMap[cls.groupId ?? ''] ?? cls.groupId ?? '' }));
 
     return Array.from(new Map(groups.map((group) => [group.id, group])).values());
   }, [classes, selectedGradeDefinitionId, selectedGradeFilter, selectedSectionFilter, groupNameMap]);
@@ -526,58 +522,60 @@ export function AdminClassesPage() {
           <div className="rounded border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>
         ) : null}
 
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex flex-wrap gap-3">
-            <select
-              value={selectedGradeFilter}
-              onChange={(event) => {
-                setSelectedGradeFilter(event.target.value);
-                setSelectedSectionFilter('All sections');
-                setSelectedGroupFilter('All groups');
-                setPageIndex(0);
-              }}
-              className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white"
-            >
-              <option>All classes</option>
-              {gradeOptions.map((option) => (
-                <option key={option.id} value={option.label}>{option.label}</option>
-              ))}
-            </select>
-            <select
-              value={selectedSectionFilter}
-              onChange={(event) => { setSelectedSectionFilter(event.target.value); setSelectedGroupFilter('All groups'); setPageIndex(0); }}
-              disabled={selectedGradeFilter === 'All classes'}
-              className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <option>All sections</option>
-              {sectionOptions.map((section) => (
-                <option key={section} value={section}>{section}</option>
-              ))}
-            </select>
-            {selectedGradeFilter !== 'All classes' && selectedSectionFilter !== 'All sections' && groupOptions.length > 0 ? (
+        {classes.length > 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-wrap gap-3">
               <select
-                value={selectedGroupFilter}
-                onChange={(event) => { setSelectedGroupFilter(event.target.value); setPageIndex(0); }}
+                value={selectedGradeFilter}
+                onChange={(event) => {
+                  setSelectedGradeFilter(event.target.value);
+                  setSelectedSectionFilter('All sections');
+                  setSelectedGroupFilter('All groups');
+                  setPageIndex(0);
+                }}
                 className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white"
               >
-                <option>All groups</option>
-                {groupOptions.map((group) => (
-                  <option key={group.id} value={group.id}>{group.name || group.id}</option>
+                <option>All classes</option>
+                {gradeOptions.map((option) => (
+                  <option key={option.id} value={option.label}>{option.label}</option>
                 ))}
               </select>
-            ) : null}
+              <select
+                value={selectedSectionFilter}
+                onChange={(event) => { setSelectedSectionFilter(event.target.value); setSelectedGroupFilter('All groups'); setPageIndex(0); }}
+                disabled={selectedGradeFilter === 'All classes'}
+                className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <option>All sections</option>
+                {sectionOptions.map((section) => (
+                  <option key={section} value={section}>{section}</option>
+                ))}
+              </select>
+              {selectedGradeFilter !== 'All classes' && selectedSectionFilter !== 'All sections' && groupOptions.length > 0 ? (
+                <select
+                  value={selectedGroupFilter}
+                  onChange={(event) => { setSelectedGroupFilter(event.target.value); setPageIndex(0); }}
+                  className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white"
+                >
+                  <option>All groups</option>
+                  {groupOptions.map((group) => (
+                    <option key={group.id} value={group.id}>{group.name || group.id}</option>
+                  ))}
+                </select>
+              ) : null}
+            </div>
+            <div className="relative max-w-xs w-full md:w-auto">
+              <input
+                value={search}
+                onChange={(event) => { setSearch(event.target.value); setPageIndex(0); }}
+                type="text"
+                placeholder="Search classes…"
+                className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-brand-500"
+              />
+              <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            </div>
           </div>
-          <div className="relative max-w-xs w-full md:w-auto">
-            <input
-              value={search}
-              onChange={(event) => { setSearch(event.target.value); setPageIndex(0); }}
-              type="text"
-              placeholder="Search classes…"
-              className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-brand-500"
-            />
-            <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-          </div>
-        </div>
+        ) : null}
 
         <div className="space-y-4">
           {filteredClasses.length === 0 ? (
@@ -672,15 +670,17 @@ export function AdminClassesPage() {
             </div>
           )}
 
-          <AmsPagination
-            currentPage={pageIndex}
-            pageSize={pageSize}
-            totalItems={filteredClasses.length}
-            onPageChange={setPageIndex}
-            onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
-            label="Showing"
-            itemLabel="classes"
-          />
+          {classes.length > 0 && filteredClasses.length > 0 ? (
+            <AmsPagination
+              currentPage={pageIndex}
+              pageSize={pageSize}
+              totalItems={filteredClasses.length}
+              onPageChange={setPageIndex}
+              onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
+              label="Showing"
+              itemLabel="classes"
+            />
+          ) : null}
         </div>
 
         {/* Subjects & teacher allocation moved to Teacher allocation page */}
