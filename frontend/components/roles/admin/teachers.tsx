@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AmsDeleteComfiramtionModal, AmsPagination, AddTeacherModal, Button, type AddTeacherFormData } from '../../ui';
 import { AppShell } from '@/shared/layout';
 import { API_BASE_URL, createUser, deleteUser, getUsers, updateUser } from '@/lib/api';
@@ -89,6 +90,7 @@ export function AdminTeachersPage() {
   const [teacherModalSubmitting, setTeacherModalSubmitting] = useState(false);
   const [pageSize, setPageSize] = useState(10);
   const [pageIndex, setPageIndex] = useState(0);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 
   useEffect(() => {
@@ -395,17 +397,28 @@ export function AdminTeachersPage() {
                           <div className="relative inline-flex">
                             <button
                               type="button" data-action-button={t.id}
-                              onClick={(e) => { e.stopPropagation(); setActionMenuFor(actionMenuFor === t.id ? null : t.id); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const target = e.currentTarget.getBoundingClientRect();
+                                setMenuPosition({ top: target.bottom + 8, left: target.right - 176 });
+                                setActionMenuFor(actionMenuFor === t.id ? null : t.id);
+                              }}
                               className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 cursor-pointer"
                             >
                               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
                             </button>
-                            {actionMenuFor === t.id ? (
-                              <div data-action-menu={t.id} onClick={(ev) => ev.stopPropagation()} className="absolute right-0 top-full z-20 mt-2 w-44 overflow-hidden rounded border border-slate-200 bg-white shadow-xl">
+                            {actionMenuFor === t.id && typeof document !== 'undefined' ? createPortal(
+                              <div
+                                data-action-menu={t.id}
+                                onClick={(ev) => ev.stopPropagation()}
+                                style={{ position: 'fixed', top: menuPosition.top, left: menuPosition.left, zIndex: 9999 }}
+                                className="w-44 overflow-hidden rounded border border-slate-200 bg-white shadow-xl"
+                              >
                                 <button type="button" onClick={() => { setSelectedTeacher(t); setActionMenuFor(null); }} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">View details</button>
-                                <button type="button" onClick={() => handleEditTeacher(t)} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">Edit teacher</button>
-                                <button type="button" onClick={() => openDeleteTeacher(t)} className="w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50 cursor-pointer">Delete teacher</button>
-                              </div>
+                                <button type="button" onClick={() => { handleEditTeacher(t); setActionMenuFor(null); }} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">Edit teacher</button>
+                                <button type="button" onClick={() => { openDeleteTeacher(t); }} className="w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50 cursor-pointer">Delete teacher</button>
+                              </div>,
+                              document.body
                             ) : null}
                           </div>
                         </td>

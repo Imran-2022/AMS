@@ -254,15 +254,18 @@ export function AddTeacherModal({
             </div>
           </div>
           <div className="mt-4">
-            <label className={labelClass}>Subject specialization</label>
+            <label className={labelClass}>
+              Subject specialization <span className="text-rose-500">*</span>
+            </label>
             <select
               multiple
+              required
               value={values.subjectSpecializations ?? []}
               onChange={handleSpecializationChange}
               className="w-full min-h-[10rem] rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
             >
               {uniqueSubjects.map((subject) => (
-                <option key={`${subject.name}-${subject.code}`} value={subject.name}>
+                <option key={`${subject.name}-${subject.code}`} value={subject.name} className="cursor-pointer">
                   {subject.name} — {subject.code}
                 </option>
               ))}

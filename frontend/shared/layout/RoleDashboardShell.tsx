@@ -23,7 +23,7 @@ export default function RoleDashboardShell({ title, children, role }: { title: s
       { href: '/roles/admin/classes', label: 'Classes' },
       { href: '/roles/admin/subjects', label: 'Subjects' },
       { href: '/roles/admin/assignments', label: 'Assignments' },
-      { href: '/roles/admin/teacher-assignments', label: 'Teacher Assignments' },
+      { href: '/roles/admin/teacher-assignments', label: 'Teacher Allocation' },
       { href: '/roles/admin/enrollments', label: 'Enrollments' },
       { href: '/roles/admin/submissions', label: 'Submissions' }
     );

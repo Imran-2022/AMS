@@ -14,13 +14,17 @@ public class ClassCourseRepository : IClassCourseRepository
     }
 
     public async Task<ClassCourse?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
-        => await _dbContext.ClassCourses.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        => await _dbContext.ClassCourses
+            .Include(x => x.AcademicYear)
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
     public async Task<IReadOnlyList<ClassCourse>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            return await _dbContext.ClassCourses.ToListAsync(cancellationToken);
+            return await _dbContext.ClassCourses
+                .Include(x => x.AcademicYear)
+                .ToListAsync(cancellationToken);
         }
         catch (Exception ex)
         {
@@ -83,6 +87,13 @@ public class ClassCourseRepository : IClassCourseRepository
 
     public async Task UpdateAsync(ClassCourse classCourse, CancellationToken cancellationToken = default)
     {
+        var localEntry = _dbContext.ChangeTracker.Entries<ClassCourse>()
+            .FirstOrDefault(entry => entry.Entity.Id == classCourse.Id && entry.Entity != classCourse);
+        if (localEntry is not null)
+        {
+            localEntry.State = EntityState.Detached;
+        }
+
         _dbContext.ClassCourses.Update(classCourse);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }

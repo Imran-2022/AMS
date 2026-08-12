@@ -50,6 +50,10 @@ export function AdminClassesPage() {
   const [actionMenuFor, setActionMenuFor] = useState<string | null>(null);
   const [viewSubjectsForClass, setViewSubjectsForClass] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [selectedGradeFilter, setSelectedGradeFilter] = useState('All classes');
+  const [selectedSectionFilter, setSelectedSectionFilter] = useState('All sections');
+  const [selectedGroupFilter, setSelectedGroupFilter] = useState('All groups');
   const [classStudentCountsState, setClassStudentCountsState] = useState<Record<string, number>>({});
   const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
@@ -294,23 +298,37 @@ export function AdminClassesPage() {
 
     try {
       const yearName = academicYears.find(y => y.id === classForm.year)?.name || '';
+      const nameToSend = classForm.name || classDefinitions.find((c) => c.id === classForm.classDefinitionId)?.name || '';
+      let academicYearId = classForm.year || (academicYears.find((y) => y.isActive)?.id) || '';
+      if (!academicYearId) {
+        // if academic years were not loaded yet, fetch them directly and pick the active one
+        try {
+          const years = await getAcademicYears();
+          setAcademicYears(years);
+          academicYearId = years.find((y) => y.isActive)?.id ?? years[0]?.id ?? '';
+        } catch (err) {
+          console.error('Failed to load academic years before create:', err);
+        }
+      }
+      if (!academicYearId) {
+        alert('No academic year is available. Please create an academic year first.');
+        return;
+      }
       if (editingClass) {
-        const nameToSend = classForm.name || classDefinitions.find((c) => c.id === classForm.classDefinitionId)?.name || '';
         await updateClassCourse(editingClass.id, {
           classDefinitionId: classForm.classDefinitionId || undefined,
           groupId: classForm.groupId || undefined,
           name: nameToSend,
           section: classForm.section,
-          academicYear: yearName,
+          academicYearId: academicYearId || undefined,
         });
       } else {
-        const nameToSend = classForm.name || classDefinitions.find((c) => c.id === classForm.classDefinitionId)?.name || '';
         await createClassCourse({
           classDefinitionId: classForm.classDefinitionId || undefined,
           groupId: classForm.groupId || undefined,
           name: nameToSend,
           section: classForm.section,
-          academicYear: yearName,
+          academicYearId: academicYearId,
         });
       }
       const activeYear = academicYears.find(y => y.isActive)?.id ?? academicYears[0]?.id ?? '';
@@ -397,17 +415,72 @@ export function AdminClassesPage() {
     [assignments]
   );
 
-  const gradeOptions = useMemo(
-    () => classDefinitions.map((definition) => ({ id: definition.id, label: definition.name })),
-    [classDefinitions]
+  const availableClassDefinitionIds = useMemo(
+    () => new Set(classes.map((cls) => cls.classDefinitionId).filter(Boolean) as string[]),
+    [classes]
   );
+
+  const gradeOptions = useMemo(
+    () => classDefinitions
+      .filter((definition) => availableClassDefinitionIds.has(definition.id))
+      .map((definition) => ({ id: definition.id, label: definition.name })),
+    [classDefinitions, availableClassDefinitionIds]
+  );
+
+  const selectedGradeDefinitionId = useMemo(
+    () => classDefinitions.find((definition) => definition.name === selectedGradeFilter)?.id ?? '',
+    [selectedGradeFilter, classDefinitions]
+  );
+
+  const sectionOptions = useMemo(() => {
+    if (selectedGradeFilter === 'All classes' || !selectedGradeDefinitionId) return [];
+    return Array.from(
+      new Set(
+        classes
+          .filter((cls) => cls.classDefinitionId === selectedGradeDefinitionId)
+          .map((cls) => cls.section)
+          .filter(Boolean)
+      )
+    ).sort();
+  }, [classes, selectedGradeDefinitionId, selectedGradeFilter]);
+
+  const groupOptions = useMemo(() => {
+    if (selectedGradeFilter === 'All classes' || !selectedGradeDefinitionId) {
+      return [];
+    }
+
+    const groups = classes
+      .filter((cls) => cls.classDefinitionId === selectedGradeDefinitionId && Boolean(cls.groupId))
+      .filter((cls) =>
+        selectedSectionFilter === 'All sections'
+          ? true
+          : cls.section === selectedSectionFilter
+      )
+      .map((cls) => ({ id: cls.groupId as string, name: groupNameMap[cls.groupId ?? ''] ?? cls.groupId ?? '' }));
+
+    return Array.from(new Map(groups.map((group) => [group.id, group])).values());
+  }, [classes, selectedGradeDefinitionId, selectedGradeFilter, selectedSectionFilter, groupNameMap]);
+
+  const filteredClasses = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return classes.filter((cls) => {
+      const gradeLabel = classDefinitions.find((definition) => definition.id === cls.classDefinitionId)?.name ?? '';
+      const matchesGrade = selectedGradeFilter === 'All classes' || gradeLabel === selectedGradeFilter;
+      const matchesSection = selectedSectionFilter === 'All sections' || cls.section === selectedSectionFilter;
+      const matchesGroup = selectedGroupFilter === 'All groups' || cls.groupId === selectedGroupFilter;
+      const matchesSearch =
+        !term ||
+        `${cls.name} ${cls.section} ${gradeLabel} ${groupNameMap[cls.groupId ?? ''] ?? ''}`.toLowerCase().includes(term);
+      return matchesGrade && matchesSection && matchesGroup && matchesSearch;
+    });
+  }, [classes, search, selectedGradeFilter, selectedSectionFilter, selectedGroupFilter, classDefinitions, groupNameMap]);
 
   const pagedClasses = useMemo(() => {
     const start = pageIndex * pageSize;
-    return classes.slice(start, start + pageSize);
-  }, [classes, pageIndex, pageSize]);
+    return filteredClasses.slice(start, start + pageSize);
+  }, [filteredClasses, pageIndex, pageSize]);
 
-  const pageCount = useMemo(() => Math.max(1, Math.ceil(classes.length / pageSize)), [classes.length, pageSize]);
+  const pageCount = useMemo(() => Math.max(1, Math.ceil(filteredClasses.length / pageSize)), [filteredClasses.length, pageSize]);
 
   useEffect(() => {
     if (pageIndex >= pageCount) {
@@ -427,6 +500,26 @@ export function AdminClassesPage() {
       }, {}),
     [subjects]
   );
+
+  const summaryMetrics = useMemo(() => {
+    const classIds = new Set(classes.map((cls) => cls.id));
+    const totalClasses = classes.length;
+    const totalSections = classes.filter((cls) => cls.section).length;
+    const totalGroups = new Set(classes.filter((cls) => cls.groupId).map((cls) => cls.groupId as string)).size;
+    const totalStudents = classes.reduce((sum, cls) => sum + (classStudentCountsState[cls.id] ?? 0), 0);
+    const missingTeacherClassIds = new Set(
+      subjects
+        .filter((subject) => classIds.has(subject.classCourseId) && !assignmentMap[subject.id])
+        .map((subject) => subject.classCourseId)
+    );
+    return {
+      totalClasses,
+      totalSections,
+      totalGroups,
+      totalStudents,
+      classesMissingTeacher: missingTeacherClassIds.size,
+    };
+  }, [classes, classStudentCountsState, subjects, assignmentMap]);
 
   return (
     <AppShell role="Admin" breadcrumb="Admin / Classes & subjects">
@@ -463,10 +556,125 @@ export function AdminClassesPage() {
           <div className="rounded border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>
         ) : null}
 
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-[11px] font-bold tracking-[0.12em] text-slate-400">CLASSES</p>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/></svg>
+              </div>
+            </div>
+            <p className="text-2xl font-extrabold text-slate-800">{summaryMetrics.totalClasses}</p>
+            <p className="mt-1 text-xs text-slate-400">Total class records</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-[11px] font-bold tracking-[0.12em] text-slate-400">SECTIONS</p>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-500">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
+              </div>
+            </div>
+            <p className="text-2xl font-extrabold text-slate-800">{summaryMetrics.totalSections}</p>
+            <p className="mt-1 text-xs text-slate-400">Distinct sections</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-[11px] font-bold tracking-[0.12em] text-slate-400">STUDENTS</p>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-500">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 4a4 4 0 0 1 4 4v4a4 4 0 0 1-8 0V8a4 4 0 0 1 4-4z"/><path d="M6 20a6 6 0 0 1 12 0"/></svg>
+              </div>
+            </div>
+            <p className="text-2xl font-extrabold text-slate-800">{summaryMetrics.totalStudents}</p>
+            <p className="mt-1 text-xs text-slate-400">Enrolled students</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-[11px] font-bold tracking-[0.12em] text-slate-400">TEACHER ALLOCATION</p>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-500">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 12v-2"/><path d="M12 16v-1"/><path d="M12 20c4.418 0 8-1.79 8-4v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2c0 2.21 3.582 4 8 4z"/><circle cx="12" cy="7" r="3"/></svg>
+              </div>
+            </div>
+            <p className="text-2xl font-extrabold text-slate-800">{summaryMetrics.classesMissingTeacher}</p>
+            <p className="mt-1 text-xs text-slate-400">Classes missing teacher allocation</p>
+          </div>
+        </div>
+
+        {classes.length > 0 ? (
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-wrap gap-3">
+              <select
+                value={selectedGradeFilter}
+                onChange={(event) => {
+                  setSelectedGradeFilter(event.target.value);
+                  setSelectedSectionFilter('All sections');
+                  setSelectedGroupFilter('All groups');
+                  setPageIndex(0);
+                }}
+                className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white"
+              >
+                <option>All classes</option>
+                {gradeOptions.map((option) => (
+                  <option key={option.id} value={option.label}>{option.label}</option>
+                ))}
+              </select>
+              <select
+                value={selectedSectionFilter}
+                onChange={(event) => { setSelectedSectionFilter(event.target.value); setSelectedGroupFilter('All groups'); setPageIndex(0); }}
+                disabled={selectedGradeFilter === 'All classes'}
+                className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <option>All sections</option>
+                {sectionOptions.map((section) => (
+                  <option key={section} value={section}>{section}</option>
+                ))}
+              </select>
+              {selectedGradeFilter !== 'All classes' && selectedSectionFilter !== 'All sections' && groupOptions.length > 0 ? (
+                <select
+                  value={selectedGroupFilter}
+                  onChange={(event) => { setSelectedGroupFilter(event.target.value); setPageIndex(0); }}
+                  className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white"
+                >
+                  <option>All groups</option>
+                  {groupOptions.map((group) => (
+                    <option key={group.id} value={group.id}>{group.name || group.id}</option>
+                  ))}
+                </select>
+              ) : null}
+            </div>
+            <div className="relative max-w-xs w-full md:w-auto">
+              <input
+                value={search}
+                onChange={(event) => { setSearch(event.target.value); setPageIndex(0); }}
+                type="text"
+                placeholder="Search classes…"
+                className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-brand-500"
+              />
+              <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            </div>
+          </div>
+        ) : null}
+
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {pagedClasses.map((cls) => (
-              <div key={cls.id} className="bg-white rounded border border-slate-200 p-5">
+          {filteredClasses.length === 0 ? (
+            <div className="rounded-2xl border border-slate-200 bg-white px-8 py-20 text-center">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-500 mx-auto">
+                <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 7h16" />
+                  <path d="M4 12h16" />
+                  <path d="M4 17h10" />
+                </svg>
+              </div>
+              <p className="text-base font-bold text-slate-800">No classes found</p>
+              <p className="mt-2 max-w-md text-sm text-slate-500 mx-auto">
+                {search || selectedGradeFilter !== 'All classes' || selectedSectionFilter !== 'All sections' || selectedGroupFilter !== 'All groups'
+                  ? 'Try a different search or filter to find the class you need.'
+                  : 'There are no classes available yet. Add a class to get started.'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {pagedClasses.map((cls) => (
+                <div key={cls.id} className="bg-white rounded border border-slate-200 p-5">
                   <div className="flex items-start justify-between">
                   <div>
                     <p className="text-base font-bold text-slate-800">{cls.name} — {cls.section}{cls.groupId ? `(${groupNameMap[cls.groupId] ?? ''})` : ''}</p>
@@ -536,21 +744,23 @@ export function AdminClassesPage() {
                 </div>
               </div>
             ))}
-          </div>
+            </div>
+          )}
 
-          <AmsPagination
-            currentPage={pageIndex}
-            pageSize={pageSize}
-            totalItems={classes.length}
-            pageSizeOptions={PAGE_SIZE_OPTIONS}
-            onPageChange={setPageIndex}
-            onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
-            label="Showing"
-            itemLabel="classes"
-          />
+          {classes.length > 0 && filteredClasses.length > 0 ? (
+            <AmsPagination
+              currentPage={pageIndex}
+              pageSize={pageSize}
+              totalItems={filteredClasses.length}
+              onPageChange={setPageIndex}
+              onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
+              label="Showing"
+              itemLabel="classes"
+            />
+          ) : null}
         </div>
 
-        {/* Subjects & teacher assignments moved to Teacher Assignments page */}
+        {/* Subjects & teacher allocation moved to Teacher allocation page */}
 
         <div className={`${activeModal === 'subject' ? 'flex' : 'hidden'} fixed inset-0 z-50 items-center justify-center bg-slate-900/40 p-4`}>
           <div className="bg-white rounded w-full max-w-md shadow-2xl">
@@ -655,29 +865,7 @@ export function AdminClassesPage() {
           </div>
           <form onSubmit={handleCreateClass} className="px-7 py-6 space-y-5">
             <div className="space-y-4">
-              <div>
-                <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Academic year <span className="text-rose-500">*</span></label>
-                <div className="relative">
-                  <select
-                    value={classForm.year}
-                    onChange={(event) => setClassForm({ ...classForm, year: event.target.value })}
-                    required
-                    className="w-full appearance-none rounded border border-slate-300 bg-white px-4 py-2.5 pr-10 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                  >
-                    <option value="">Select academic year</option>
-                    {academicYears.map((year) => (
-                      <option key={year.id} value={year.id}>
-                        {year.name} {year.isActive ? '(Active)' : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-500">
-                    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                      <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd"/>
-                    </svg>
-                  </span>
-                </div>
-              </div>
+              {/* Academic year is auto-selected to the active year; not shown in the UI */}
 
               <div>
                 <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Class <span className="text-rose-500">*</span></label>
@@ -766,7 +954,7 @@ export function AdminClassesPage() {
         </div>
       </div>
 
-      {/* Subject creation/editing moved to Teacher Assignments page */}
+{/* Subject creation/editing moved to Teacher allocation page */}
 
       <Modal open={activeModal === 'view-subjects'} onClose={closeModal} title={classes.find((cls) => cls.id === viewSubjectsForClass)?.name ?? 'Class subjects'} description="View all subjects that belong to this class.">
         <div className="space-y-4">
@@ -786,7 +974,7 @@ export function AdminClassesPage() {
         </div>
       </Modal>
 
-      {/* Teacher assignment moved to Teacher Assignments page */}
+      {/* Teacher assignment moved to Teacher allocation page */}
 
       </div>
 

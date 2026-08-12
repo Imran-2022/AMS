@@ -7,6 +7,7 @@ public class ClassCourseDto
     public string Section { get; set; } = string.Empty;
     public Guid AcademicYearId { get; set; }
     public string? AcademicYearName { get; set; }
+    public string? AcademicYear => AcademicYearName;
     public Guid? ClassDefinitionId { get; set; }
     public string? ClassDefinitionName { get; set; }
     public Guid? GroupId { get; set; }

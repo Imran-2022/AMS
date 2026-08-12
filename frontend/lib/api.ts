@@ -324,7 +324,7 @@ export type CreateClassCourseDto = {
   groupId?: string | null;
   name: string;
   section: string;
-  academicYear: string;
+  academicYearId: string;
 };
 
 export type UpdateClassCourseDto = {
@@ -332,7 +332,7 @@ export type UpdateClassCourseDto = {
   groupId?: string | null;
   name?: string;
   section?: string;
-  academicYear?: string;
+  academicYearId?: string;
 };
 
 export type SubjectDto = {

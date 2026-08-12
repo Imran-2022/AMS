@@ -15,7 +15,7 @@ public class AcademicYearsControllerTests
     [Fact]
     public async Task GetAll_Returns_Ok_With_Years()
     {
-        var years = new List<AcademicYearDto> { new() { Id = Guid.NewGuid(), Name = "2025-2026", IsActive = false } };
+        var years = new List<AcademicYearDto> { new() { Id = Guid.NewGuid(), Name = "2026-2027", IsActive = true } };
         var service = new Mock<IAcademicYearAppService>(MockBehavior.Strict);
         service.Setup(s => s.GetAllAsync()).ReturnsAsync(years);
 
@@ -44,7 +44,7 @@ public class AcademicYearsControllerTests
     [Fact]
     public async Task Create_Returns_Ok_When_AcademicYear_Created()
     {
-        var expected = new AcademicYearDto { Id = Guid.NewGuid(), Name = "2025-2026", StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow.AddYears(1), IsActive = false };
+        var expected = new AcademicYearDto { Id = Guid.NewGuid(), Name = "2026-2027", StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow.AddYears(1), IsActive = true };
         var service = new Mock<IAcademicYearAppService>(MockBehavior.Strict);
         service.Setup(s => s.CreateAsync(It.IsAny<CreateAcademicYearDto>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(expected);
 
@@ -61,7 +61,7 @@ public class AcademicYearsControllerTests
             }
         };
 
-        var input = new CreateAcademicYearDto { Name = "2025-2026", StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow.AddYears(1), IsActive = false };
+        var input = new CreateAcademicYearDto { Name = "2026-2027", StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow.AddYears(1), IsActive = true };
         var result = await controller.Create(input);
 
         var ok = Assert.IsType<OkObjectResult>(result);
@@ -72,7 +72,7 @@ public class AcademicYearsControllerTests
     [Fact]
     public async Task Activate_Returns_Ok_When_AcademicYear_Activated()
     {
-        var expected = new AcademicYearDto { Id = Guid.NewGuid(), Name = "2025-2026", StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow.AddYears(1), IsActive = true };
+        var expected = new AcademicYearDto { Id = Guid.NewGuid(), Name = "2026-2027", StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow.AddYears(1), IsActive = true };
         var service = new Mock<IAcademicYearAppService>(MockBehavior.Strict);
         service.Setup(s => s.ActivateAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(expected);
 
