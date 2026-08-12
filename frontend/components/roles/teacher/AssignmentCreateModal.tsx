@@ -13,8 +13,6 @@ type AssignmentCreatePayload = {
   deadline: string;
   maxMarks: number;
   attachmentFiles?: File[];
-  attachmentUrl?: string;
-  attachmentName?: string;
 };
 
 type TeacherAssignmentCreateModalProps = {
