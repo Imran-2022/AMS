@@ -31,11 +31,12 @@ RUN dotnet publish src/AMS.DbMigrator/AMS.DbMigrator.csproj -c Release -o /app/m
 ########################
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS api
 WORKDIR /app
-ENV ASPNETCORE_URLS=http://+:8080
-EXPOSE 8080
 RUN mkdir -p /app/App_Data/Uploads
 COPY --from=build /app/api .
-ENTRYPOINT ["dotnet", "AMS.HttpApi.Host.dll"]
+COPY entrypoint-api.sh ./
+RUN chmod +x entrypoint-api.sh
+EXPOSE 8080
+ENTRYPOINT ["./entrypoint-api.sh"]
 
 ########################
 # Runtime: DB migrator + seeder (one-shot)
