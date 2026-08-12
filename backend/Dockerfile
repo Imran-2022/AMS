@@ -27,6 +27,17 @@ RUN dotnet publish src/AMS.HttpApi.Host/AMS.HttpApi.Host.csproj -c Release -o /a
 RUN dotnet publish src/AMS.DbMigrator/AMS.DbMigrator.csproj -c Release -o /app/migrator --no-restore
 
 ########################
+# Runtime: DB migrator + seeder (one-shot)
+########################
+FROM mcr.microsoft.com/dotnet/runtime:10.0 AS migrator
+WORKDIR /app
+RUN apt-get update && apt-get install -y libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/*
+COPY --from=build /app/migrator .
+COPY entrypoint-migrator.sh ./
+RUN chmod +x entrypoint-migrator.sh
+ENTRYPOINT ["./entrypoint-migrator.sh"]
+
+########################
 # Runtime: API
 ########################
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS api
@@ -38,14 +49,3 @@ COPY entrypoint-api.sh ./
 RUN chmod +x entrypoint-api.sh
 EXPOSE 8080
 ENTRYPOINT ["./entrypoint-api.sh"]
-
-########################
-# Runtime: DB migrator + seeder (one-shot)
-########################
-FROM mcr.microsoft.com/dotnet/runtime:10.0 AS migrator
-WORKDIR /app
-RUN apt-get update && apt-get install -y libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/*
-COPY --from=build /app/migrator .
-COPY entrypoint-migrator.sh ./
-RUN chmod +x entrypoint-migrator.sh
-ENTRYPOINT ["./entrypoint-migrator.sh"]
