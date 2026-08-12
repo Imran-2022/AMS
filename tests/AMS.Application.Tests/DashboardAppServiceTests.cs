@@ -20,8 +20,8 @@ public class DashboardAppServiceTests
         };
         var classes = new[] { new ClassCourse(Guid.NewGuid(), "Class", "A", Guid.NewGuid(), Guid.NewGuid()) };
         var subjects = new[] { new Subject(Guid.NewGuid(), "Math", "MATH101", classes[0].Id) };
-        var assignments = new[] { new Assignment(Guid.NewGuid(), "Title", "Desc", classes[0].Id, Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.AddDays(1), 100, AssignmentStatus.Published, true, true, DateTime.UtcNow) };
-        var submissions = new[] { new Submission(Guid.NewGuid(), assignments[0].Id, Guid.NewGuid(), "content", null, null, DateTime.UtcNow, false, SubmissionStatus.Submitted) };
+        var assignments = new[] { new Assignment(Guid.NewGuid(), "Title", "Desc", classes[0].Id, Guid.NewGuid(), DateTime.UtcNow.AddDays(1), 100, AssignmentStatus.Published, true, true, DateTime.UtcNow) };
+        var submissions = new[] { new Submission(Guid.NewGuid(), assignments[0].Id, Guid.NewGuid(), "content", DateTime.UtcNow, false, SubmissionStatus.Submitted) };
 
         var userRepo = new Mock<IUserRepository>(MockBehavior.Strict);
         userRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(users);

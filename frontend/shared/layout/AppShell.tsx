@@ -1,6 +1,6 @@
 "use client";
 
-import { useContext, useEffect, useState, createContext } from 'react';
+import { useContext, useEffect, useRef, useState, createContext } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { clearStoredAuth, getStoredUser } from '@/lib/auth';
 import { API_BASE_URL } from '@/lib/api';
+import { getNotifications, getUnreadNotificationCount, markAllNotificationsRead, markNotificationRead } from '@/lib/api/notifications';
 import { ToastContainer } from '../ui';
 import { ROLE } from '@/shared/constants/roles';
 import type { RoleType } from '@/shared/constants/roles';
@@ -201,7 +202,115 @@ function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, 
   );
 }
 
-function Topbar({ breadcrumb }: { breadcrumb: string }) {
+type NotificationRow = {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  isRead: boolean;
+  createdAt: string;
+  relatedEntityType?: string | null;
+  relatedEntityId?: string | null;
+};
+
+function formatRelativeTime(value: string) {
+  const diffMs = Date.now() - new Date(value).getTime();
+  const diffMinutes = Math.max(0, Math.floor(diffMs / 60000));
+
+  if (diffMinutes < 1) return 'just now';
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ago`;
+}
+
+function Topbar({ breadcrumb, role }: { breadcrumb: string; role: RoleType }) {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationRow[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const loadNotifications = async () => {
+      try {
+        const data = await getNotifications(1, 10);
+        setNotifications((data ?? []) as NotificationRow[]);
+      } catch {
+        setNotifications([]);
+      }
+    };
+
+    const loadUnreadCount = async () => {
+      try {
+        const count = await getUnreadNotificationCount();
+        setUnreadCount(Number(count ?? 0));
+      } catch {
+        setUnreadCount(0);
+      }
+    };
+
+    void loadNotifications();
+    void loadUnreadCount();
+
+    const interval = window.setInterval(() => {
+      void loadUnreadCount();
+    }, 30000);
+
+    return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    window.addEventListener('mousedown', handlePointerDown);
+    return () => window.removeEventListener('mousedown', handlePointerDown);
+  }, []);
+
+  async function handleNotificationClick(notification: NotificationRow) {
+    if (!notification.isRead) {
+      try {
+        await markNotificationRead(notification.id);
+        setNotifications((items) => items.map((item) => item.id === notification.id ? { ...item, isRead: true } : item));
+        setUnreadCount((count) => Math.max(0, count - 1));
+      } catch {
+        // ignore and still navigate
+      }
+    }
+
+    setDropdownOpen(false);
+
+    const entityType = notification.relatedEntityType;
+    const entityId = notification.relatedEntityId;
+    const targetRole = role.toLowerCase();
+
+    if (entityType === 'Assignment' && entityId) {
+      router.push(`/roles/${targetRole}/assignments/${entityId}`);
+      return;
+    }
+
+    if (entityType === 'Submission' && entityId) {
+      router.push(`/roles/${targetRole}/submissions/${entityId}`);
+    }
+  }
+
+  async function handleMarkAllAsRead() {
+    try {
+      await markAllNotificationsRead();
+      setNotifications((items) => items.map((item) => ({ ...item, isRead: true })));
+      setUnreadCount(0);
+    } catch {
+      // ignore to keep UI resilient
+    }
+  }
+
   return (
     <header className="sticky top-0 z-10 border-[#ECECEF] bg-white">
       <div className="flex h-16 items-center justify-between px-6">
@@ -209,10 +318,59 @@ function Topbar({ breadcrumb }: { breadcrumb: string }) {
           <p className="text-sm font-semibold leading-tight">{breadcrumb}</p>
           <p className="text-[12px] text-[#8A8F98] leading-tight">Manage assignments, users and classes.</p>
         </div>
-        <button className="relative w-9 h-9 rounded-lg flex items-center justify-center hover:bg-[#F5F5F7]" aria-label="Notifications">
-          <Bell className="h-5 w-5 text-[#1F2430]" />
-          <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-[#7C3AED] px-1.5 text-[9px] font-semibold text-white">3</span>
-        </button>
+        <div ref={rootRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setDropdownOpen((open) => !open)}
+            className="relative w-9 h-9 rounded-lg flex items-center justify-center hover:bg-[#F5F5F7]"
+            aria-label="Notifications"
+            aria-expanded={dropdownOpen}>
+            <Bell className="h-5 w-5 text-[#1F2430]" />
+            {unreadCount > 0 ? (
+              <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-[#7C3AED] px-1.5 text-[9px] font-semibold text-white">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            ) : null}
+          </button>
+
+          {dropdownOpen ? (
+            <div className="absolute right-0 top-12 w-[360px] overflow-hidden rounded-xl border border-[#ECECEF] bg-white shadow-xl">
+              <div className="flex items-center justify-between border-b border-[#ECECEF] px-4 py-3">
+                <p className="text-sm font-semibold text-[#1F2430]">Notifications</p>
+                <button
+                  type="button"
+                  onClick={handleMarkAllAsRead}
+                  className="text-[11px] font-medium text-[#7C3AED] hover:text-[#6D28D9]"
+                >
+                  Mark all as read
+                </button>
+              </div>
+
+              <div className="max-h-[360px] overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <div className="px-4 py-6 text-center text-sm text-[#8A8F98]">No notifications yet.</div>
+                ) : (
+                  notifications.map((notification) => (
+                    <button
+                      key={notification.id}
+                      type="button"
+                      onClick={() => void handleNotificationClick(notification)}
+                      className={`flex w-full items-start gap-3 border-b border-[#F3F4F6] px-4 py-3 text-left transition-colors hover:bg-[#F7F7F9] ${notification.isRead ? 'bg-white' : 'bg-[#F5F3FF]'}`}>
+                      <span className={`mt-1 h-2.5 w-2.5 rounded-full ${notification.isRead ? 'bg-transparent' : 'bg-[#7C3AED]'}`} />
+                      <div className="min-w-0 flex-1">
+                        <p className={`text-sm font-semibold ${notification.isRead ? 'text-[#1F2430]' : 'text-[#1F2430]'}`}>
+                          {notification.title}
+                        </p>
+                        <p className="mt-1 text-xs text-[#8A8F98]">{notification.message}</p>
+                        <p className="mt-2 text-[11px] text-[#8A8F98]">{formatRelativeTime(notification.createdAt)}</p>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          ) : null}
+        </div>
       </div>
     </header>
   );
@@ -317,7 +475,7 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
           avatarUrl={avatarUrl}
         />
         <div className={`flex-1 flex flex-col min-h-0 transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed ? 'lg:ml-[76px]' : 'lg:ml-64'}`}>
-          <Topbar breadcrumb={computedBreadcrumb} />
+          <Topbar breadcrumb={computedBreadcrumb} role={role} />
           <main className="layout-main flex-1 min-h-0 w-full overflow-y-auto">
             <div className="px-6 py-6">{children}</div>
           </main>

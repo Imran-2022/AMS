@@ -40,7 +40,8 @@ public class AssignmentAppServiceTests
             classCourseRepo.Object,
             groupRepo.Object,
             subjectRepo.Object,
-            Mock.Of<IAttachmentAppService>());
+            Mock.Of<IAttachmentAppService>(),
+            Mock.Of<INotificationService>());
 
         var input = new CreateAssignmentDto
         {

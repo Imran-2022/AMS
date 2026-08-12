@@ -125,6 +125,8 @@ builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
 builder.Services.AddScoped<ITeacherSubjectAssignmentRepository, TeacherSubjectAssignmentRepository>();
 builder.Services.AddScoped<IStudentEnrollmentRepository, StudentEnrollmentRepository>();
 builder.Services.AddScoped<IAttachmentRepository, AttachmentRepository>();
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+builder.Services.AddScoped<INotificationPreferenceRepository, NotificationPreferenceRepository>();
 
 builder.Services.AddScoped<IAcademicYearAppService, AcademicYearAppService>();
 builder.Services.AddScoped<IAuthAppService, AuthAppService>();
@@ -138,6 +140,8 @@ builder.Services.AddScoped<IEnrollmentAppService, StudentEnrollmentAppService>()
 builder.Services.AddScoped<IDashboardAppService, DashboardAppService>();
 builder.Services.AddScoped<IFileAppService, FileAppService>();
 builder.Services.AddScoped<IAttachmentAppService, AttachmentAppService>();
+builder.Services.AddScoped<INotificationAppService, NotificationAppService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // Current user access
 builder.Services.AddHttpContextAccessor();

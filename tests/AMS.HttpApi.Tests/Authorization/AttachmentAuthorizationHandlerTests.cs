@@ -17,8 +17,9 @@ public class AttachmentAuthorizationHandlerTests
         var attachmentRepo = new Mock<IAttachmentRepository>();
         var submissionRepo = new Mock<ISubmissionRepository>();
         var assignmentRepo = new Mock<IAssignmentRepository>();
+        var subjectRepo = new Mock<ISubjectRepository>();
         var enrollmentRepo = new Mock<IStudentEnrollmentRepository>();
-        var handler = new AttachmentAuthorizationHandler(attachmentRepo.Object, submissionRepo.Object, assignmentRepo.Object, enrollmentRepo.Object);
+        var handler = new AttachmentAuthorizationHandler(attachmentRepo.Object, submissionRepo.Object, assignmentRepo.Object, subjectRepo.Object, enrollmentRepo.Object);
 
         var claims = new[] { new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()), new Claim(ClaimTypes.Role, "Admin") };
         var user = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
@@ -38,16 +39,17 @@ public class AttachmentAuthorizationHandlerTests
         var studentId = Guid.NewGuid();
 
         var attachment = new Domain.Entities.Attachment(Guid.NewGuid(), "Submission", submissionId, "orig.pdf", file, "application/pdf", 1234L, Guid.NewGuid(), DateTime.UtcNow);
-        var submission = new Submission(submissionId, Guid.NewGuid(), studentId, "", null, null, DateTime.UtcNow, false, AMS.Domain.Shared.SubmissionStatus.Submitted);
+        var submission = new Submission(submissionId, Guid.NewGuid(), studentId, "", DateTime.UtcNow, false, AMS.Domain.Shared.SubmissionStatus.Submitted);
 
         var attachmentRepo = new Mock<IAttachmentRepository>();
         attachmentRepo.Setup(r => r.GetByStoredFileNameAsync(file, It.IsAny<CancellationToken>())).ReturnsAsync(attachment);
         var submissionRepo = new Mock<ISubmissionRepository>();
         submissionRepo.Setup(r => r.GetByIdAsync(submissionId, It.IsAny<CancellationToken>())).ReturnsAsync(submission);
         var assignmentRepo = new Mock<IAssignmentRepository>();
+        var subjectRepo = new Mock<ISubjectRepository>();
         var enrollmentRepo = new Mock<IStudentEnrollmentRepository>();
 
-        var handler = new AttachmentAuthorizationHandler(attachmentRepo.Object, submissionRepo.Object, assignmentRepo.Object, enrollmentRepo.Object);
+        var handler = new AttachmentAuthorizationHandler(attachmentRepo.Object, submissionRepo.Object, assignmentRepo.Object, subjectRepo.Object, enrollmentRepo.Object);
 
         var claims = new[] { new Claim(ClaimTypes.NameIdentifier, studentId.ToString()) };
         var user = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));

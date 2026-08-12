@@ -17,6 +17,7 @@ public class AssignmentAppService : IAssignmentAppService
     private readonly IGroupRepository _groupRepository;
     private readonly ISubjectRepository _subjectRepository;
     private readonly IAttachmentAppService _attachmentAppService;
+    private readonly INotificationService _notificationService;
 
     public AssignmentAppService(
         IAssignmentRepository assignmentRepository,
@@ -27,7 +28,8 @@ public class AssignmentAppService : IAssignmentAppService
         IClassCourseRepository classCourseRepository,
         IGroupRepository groupRepository,
         ISubjectRepository subjectRepository,
-        IAttachmentAppService attachmentAppService)
+        IAttachmentAppService attachmentAppService,
+        INotificationService notificationService)
     {
         _assignmentRepository = assignmentRepository;
         _teacherSubjectAssignmentRepository = teacherSubjectAssignmentRepository;
@@ -38,6 +40,7 @@ public class AssignmentAppService : IAssignmentAppService
         _groupRepository = groupRepository;
         _subjectRepository = subjectRepository;
         _attachmentAppService = attachmentAppService;
+        _notificationService = notificationService;
     }
 
     public async Task<IReadOnlyList<AssignmentDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
@@ -212,6 +215,17 @@ public class AssignmentAppService : IAssignmentAppService
         EnsureCanManage(assignment, currentUserId, currentUserRole);
         assignment.Publish();
         await _assignmentRepository.UpdateAsync(assignment, cancellationToken);
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _notificationService.NotifyAssignmentPublishedAsync(assignment, cancellationToken);
+            }
+            catch
+            {
+                // Notifications must never block assignment publishing.
+            }
+        }, cancellationToken);
         return await ToDtoAsync(assignment, cancellationToken).ConfigureAwait(false);
     }
 

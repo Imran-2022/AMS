@@ -18,6 +18,7 @@ public class SubmissionAppService : ISubmissionAppService
     private readonly Microsoft.AspNetCore.Authorization.IAuthorizationService _authorizationService;
     private readonly AMS.Application.Contracts.ICurrentUserService _currentUser;
     private readonly IAttachmentAppService _attachmentAppService;
+    private readonly INotificationService _notificationService;
 
     public SubmissionAppService(
         ISubmissionRepository submissionRepository,
@@ -29,7 +30,8 @@ public class SubmissionAppService : ISubmissionAppService
         ISubjectRepository subjectRepository,
         Microsoft.AspNetCore.Authorization.IAuthorizationService authorizationService,
         AMS.Application.Contracts.ICurrentUserService currentUser,
-        IAttachmentAppService attachmentAppService)
+        IAttachmentAppService attachmentAppService,
+        INotificationService notificationService)
     {
         _submissionRepository = submissionRepository;
         _assignmentRepository = assignmentRepository;
@@ -41,6 +43,7 @@ public class SubmissionAppService : ISubmissionAppService
         _authorizationService = authorizationService;
         _currentUser = currentUser;
         _attachmentAppService = attachmentAppService;
+        _notificationService = notificationService;
     }
 
     public async Task<IReadOnlyList<SubmissionDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
@@ -121,6 +124,17 @@ public class SubmissionAppService : ISubmissionAppService
         var submission = new Submission(Guid.NewGuid(), assignment.Id, _currentUser.UserId, input.ContentText, DateTime.UtcNow, false, SubmissionStatus.Submitted);
         submission.Submit(DateTime.UtcNow, assignment.Deadline, assignment.AllowLateSubmission, assignment);
         await _submissionRepository.AddAsync(submission, cancellationToken);
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _notificationService.NotifySubmissionReceivedAsync(submission, assignment, cancellationToken);
+            }
+            catch
+            {
+                // Notifications must never block a submitted assignment.
+            }
+        }, cancellationToken);
         return await ToDtoAsync(submission, cancellationToken).ConfigureAwait(false);
     }
 
@@ -171,6 +185,17 @@ public class SubmissionAppService : ISubmissionAppService
 
         submission.MarkGraded(input.Marks, input.Feedback, _currentUser.UserId, assignment);
         await _submissionRepository.UpdateAsync(submission, cancellationToken);
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _notificationService.NotifySubmissionGradedAsync(submission, assignment, cancellationToken);
+            }
+            catch
+            {
+                // Notifications must never block grading.
+            }
+        }, cancellationToken);
         return await ToDtoAsync(submission, cancellationToken).ConfigureAwait(false);
     }
 
@@ -193,6 +218,20 @@ public class SubmissionAppService : ISubmissionAppService
                 submission.UpdateStatus(parsed);
             }
             await _submissionRepository.UpdateAsync(submission, cancellationToken);
+            if (parsed == SubmissionStatus.ResubmissionRequested)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _notificationService.NotifyResubmissionRequestedAsync(submission, assignment, cancellationToken);
+                    }
+                    catch
+                    {
+                        // Notifications must never block status updates.
+                    }
+                }, cancellationToken);
+            }
             return await ToDtoAsync(submission, cancellationToken).ConfigureAwait(false);
         }
 
