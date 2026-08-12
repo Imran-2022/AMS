@@ -229,6 +229,8 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+// Root: redirect to API health endpoint so '/' returns useful JSON in production
+app.MapGet("/", () => Results.Redirect("/api/health"));
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
 
