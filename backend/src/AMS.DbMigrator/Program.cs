@@ -31,6 +31,8 @@ var builder = Host.CreateDefaultBuilder(args)
         services.AddScoped<ISubmissionRepository, SubmissionRepository>();
         services.AddScoped<ITeacherSubjectAssignmentRepository, TeacherSubjectAssignmentRepository>();
         services.AddScoped<IStudentEnrollmentRepository, StudentEnrollmentRepository>();
+        services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<INotificationPreferenceRepository, NotificationPreferenceRepository>();
     });
 
 using var host = builder.Build();

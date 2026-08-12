@@ -45,7 +45,7 @@ public class SubjectAppServiceTests
 
         var assignmentRepo = new Mock<ITeacherSubjectAssignmentRepository>(MockBehavior.Strict);
         assignmentRepo.Setup(r => r.GetByTeacherAsync(teacherId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new[] { new TeacherSubjectAssignment(teacherId, subjectId, Guid.NewGuid()) });
+            .ReturnsAsync(new[] { new TeacherSubjectAssignment(teacherId, subjectId) });
 
         var service = new SubjectAppService(subjectRepo.Object, assignmentRepo.Object);
 

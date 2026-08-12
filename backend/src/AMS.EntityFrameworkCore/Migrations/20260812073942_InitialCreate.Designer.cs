@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AMS.EntityFrameworkCore.Migrations
 {
     [DbContext(typeof(AmsDbContext))]
-    [Migration("20260811174746_initial_migration")]
-    partial class initial_migration
+    [Migration("20260812073942_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -75,23 +75,6 @@ namespace AMS.EntityFrameworkCore.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("allow_resubmission");
 
-                    b.Property<string>("AttachmentName")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("attachment_name");
-
-                    b.Property<string>("AttachmentUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("attachment_url");
-
-                    b.Property<Guid>("ClassCourseId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("class_course_id");
-
-                    b.Property<Guid>("ClassCourseId1")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -118,15 +101,9 @@ namespace AMS.EntityFrameworkCore.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("subject_id");
 
-                    b.Property<Guid>("SubjectId1")
-                        .HasColumnType("uuid");
-
                     b.Property<Guid>("TeacherId")
                         .HasColumnType("uuid")
                         .HasColumnName("teacher_id");
-
-                    b.Property<Guid>("TeacherId1")
-                        .HasColumnType("uuid");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -139,17 +116,9 @@ namespace AMS.EntityFrameworkCore.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ClassCourseId");
-
-                    b.HasIndex("ClassCourseId1");
-
                     b.HasIndex("SubjectId");
 
-                    b.HasIndex("SubjectId1");
-
                     b.HasIndex("TeacherId");
-
-                    b.HasIndex("TeacherId1");
 
                     b.ToTable("assignments", (string)null);
                 });
@@ -294,7 +263,86 @@ namespace AMS.EntityFrameworkCore.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ClassDefinitionId");
+
                     b.ToTable("groups", (string)null);
+                });
+
+            modelBuilder.Entity("AMS.Domain.Entities.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<bool>("IsRead")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_read");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("message");
+
+                    b.Property<Guid>("RecipientUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recipient_user_id");
+
+                    b.Property<Guid?>("RelatedEntityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("related_entity_id");
+
+                    b.Property<string>("RelatedEntityType")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("related_entity_type");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecipientUserId")
+                        .HasDatabaseName("ix_notifications_recipient_user");
+
+                    b.HasIndex("RecipientUserId", "IsRead")
+                        .HasDatabaseName("ix_notifications_recipient_user_is_read");
+
+                    b.ToTable("notifications", (string)null);
+                });
+
+            modelBuilder.Entity("AMS.Domain.Entities.NotificationPreference", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_enabled");
+
+                    b.HasKey("UserId", "Type");
+
+                    b.ToTable("notification_preferences", (string)null);
                 });
 
             modelBuilder.Entity("AMS.Domain.Entities.StudentEnrollment", b =>
@@ -307,25 +355,15 @@ namespace AMS.EntityFrameworkCore.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("class_course_id");
 
-                    b.Property<Guid>("ClassCourseId1")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("EnrolledAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
-                    b.Property<Guid>("StudentId1")
-                        .HasColumnType("uuid");
-
                     b.HasKey("StudentId", "ClassCourseId");
 
                     b.HasIndex("ClassCourseId");
-
-                    b.HasIndex("ClassCourseId1");
-
-                    b.HasIndex("StudentId1");
 
                     b.ToTable("student_enrollments", (string)null);
                 });
@@ -382,9 +420,6 @@ namespace AMS.EntityFrameworkCore.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("class_course_id");
 
-                    b.Property<Guid>("ClassCourseId1")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -405,9 +440,8 @@ namespace AMS.EntityFrameworkCore.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ClassCourseId");
-
-                    b.HasIndex("ClassCourseId1");
+                    b.HasIndex("ClassCourseId", "Code")
+                        .IsUnique();
 
                     b.ToTable("subjects", (string)null);
                 });
@@ -422,9 +456,6 @@ namespace AMS.EntityFrameworkCore.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("assignment_id");
 
-                    b.Property<Guid>("AssignmentId1")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("ContentText")
                         .IsRequired()
                         .HasMaxLength(4000)
@@ -435,16 +466,6 @@ namespace AMS.EntityFrameworkCore.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)")
                         .HasColumnName("feedback");
-
-                    b.Property<string>("FileName")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("file_name");
-
-                    b.Property<string>("FileUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("file_url");
 
                     b.Property<DateTime?>("GradedAt")
                         .HasColumnType("timestamp with time zone")
@@ -478,22 +499,16 @@ namespace AMS.EntityFrameworkCore.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("student_id");
 
-                    b.Property<Guid>("StudentId1")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("SubmittedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("submitted_at");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AssignmentId");
-
-                    b.HasIndex("AssignmentId1");
-
                     b.HasIndex("StudentId");
 
-                    b.HasIndex("StudentId1");
+                    b.HasIndex("AssignmentId", "StudentId")
+                        .IsUnique();
 
                     b.ToTable("submissions", (string)null);
                 });
@@ -544,25 +559,9 @@ namespace AMS.EntityFrameworkCore.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("subject_id");
 
-                    b.Property<Guid>("ClassCourseId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("class_course_id");
-
-                    b.Property<Guid>("SubjectId1")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("TeacherId1")
-                        .HasColumnType("uuid");
-
                     b.HasKey("TeacherId", "SubjectId");
 
-                    b.HasIndex("ClassCourseId");
-
                     b.HasIndex("SubjectId");
-
-                    b.HasIndex("SubjectId1");
-
-                    b.HasIndex("TeacherId1");
 
                     b.ToTable("teacher_subject_assignments", (string)null);
                 });
@@ -644,43 +643,17 @@ namespace AMS.EntityFrameworkCore.Migrations
 
             modelBuilder.Entity("AMS.Domain.Entities.Assignment", b =>
                 {
-                    b.HasOne("AMS.Domain.Entities.ClassCourse", null)
-                        .WithMany()
-                        .HasForeignKey("ClassCourseId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("AMS.Domain.Entities.ClassCourse", "ClassCourse")
-                        .WithMany()
-                        .HasForeignKey("ClassCourseId1")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("AMS.Domain.Entities.Subject", null)
+                    b.HasOne("AMS.Domain.Entities.Subject", "Subject")
                         .WithMany()
                         .HasForeignKey("SubjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("AMS.Domain.Entities.Subject", "Subject")
-                        .WithMany()
-                        .HasForeignKey("SubjectId1")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("AMS.Domain.Entities.User", null)
+                    b.HasOne("AMS.Domain.Entities.User", "Teacher")
                         .WithMany()
                         .HasForeignKey("TeacherId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("AMS.Domain.Entities.User", "Teacher")
-                        .WithMany()
-                        .HasForeignKey("TeacherId1")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ClassCourse");
 
                     b.Navigation("Subject");
 
@@ -713,29 +686,50 @@ namespace AMS.EntityFrameworkCore.Migrations
                     b.Navigation("Group");
                 });
 
+            modelBuilder.Entity("AMS.Domain.Entities.Group", b =>
+                {
+                    b.HasOne("AMS.Domain.Entities.ClassDefinition", "ClassDefinition")
+                        .WithMany()
+                        .HasForeignKey("ClassDefinitionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ClassDefinition");
+                });
+
+            modelBuilder.Entity("AMS.Domain.Entities.Notification", b =>
+                {
+                    b.HasOne("AMS.Domain.Entities.User", "RecipientUser")
+                        .WithMany()
+                        .HasForeignKey("RecipientUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("RecipientUser");
+                });
+
+            modelBuilder.Entity("AMS.Domain.Entities.NotificationPreference", b =>
+                {
+                    b.HasOne("AMS.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("AMS.Domain.Entities.StudentEnrollment", b =>
                 {
-                    b.HasOne("AMS.Domain.Entities.ClassCourse", null)
+                    b.HasOne("AMS.Domain.Entities.ClassCourse", "ClassCourse")
                         .WithMany()
                         .HasForeignKey("ClassCourseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("AMS.Domain.Entities.ClassCourse", "ClassCourse")
-                        .WithMany()
-                        .HasForeignKey("ClassCourseId1")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("AMS.Domain.Entities.User", null)
-                        .WithMany()
-                        .HasForeignKey("StudentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("AMS.Domain.Entities.User", "Student")
                         .WithMany()
-                        .HasForeignKey("StudentId1")
+                        .HasForeignKey("StudentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -757,15 +751,9 @@ namespace AMS.EntityFrameworkCore.Migrations
 
             modelBuilder.Entity("AMS.Domain.Entities.Subject", b =>
                 {
-                    b.HasOne("AMS.Domain.Entities.ClassCourse", null)
-                        .WithMany()
-                        .HasForeignKey("ClassCourseId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("AMS.Domain.Entities.ClassCourse", "ClassCourse")
                         .WithMany()
-                        .HasForeignKey("ClassCourseId1")
+                        .HasForeignKey("ClassCourseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -774,27 +762,15 @@ namespace AMS.EntityFrameworkCore.Migrations
 
             modelBuilder.Entity("AMS.Domain.Entities.Submission", b =>
                 {
-                    b.HasOne("AMS.Domain.Entities.Assignment", null)
+                    b.HasOne("AMS.Domain.Entities.Assignment", "Assignment")
                         .WithMany()
                         .HasForeignKey("AssignmentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("AMS.Domain.Entities.Assignment", "Assignment")
-                        .WithMany()
-                        .HasForeignKey("AssignmentId1")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("AMS.Domain.Entities.User", null)
-                        .WithMany()
-                        .HasForeignKey("StudentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("AMS.Domain.Entities.User", "Student")
                         .WithMany()
-                        .HasForeignKey("StudentId1")
+                        .HasForeignKey("StudentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -816,37 +792,17 @@ namespace AMS.EntityFrameworkCore.Migrations
 
             modelBuilder.Entity("AMS.Domain.Entities.TeacherSubjectAssignment", b =>
                 {
-                    b.HasOne("AMS.Domain.Entities.ClassCourse", "ClassCourse")
-                        .WithMany()
-                        .HasForeignKey("ClassCourseId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("AMS.Domain.Entities.Subject", null)
+                    b.HasOne("AMS.Domain.Entities.Subject", "Subject")
                         .WithMany()
                         .HasForeignKey("SubjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("AMS.Domain.Entities.Subject", "Subject")
-                        .WithMany()
-                        .HasForeignKey("SubjectId1")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("AMS.Domain.Entities.User", null)
+                    b.HasOne("AMS.Domain.Entities.User", "Teacher")
                         .WithMany()
                         .HasForeignKey("TeacherId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("AMS.Domain.Entities.User", "Teacher")
-                        .WithMany()
-                        .HasForeignKey("TeacherId1")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ClassCourse");
 
                     b.Navigation("Subject");
 

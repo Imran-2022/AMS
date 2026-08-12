@@ -94,7 +94,7 @@ public class TeacherSubjectAssignmentAppServiceTests
         var subjectId = Guid.NewGuid();
         var classCourseId = Guid.NewGuid();
 
-        var assignment = new TeacherSubjectAssignment(teacherId, subjectId, classCourseId);
+        var assignment = new TeacherSubjectAssignment(teacherId, subjectId);
         var assignmentRepo = new Mock<ITeacherSubjectAssignmentRepository>(MockBehavior.Strict);
         assignmentRepo.Setup(r => r.GetByTeacherAsync(teacherId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { assignment });

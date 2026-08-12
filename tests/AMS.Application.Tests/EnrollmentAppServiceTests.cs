@@ -20,7 +20,7 @@ public class EnrollmentAppServiceTests
 
         userRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
 
-        var service = new StudentEnrollmentAppService(enrollmentRepo.Object, userRepo.Object, classCourseRepo.Object, teacherAssignmentRepo.Object);
+        var service = new StudentEnrollmentAppService(enrollmentRepo.Object, userRepo.Object, classCourseRepo.Object, teacherAssignmentRepo.Object, Mock.Of<ISubjectRepository>());
 
         var ex = await Assert.ThrowsAsync<NotFoundException>(() => service.CreateAsync(new CreateStudentEnrollmentDto
         {
@@ -49,7 +49,7 @@ public class EnrollmentAppServiceTests
         enrollmentRepo.Setup(r => r.GetAsync(studentId, classCourseId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new StudentEnrollment(studentId, classCourseId));
 
-        var service = new StudentEnrollmentAppService(enrollmentRepo.Object, userRepo.Object, classCourseRepo.Object, teacherAssignmentRepo.Object);
+        var service = new StudentEnrollmentAppService(enrollmentRepo.Object, userRepo.Object, classCourseRepo.Object, teacherAssignmentRepo.Object, Mock.Of<ISubjectRepository>());
 
         var ex = await Assert.ThrowsAsync<ValidationException>(() => service.CreateAsync(new CreateStudentEnrollmentDto
         {
@@ -83,7 +83,7 @@ public class EnrollmentAppServiceTests
         enrollmentRepo.Setup(r => r.GetByStudentAsync(studentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { new StudentEnrollment(studentId, classCourseB.Id) });
 
-        var service = new StudentEnrollmentAppService(enrollmentRepo.Object, userRepo.Object, classCourseRepo.Object, teacherAssignmentRepo.Object);
+        var service = new StudentEnrollmentAppService(enrollmentRepo.Object, userRepo.Object, classCourseRepo.Object, teacherAssignmentRepo.Object, Mock.Of<ISubjectRepository>());
 
         var ex = await Assert.ThrowsAsync<ValidationException>(() => service.CreateAsync(new CreateStudentEnrollmentDto
         {

@@ -22,3 +22,11 @@ public enum SubmissionStatus
     ResubmissionRequested = 5,
     Resubmitted = 6
 }
+
+public enum NotificationType
+{
+    AssignmentPublished = 1,
+    SubmissionReceived = 2,
+    SubmissionGraded = 3,
+    ResubmissionRequested = 4
+}

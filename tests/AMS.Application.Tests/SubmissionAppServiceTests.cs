@@ -18,7 +18,7 @@ public class SubmissionAppServiceTests
         var studentId = Guid.NewGuid();
         var otherStudentId = Guid.NewGuid();
 
-        var submission = new Submission(submissionId, Guid.NewGuid(), studentId, "content", null, null, DateTime.UtcNow, false, SubmissionStatus.Submitted);
+        var submission = new Submission(submissionId, Guid.NewGuid(), studentId, "content", DateTime.UtcNow, false, SubmissionStatus.Submitted);
 
         var submissionRepo = new Mock<ISubmissionRepository>(MockBehavior.Strict);
         submissionRepo.Setup(r => r.GetByIdAsync(submissionId, It.IsAny<CancellationToken>()))
@@ -43,9 +43,11 @@ public class SubmissionAppServiceTests
             userRepo.Object,
             classCourseRepo.Object,
             Mock.Of<IGroupRepository>(),
+            Mock.Of<ISubjectRepository>(),
             authService.Object,
             currentUser.Object,
-            Mock.Of<IAttachmentAppService>());
+            Mock.Of<IAttachmentAppService>(),
+            Mock.Of<INotificationService>());
 
         var ex = await Assert.ThrowsAsync<ForbiddenException>(() => service.GetByIdAsync(submissionId, otherStudentId, nameof(UserRole.Student)));
         Assert.Equal("Access denied.", ex.Message);
@@ -59,9 +61,10 @@ public class SubmissionAppServiceTests
         var assignmentId = Guid.NewGuid();
         var classCourseId = Guid.NewGuid();
 
-        var submission = new Submission(submissionId, assignmentId, studentId, "content", null, null, DateTime.UtcNow, false, SubmissionStatus.Submitted);
-        var assignment = new Assignment(assignmentId, "title", "desc", classCourseId, Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.AddDays(7), 100, AssignmentStatus.Published, true, true, DateTime.UtcNow);
+        var submission = new Submission(submissionId, assignmentId, studentId, "content", DateTime.UtcNow, false, SubmissionStatus.Submitted);
+        var assignment = new Assignment(assignmentId, "title", "desc", Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.AddDays(7), 100, AssignmentStatus.Published, true, true, DateTime.UtcNow);
         var student = new User(studentId, "Student Name", "student@example.com", "hash", UserRole.Student);
+        var subject = new Subject(Guid.NewGuid(), "Math", "MATH101", classCourseId);
         var classCourse = new ClassCourse(classCourseId, "Class", "A", Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
 
         var submissionRepo = new Mock<ISubmissionRepository>(MockBehavior.Strict);
@@ -75,6 +78,10 @@ public class SubmissionAppServiceTests
         var userRepo = new Mock<IUserRepository>(MockBehavior.Strict);
         userRepo.Setup(r => r.GetByIdAsync(studentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(student);
+
+        var subjectRepo = new Mock<ISubjectRepository>(MockBehavior.Strict);
+        subjectRepo.Setup(r => r.GetByIdAsync(assignment.SubjectId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(subject);
 
         var classCourseRepo = new Mock<IClassCourseRepository>(MockBehavior.Strict);
         classCourseRepo.Setup(r => r.GetByIdAsync(classCourseId, It.IsAny<CancellationToken>()))
@@ -95,9 +102,11 @@ public class SubmissionAppServiceTests
             userRepo.Object,
             classCourseRepo.Object,
             Mock.Of<IGroupRepository>(),
+            subjectRepo.Object,
             authService.Object,
             currentUser.Object,
-            Mock.Of<IAttachmentAppService>());
+            Mock.Of<IAttachmentAppService>(),
+            Mock.Of<INotificationService>());
 
         var result = await service.GetByIdAsync(submissionId, studentId, nameof(UserRole.Student));
 

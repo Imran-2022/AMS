@@ -2,12 +2,7 @@
 
 import { AccountSettingsPage } from '@/components/account/AccountSettingsPage'
 import type { UserDto } from '@/lib/api'
-
-type NotificationItem = {
-  title: string
-  description: string
-  checked: boolean
-}
+import { getNotificationDefinitionsForRole } from '@/shared/constants/notifications'
 
 type InfoField = {
   key: string
@@ -21,28 +16,7 @@ type InfoSection = {
 }
 
 export function AdminSettingsPage() {
-  const notificationItems: NotificationItem[] = [
-    {
-      title: 'New user registrations',
-      description: 'Notify me when a new teacher, student, or admin account is created.',
-      checked: true,
-    },
-    {
-      title: 'System alerts',
-      description: 'Receive alerts for system maintenance and authentication issues.',
-      checked: true,
-    },
-    {
-      title: 'Security updates',
-      description: 'Be notified about critical security changes and policy updates.',
-      checked: false,
-    },
-    {
-      title: 'Platform announcements',
-      description: 'Get announcements about new features and platform improvements.',
-      checked: false,
-    },
-  ]
+  const notificationItems = getNotificationDefinitionsForRole('Admin')
 
   const infoSections: InfoSection[] = [
     {
