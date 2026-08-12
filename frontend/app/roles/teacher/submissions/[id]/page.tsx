@@ -3,10 +3,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { AppShell } from '@/components/layout/AppShell';
+import { AppShell } from '@/shared/layout';
 import { Button } from '@/components/ui/Button';
+import { FileUpload } from '@/components/ui';
 import { FileText, X } from 'lucide-react';
-import { getSubmission, gradeSubmission, updateSubmissionStatus, downloadAttachmentToBrowser, type SubmissionDto } from '@/lib/api';
+import {
+  getSubmission,
+  gradeSubmission,
+  updateSubmissionStatus,
+  downloadAttachmentToBrowser,
+  uploadAttachment,
+  deleteAttachment,
+  renameAttachment,
+  type SubmissionDto,
+} from '@/lib/api';
 
 function normalizeFeedbackText(value?: string | null) {
   const trimmed = value?.trim();
@@ -31,8 +41,10 @@ export default function TeacherSubmissionDetailPage() {
   const [marks, setMarks] = useState('');
   const [feedback, setFeedback] = useState('');
   const [status, setStatus] = useState('Submitted');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [originalAttachmentIds, setOriginalAttachmentIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!submissionId) {
@@ -54,6 +66,8 @@ export default function TeacherSubmissionDetailPage() {
           setMarks(data.marks?.toString() ?? '');
           setFeedback(normalizedFeedback);
           setStatus(data.status);
+          setOriginalAttachmentIds((data.attachments ?? []).map((attachment) => attachment.id));
+          setSelectedFiles([]);
         }
       } catch (err) {
         if (!cancelled) {
@@ -134,6 +148,32 @@ export default function TeacherSubmissionDetailPage() {
     return { label, classes, dotClasses };
   }, [submission?.status]);
 
+  async function handleRemoveExistingAttachment(id: string) {
+    if (!submission) return;
+
+    try {
+      await deleteAttachment(id);
+      const refreshed = await getSubmission(submission.id);
+      setSubmission(refreshed);
+      setOriginalAttachmentIds((refreshed.attachments ?? []).map((attachment) => attachment.id));
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Unable to delete attachment.');
+    }
+  }
+
+  async function handleRenameExistingAttachment(id: string, newName: string) {
+    if (!submission) return;
+
+    try {
+      await renameAttachment(id, newName);
+      const refreshed = await getSubmission(submission.id);
+      setSubmission(refreshed);
+      setOriginalAttachmentIds((refreshed.attachments ?? []).map((attachment) => attachment.id));
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Unable to rename attachment.');
+    }
+  }
+
   const saveGrade = async () => {
     if (!submission) return;
 
@@ -170,11 +210,19 @@ export default function TeacherSubmissionDetailPage() {
         });
       }
 
-      const normalizedFeedback = normalizeFeedbackText(updated.feedback);
-      setSubmission(updated);
-      setMarks(updated.marks?.toString() ?? '');
+      if (selectedFiles.length > 0) {
+        await Promise.all(selectedFiles.map((file) => uploadAttachment('Submission', updated.id, file)));
+      }
+
+      const refreshed = await getSubmission(updated.id);
+      const normalizedFeedback = normalizeFeedbackText(refreshed.feedback);
+
+      setSubmission(refreshed);
+      setMarks(refreshed.marks?.toString() ?? '');
       setFeedback(normalizedFeedback);
-      setStatus(updated.status);
+      setStatus(refreshed.status);
+      setSelectedFiles([]);
+      setOriginalAttachmentIds((refreshed.attachments ?? []).map((attachment) => attachment.id));
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Unable to save changes.');
     } finally {
@@ -219,22 +267,9 @@ export default function TeacherSubmissionDetailPage() {
                       {statusBadge.label}
                     </span>
                   </div>
-                  <p className="text-sm text-slate-400">{submission.assignmentTitle} · {submission.classCourseName}{submission.classCourseSection ? ` - ${submission.classCourseSection}` : ''}</p>
                 </div>
               </div>
-              <Button type="button" variant="secondary" onClick={() => router.back()} className="!h-11 !gap-2 !px-4 !py-2 !text-sm !whitespace-nowrap">
-                <svg aria-hidden="true" className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m15 18-6-6 6-6" />
-                </svg>
-                Back
-              </Button>
             </div>
-
-            {submission.status === 'Resubmitted' ? (
-              <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm text-amber-800">
-                The student has resubmitted this assignment after a resubmission request. Please review the updated work.
-              </div>
-            ) : null}
 
             <div className="grid grid-cols-[1fr_380px] gap-4 items-start">
               <div className="space-y-5">
@@ -264,22 +299,6 @@ export default function TeacherSubmissionDetailPage() {
                         </button>
                       ))}
                     </div>
-                  ) : submission.fileName ? (
-                    <div className="flex items-center gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4">
-                      <button
-                        type="button"
-                        onClick={() => submission.fileUrl ? void downloadAttachmentToBrowser(submission.fileUrl, submission.fileName ?? 'submission-file') : undefined}
-                        className="flex cursor-pointer items-center gap-3 text-left"
-                      >
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-300">
-                          <FileText className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-slate-700">{submission.fileName}</p>
-                          <p className="text-xs text-slate-400">Submitted file</p>
-                        </div>
-                      </button>
-                    </div>
                   ) : (
                     <div className="flex items-center gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-300">
@@ -297,7 +316,7 @@ export default function TeacherSubmissionDetailPage() {
 
                 <div className="rounded-2xl border border-slate-200 bg-white p-5">
                   <p className="text-[11px] font-bold tracking-[0.06em] text-slate-400">SUBMISSION DESCRIPTION</p>
-                  <p className="mt-3 text-sm leading-relaxed text-slate-600">“{submission.contentText || 'No description provided.'}”</p>
+                  <p className="mt-3 text-sm leading-relaxed text-slate-600">&ldquo;{submission.contentText || 'No description provided.'}&rdquo;</p>
                 </div>
 
                 <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-5">
@@ -342,6 +361,23 @@ export default function TeacherSubmissionDetailPage() {
                   <div>
                     <label className="mb-2 block text-[13px] font-semibold text-slate-800">Feedback for student</label>
                     <textarea value={feedback} onChange={(event) => setFeedback(event.target.value)} rows={5} placeholder="Add comments on their work…" className="min-h-[160px] w-full resize-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100" />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-[13px] font-semibold text-slate-800">Feedback attachment(s)</label>
+                    <FileUpload
+                      multiple
+                      selectedFiles={selectedFiles}
+                      existingAttachments={(submission.attachments ?? []).map((attachment) => ({
+                        id: attachment.id,
+                        originalFileName: attachment.originalFileName,
+                        downloadUrl: attachment.downloadUrl,
+                        sizeBytes: attachment.sizeBytes,
+                      }))}
+                      onFilesSelected={setSelectedFiles}
+                      onRemoveExistingAttachment={(id) => void handleRemoveExistingAttachment(id)}
+                      onRenameExistingAttachment={(id, name) => void handleRenameExistingAttachment(id, name)}
+                    />
                   </div>
 
                   <div>

@@ -81,3 +81,23 @@ NEXT_PUBLIC_API_URL=http://localhost:5000
 - The backend uses JWT bearer tokens for authentication.
 - The frontend stores the JWT in local storage and sends it in the `Authorization` header.
 - API endpoints are protected by `[Authorize]` and enforce role/ownership rules in the application layer.
+
+## Docker
+
+Quick start (from repository root):
+
+```bash
+cp .env.example .env   # edit secrets (JWT_KEY, POSTGRES_PASSWORD)
+docker compose up --build
+```
+
+Services:
+- API: http://localhost:5000 (Swagger at `/swagger`)
+- Frontend: http://localhost:3000
+
+To bring everything down:
+
+```bash
+docker compose down
+# Add -v to remove volumes: docker compose down -v
+```

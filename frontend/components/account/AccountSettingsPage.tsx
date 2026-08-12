@@ -1,15 +1,18 @@
 "use client"
 
 import { useEffect, useState, type ChangeEvent } from 'react'
-import { AppShell } from '@/components/layout/AppShell'
+import { AppShell } from '@/shared/layout'
 import { API_BASE_URL, changePassword, getCurrentUser, updateUser, type UserDto } from '@/lib/api'
+import { getNotificationPreferences, updateNotificationPreference } from '@/lib/api/notifications'
 import { uploadFile } from '@/lib/api/files'
 import { setStoredUser } from '@/lib/auth'
 import { emitToast } from '@/components/ui'
+import { getNotificationDefinitionsForRole } from '@/shared/constants/notifications'
 
 type AccountTab = 'security' | 'notifications'
 
 type NotificationItem = {
+  type: string
   title: string
   description: string
   checked: boolean
@@ -41,12 +44,7 @@ const accountTabs = [
   { key: 'notifications' as const, label: 'Notifications' },
 ]
 
-const defaultNotificationItems: NotificationItem[] = [
-  { title: 'New submission received', description: 'Email me when a student submits work for one of my assignments.', checked: true },
-  { title: 'My assignment deadline reminders', description: 'Remind me the day before one of my assignments is due.', checked: true },
-  { title: 'Weekly grading summary', description: 'A Monday-morning summary of what still needs grading.', checked: true },
-  { title: 'School-wide announcements', description: 'Notices sent by administrators to all staff.', checked: false },
-]
+const defaultNotificationItems: NotificationItem[] = getNotificationDefinitionsForRole('Student')
 
 export function AccountSettingsPage({
   role,
@@ -68,7 +66,7 @@ export function AccountSettingsPage({
   const [error, setError] = useState<string | null>(null)
   const [toggles, setToggles] = useState<Record<string, boolean>>(() =>
     notificationItems.reduce(
-      (acc, item) => ({ ...acc, [item.title]: item.checked }),
+      (acc, item) => ({ ...acc, [item.type]: item.checked }),
       {} as Record<string, boolean>
     )
   )
@@ -88,9 +86,29 @@ export function AccountSettingsPage({
     }
   }
 
+  async function loadNotificationPreferences() {
+    try {
+      const preferences = await getNotificationPreferences()
+      const nextState = notificationItems.reduce((acc, item) => {
+        const found = preferences.find((pref) => pref.type === item.type)
+        acc[item.type] = found ? found.isEnabled : item.checked
+        return acc
+      }, {} as Record<string, boolean>)
+      setToggles(nextState)
+    } catch (error) {
+      console.error('Failed to load notification preferences', error)
+    }
+  }
+
   useEffect(() => {
     void loadUser()
   }, [])
+
+  useEffect(() => {
+    if (activeTab === 'notifications') {
+      void loadNotificationPreferences()
+    }
+  }, [activeTab])
 
   async function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
@@ -253,7 +271,7 @@ export function AccountSettingsPage({
             <div className="p-6">
               <div className={`${activeTab === 'notifications' ? 'block' : 'hidden'} space-y-4`}>
                 {notificationItems.map((item, index) => (
-                  <div key={item.title} className={`flex flex-col gap-4 py-4 ${index > 0 ? 'border-t border-slate-100' : ''} sm:flex-row sm:items-center sm:justify-between`}>
+                  <div key={item.type} className={`flex flex-col gap-4 py-4 ${index > 0 ? 'border-t border-slate-100' : ''} sm:flex-row sm:items-center sm:justify-between`}>
                     <div>
                       <p className="text-sm font-semibold text-slate-700">{item.title}</p>
                       <p className="text-xs text-slate-400 mt-1">{item.description}</p>
@@ -261,8 +279,17 @@ export function AccountSettingsPage({
                     <label className="toggle">
                       <input
                         type="checkbox"
-                        checked={toggles[item.title]}
-                        onChange={() => setToggles((prev) => ({ ...prev, [item.title]: !prev[item.title] }))}
+                        checked={Boolean(toggles[item.type])}
+                        onChange={async () => {
+                          const nextValue = !Boolean(toggles[item.type])
+                          setToggles((prev) => ({ ...prev, [item.type]: nextValue }))
+                          try {
+                            await updateNotificationPreference(item.type, nextValue)
+                          } catch (error: any) {
+                            setToggles((prev) => ({ ...prev, [item.type]: !nextValue }))
+                            emitToast(error?.message || 'Unable to update notification preference.', 'error')
+                          }
+                        }}
                       />
                       <span className="track" />
                     </label>

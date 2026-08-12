@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from 'react';
-import { AppShell } from '../../layout/AppShell';
+import { AppShell } from '@/shared/layout';
 import { AmsDeleteComfiramtionModal } from '../../ui';
-import { USERS as INITIAL_USERS } from '../../data';
 
 type AdminRow = {
   id: string;

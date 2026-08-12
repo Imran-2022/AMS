@@ -216,62 +216,80 @@ export default function StudentsPage(){
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-100 text-left">
-              <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">STUDENT</th>
-              <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">CLASS</th>
-              <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">PARENT CONTACT</th>
-              <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">AVG. IN YOUR SUBJECTS</th>
-              <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">LAST SUBMISSION</th>
-              <th className="w-20 px-5 py-3.5 text-right text-[11px] font-bold text-slate-400">ACTIONS</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {filteredRows.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-5 py-16 text-center text-sm text-slate-500">
-                  {isLoading ? 'Loading students…' : error ? error : 'No students found for the selected filters.'}
-                </td>
-              </tr>
-            ) : (
-              filteredRows.map((row) => (
-                <tr key={row.id}>
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-3">
-                      {row.avatarUrl ? (
-                        <img
-                          src={row.avatarUrl}
-                          alt=""
-                          className="h-8 w-8 shrink-0 rounded-full object-cover"
-                          onError={(event) => {
-                            event.currentTarget.style.display = 'none';
-                            event.currentTarget.nextElementSibling?.removeAttribute('hidden');
-                          }}
-                        />
-                      ) : null}
-                      <div hidden={Boolean(row.avatarUrl)} className={`w-8 h-8 rounded-full ${colorMap[row.color]?.bg} flex items-center justify-center text-xs font-bold text-brand-700 shrink-0`}>
-                        {row.initials}
-                      </div>
-                      <span className="font-semibold text-slate-700">{row.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-2 py-3.5 text-slate-500">{row.cls}</td>
-                  <td className="px-2 py-3.5 text-slate-500">{row.parentContact}</td>
-                  <td className="px-2 py-3.5 text-slate-500">{row.average}</td>
-                  <td className="px-2 py-3.5 text-slate-500">{row.lastSubmission}</td>
-                  <td className="px-5 py-3.5 text-right">
-                    <button onClick={() => setSelected(row)} className="px-4 py-1.5 rounded border cursor-pointer border-slate-200 text-white text-xs font-semibold bg-brand-600 hover:bg-brand-700">View</button>
-                  </td>
+        {filteredRows.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-8 py-20 text-center">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-500">
+              <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 7h8" />
+                <path d="M8 11h8" />
+                <path d="M8 15h8" />
+                <path d="M5 5h14v14H5z" />
+              </svg>
+            </div>
+            <p className="text-base font-bold text-slate-800">
+              {isLoading ? 'Loading students…' : error ? 'Unable to load students' : rows.length === 0 ? 'No students yet' : 'No students match your filters'}
+            </p>
+            <p className="mt-2 max-w-md text-sm text-slate-500">
+              {isLoading
+                ? 'Fetching your student roster. Please wait a moment.'
+                : error
+                ? error
+                : rows.length === 0
+                ? 'You do not have any students assigned to your classes yet.'
+                : 'No students were found for the selected filters. Try adjusting your search or filters.'}
+            </p>
+          </div>
+        ) : (
+          <>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 text-left">
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">STUDENT</th>
+                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">CLASS</th>
+                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">PARENT CONTACT</th>
+                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">AVG. IN YOUR SUBJECTS</th>
+                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">LAST SUBMISSION</th>
+                  <th className="w-20 px-5 py-3.5 text-right text-[11px] font-bold text-slate-400">ACTIONS</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-
-        <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100">
-          <p className="text-xs text-slate-400">Showing <span className="font-semibold text-slate-600">{filteredRows.length}</span> students</p>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {filteredRows.map((row) => (
+                  <tr key={row.id}>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-3">
+                        {row.avatarUrl ? (
+                          <img
+                            src={row.avatarUrl}
+                            alt=""
+                            className="h-8 w-8 shrink-0 rounded-full object-cover"
+                            onError={(event) => {
+                              event.currentTarget.style.display = 'none';
+                              event.currentTarget.nextElementSibling?.removeAttribute('hidden');
+                            }}
+                          />
+                        ) : null}
+                        <div hidden={Boolean(row.avatarUrl)} className={`w-8 h-8 rounded-full ${colorMap[row.color]?.bg} flex items-center justify-center text-xs font-bold text-brand-700 shrink-0`}>
+                          {row.initials}
+                        </div>
+                        <span className="font-semibold text-slate-700">{row.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-2 py-3.5 text-slate-500">{row.cls}</td>
+                    <td className="px-2 py-3.5 text-slate-500">{row.parentContact}</td>
+                    <td className="px-2 py-3.5 text-slate-500">{row.average}</td>
+                    <td className="px-2 py-3.5 text-slate-500">{row.lastSubmission}</td>
+                    <td className="px-5 py-3.5 text-right">
+                      <button onClick={() => setSelected(row)} className="px-4 py-1.5 rounded border cursor-pointer border-slate-200 text-white text-xs font-semibold bg-brand-600 hover:bg-brand-700">View</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100">
+              <p className="text-xs text-slate-400">Showing <span className="font-semibold text-slate-600">{filteredRows.length}</span> students</p>
+            </div>
+          </>
+        )}
       </div>
 
       {selected && (

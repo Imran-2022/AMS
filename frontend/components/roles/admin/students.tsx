@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AppShell } from '../../layout/AppShell';
+import { AppShell } from '@/shared/layout';
 import { AmsDeleteComfiramtionModal, AmsPagination, Button, Card, Pill, Th, Td, AddStudentModal, type AddStudentFormData } from '../../ui';
 import { API_BASE_URL } from '@/lib/api';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';

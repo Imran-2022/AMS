@@ -11,10 +11,6 @@ public class CreateSubmissionDtoValidator : AbstractValidator<CreateSubmissionDt
         RuleFor(x => x.ContentText)
             .MaximumLength(5000)
             .When(x => !string.IsNullOrWhiteSpace(x.ContentText));
-
-        RuleFor(x => x)
-            .Must(x => !string.IsNullOrWhiteSpace(x.ContentText) || !string.IsNullOrWhiteSpace(x.FileUrl))
-            .WithMessage("Submission must include content text or a file URL.");
     }
 }
 
@@ -25,10 +21,6 @@ public class UpdateSubmissionDtoValidator : AbstractValidator<UpdateSubmissionDt
         RuleFor(x => x.ContentText)
             .MaximumLength(5000)
             .When(x => !string.IsNullOrWhiteSpace(x.ContentText));
-
-        RuleFor(x => x.FileName)
-            .MaximumLength(255)
-            .When(x => !string.IsNullOrWhiteSpace(x.FileName));
     }
 }
 
@@ -148,7 +140,7 @@ public class CreateClassCourseDtoValidator : AbstractValidator<CreateClassCourse
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Section).NotEmpty().MaximumLength(50);
-        RuleFor(x => x.AcademicYear).NotEmpty().MaximumLength(50);
+        RuleFor(x => x.AcademicYearId).NotEmpty();
         RuleFor(x => x.GroupId)
             .NotEmpty()
             .When(x => x.ClassDefinitionId is not null && IsHigherSecondaryClass(x.ClassDefinitionId.Value))
@@ -175,10 +167,9 @@ public class UpdateClassCourseDtoValidator : AbstractValidator<UpdateClassCourse
             .When(x => x.Section is not null)
             .MaximumLength(50);
 
-        RuleFor(x => x.AcademicYear)
+        RuleFor(x => x.AcademicYearId)
             .NotEmpty()
-            .When(x => x.AcademicYear is not null)
-            .MaximumLength(50);
+            .When(x => x.AcademicYearId is not null);
     }
 }
 

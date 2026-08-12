@@ -76,6 +76,7 @@ function normalizeApiPayload<T>(payload: T): T {
   }
 
   if (typeof clone.attachmentUrl === 'string') {
+    // legacy field removed from API; keep backward-compatible handling if present
     clone.attachmentUrl = normalizeDownloadUrl(clone.attachmentUrl);
   }
 
@@ -147,8 +148,6 @@ export type AssignmentDto = {
   id: string;
   title: string;
   description: string;
-  attachmentUrl?: string;
-  attachmentName?: string;
   classCourseId: string;
   classCourseName: string;
   classCourseSection: string;
@@ -186,8 +185,6 @@ export type SubmissionDto = {
   assignmentId: string;
   studentId: string;
   contentText: string;
-  fileUrl?: string;
-  fileName?: string;
   submittedAt: string;
   isLate: boolean;
   status: string;
@@ -275,8 +272,6 @@ export type UpdateUserDto = {
 export type CreateAssignmentDto = {
   title: string;
   description: string;
-  attachmentUrl?: string;
-  attachmentName?: string;
   classCourseId: string;
   subjectId: string;
   teacherId?: string;
@@ -289,8 +284,6 @@ export type CreateAssignmentDto = {
 export type UpdateAssignmentDto = {
   title?: string;
   description?: string;
-  attachmentUrl?: string;
-  attachmentName?: string;
   classCourseId?: string;
   subjectId?: string;
   deadline?: string;
@@ -302,14 +295,10 @@ export type UpdateAssignmentDto = {
 export type CreateSubmissionDto = {
   assignmentId: string;
   contentText: string;
-  fileUrl?: string;
-  fileName?: string;
 };
 
 export type UpdateSubmissionDto = {
   contentText?: string;
-  fileUrl?: string;
-  fileName?: string;
 };
 
 export type GradeSubmissionDto = {
@@ -335,7 +324,7 @@ export type CreateClassCourseDto = {
   groupId?: string | null;
   name: string;
   section: string;
-  academicYear: string;
+  academicYearId: string;
 };
 
 export type UpdateClassCourseDto = {
@@ -343,7 +332,7 @@ export type UpdateClassCourseDto = {
   groupId?: string | null;
   name?: string;
   section?: string;
-  academicYear?: string;
+  academicYearId?: string;
 };
 
 export type SubjectDto = {

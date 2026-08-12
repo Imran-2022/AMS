@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { AppShell } from '../../layout/AppShell';
+import { AppShell } from '@/shared/layout';
 import { Modal } from '../../ui';
 import { getAcademicYears, activateAcademicYear, createAcademicYear } from '@/lib/api';
 

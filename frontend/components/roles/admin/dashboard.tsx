@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AppShell } from '../../layout/AppShell';
+import { AppShell } from '@/shared/layout';
 import { Button, Card, Metric, PageHeader, Pill, RoleBadge, Th, Td, AddStudentModal, AddTeacherModal, TeacherAssignmentModal } from '../../ui';
-import { ASSIGNMENTS, USERS as INITIAL_USERS, CLASSES as INITIAL_CLASSES, SUBJECTS as INITIAL_SUBJECTS, SUBMISSIONS } from '../../data';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
 import { getAssignments, getSubmissions, getUsers as apiGetUsers, getSubjects } from '@/lib/api';
 import { MoreVertical, UserPlus, UserCheck, BookOpen, ClipboardList } from 'lucide-react';
@@ -31,9 +30,6 @@ export function AdminDashboardPage() {
   const [dashboardSubjects, setDashboardSubjects] = useState<{ id: string; name: string; classCourseId: string }[]>([]);
 
   const router = useRouter();
-  const totalAdmins = INITIAL_USERS.filter((user) => user.role === 'Admin').length;
-  const totalTeachers = INITIAL_USERS.filter((user) => user.role === 'Teacher').length;
-  const totalStudents = INITIAL_USERS.filter((user) => user.role === 'Student').length;
 
   useEffect(() => {
     void loadDashboard();
@@ -176,7 +172,7 @@ export function AdminDashboardPage() {
                   </button>
                 ))
               ) : (
-                <div className="flex min-h-[220px] flex-col items-center justify-center rounded-3xl border border-slate-200 bg-slate-50 p-8 text-center">
+                <div className="flex min-h-[220px] flex-col items-center justify-center p-8 text-center">
                   <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
                     <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <rect x="4" y="3" width="16" height="18" rx="2" />
@@ -219,7 +215,7 @@ export function AdminDashboardPage() {
                   </button>
                 ))
               ) : (
-                <div className="flex min-h-[220px] flex-col items-center justify-center rounded-3xl border border-slate-200 bg-slate-50 p-8 text-center">
+                <div className="flex min-h-[220px] flex-col items-center justify-center p-8 text-center">
                   <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
                     <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <rect x="4" y="3" width="16" height="18" rx="2" />

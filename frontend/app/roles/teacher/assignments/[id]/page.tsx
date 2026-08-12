@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { AppShell } from '@/components/layout/AppShell';
+import { AppShell } from '@/shared/layout';
 import { Button } from '@/components/ui/Button';
 import { getAssignment, updateAssignment, downloadAttachmentToBrowser, type AssignmentDto } from '@/lib/api';
 

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BookOpen, ClipboardList, Copy, FileText, Layers, Pencil, Plus, Search, Send, Trash2, Eye } from 'lucide-react';
-import { AppShell } from '../../layout/AppShell';
+import { AppShell } from '@/shared/layout';
 import { AmsDeleteComfiramtionModal, AmsPagination, Button, FileUpload } from '../../ui';
 import { getAssignments, getClassCourses, getSubjects, createAssignment, duplicateAssignment as duplicateAssignmentApi, updateAssignment, deleteAssignment, publishAssignment, unpublishAssignment, uploadAttachment, listAttachments, renameAttachment, deleteAttachment } from '@/lib/api';
 import type { AssignmentDto, ClassCourseDto, SubjectDto, CreateAssignmentDto, UpdateAssignmentDto } from '@/lib/api';
@@ -22,8 +22,6 @@ type AssignmentFormValues = {
   subjectName: string;
   deadline: string;
   maxMarks: string;
-  attachmentUrl: string;
-  attachmentName: string;
   allowLateSubmission: boolean;
   allowResubmission: boolean;
 };
@@ -45,8 +43,6 @@ const createEmptyForm = (): AssignmentFormValues => ({
   subjectName: '',
   deadline: '',
   maxMarks: '20',
-  attachmentUrl: '',
-  attachmentName: '',
   allowLateSubmission: false,
   allowResubmission: true,
 });
@@ -265,38 +261,13 @@ export function TeacherAssignmentsPage() {
       const assignmentClass = classes.find((c) => c.id === assignment.classCourseId);
       setSelectedClassName(assignmentClass?.name ?? '');
       setSelectedSection(assignmentClass?.section ?? '');
-      let attachmentUrl = assignment.attachmentUrl ?? '';
-      let attachmentName = assignment.attachmentName ?? '';
-
-      let attachments: ExistingAttachment[] = [];
-      try {
-        const fetchedAttachments = await listAttachments('Assignment', assignment.id);
-        attachments = fetchedAttachments.map((item) => ({
-          id: item.id,
-          originalFileName: item.originalFileName,
-          downloadUrl: item.downloadUrl,
-          sizeBytes: item.sizeBytes,
-        }));
-      } catch (error) {
-        console.error('Unable to load attachments for edit form', error);
-      }
-
-      if (attachments.length === 0 && (assignment.attachmentName || assignment.attachmentUrl)) {
-        attachments = [
-          {
-            id: 'assignment-record-attachment',
-            originalFileName: assignment.attachmentName ?? 'Existing attachment',
-            downloadUrl: assignment.attachmentUrl ?? '',
-            sizeBytes: 0,
-          },
-        ];
-      }
-
-      const firstAttachment = attachments[0];
-      if (firstAttachment) {
-        attachmentUrl = firstAttachment.downloadUrl;
-        attachmentName = firstAttachment.originalFileName;
-      }
+      const fetchedAttachments = await listAttachments('Assignment', assignment.id);
+      const attachments = fetchedAttachments.map((item) => ({
+        id: item.id,
+        originalFileName: item.originalFileName,
+        downloadUrl: item.downloadUrl,
+        sizeBytes: item.sizeBytes,
+      }));
 
       setExistingAttachments(attachments);
       setRemovedAttachmentIds([]);
@@ -311,8 +282,6 @@ export function TeacherAssignmentsPage() {
         subjectName: assignment.subjectName,
         deadline: formatDateForInput(assignment.deadline),
         maxMarks: String(assignment.maxMarks),
-        attachmentUrl,
-        attachmentName,
         allowLateSubmission: assignment.allowLateSubmission,
         allowResubmission: assignment.allowResubmission,
       });
@@ -332,8 +301,6 @@ export function TeacherAssignmentsPage() {
         subjectName: defaultSubject?.name ?? '',
         deadline: '',
         maxMarks: '20',
-        attachmentUrl: '',
-        attachmentName: '',
         allowLateSubmission: false,
         allowResubmission: true,
       });
@@ -369,8 +336,6 @@ export function TeacherAssignmentsPage() {
       const payload = {
         title: form.title.trim(),
         description: form.description.trim(),
-        attachmentUrl: form.attachmentUrl || undefined,
-        attachmentName: form.attachmentName || undefined,
         classCourseId: form.classCourseId,
         subjectId: form.subjectId,
         deadline: form.deadline,
@@ -667,8 +632,6 @@ export function TeacherAssignmentsPage() {
                             {attachment.originalFileName}
                           </span>
                         ))
-                      ) : assignment.attachmentName ? (
-                        <span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">Attachment: {assignment.attachmentName}</span>
                       ) : null}
                     </div>
                     <div className="mt-4">
@@ -823,22 +786,10 @@ export function TeacherAssignmentsPage() {
                     multiple
                     selectedFiles={attachmentFiles}
                     existingAttachments={existingAttachments}
-                    initialFileUrl={form.attachmentUrl}
-                    initialFileName={form.attachmentName}
                     onRemoveExistingAttachment={(id) => {
-                      const attachment = existingAttachments.find((item) => item.id === id);
                       const next = existingAttachments.filter((item) => item.id !== id);
-
                       setExistingAttachments(next);
                       setRemovedAttachmentIds((current) => (current.includes(id) ? current : [...current, id]));
-
-                      if (attachment && form.attachmentUrl === attachment.downloadUrl) {
-                        setForm((current) => ({ ...current, attachmentUrl: '', attachmentName: '' }));
-                      }
-
-                      if (next.length === 0) {
-                        setForm((current) => ({ ...current, attachmentUrl: '', attachmentName: '' }));
-                      }
                     }}
                     onRenameExistingAttachment={async (id, name) => {
                       const attachment = existingAttachments.find((item) => item.id === id);
@@ -855,15 +806,7 @@ export function TeacherAssignmentsPage() {
 
                       const updateLocal = (updatedName: string) => {
                         setExistingAttachments((current) => current.map((item) => (item.id === id ? { ...item, originalFileName: updatedName } : item)));
-                        if (form.attachmentUrl === attachment.downloadUrl) {
-                          setForm((current) => ({ ...current, attachmentName: updatedName }));
-                        }
                       };
-
-                      if (id.startsWith('assignment-record-attachment')) {
-                        updateLocal(normalizedName);
-                        return;
-                      }
 
                       try {
                         const renamed = await renameAttachment(id, normalizedName);
@@ -875,11 +818,9 @@ export function TeacherAssignmentsPage() {
                     }}
                     onFileSelected={(file) => {
                       setAttachmentFiles([file]);
-                      setForm((current) => ({ ...current, attachmentUrl: '', attachmentName: '' }));
                     }}
                     onFilesSelected={(files) => {
                       setAttachmentFiles(files);
-                      setForm((current) => ({ ...current, attachmentUrl: '', attachmentName: '' }));
                     }}
                   />
                 </div>

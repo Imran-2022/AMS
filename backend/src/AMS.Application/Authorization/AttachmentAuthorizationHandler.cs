@@ -10,17 +10,20 @@ public class AttachmentAuthorizationHandler : AuthorizationHandler<AttachmentAcc
     private readonly IAttachmentRepository _attachmentRepository;
     private readonly ISubmissionRepository _submissionRepository;
     private readonly IAssignmentRepository _assignmentRepository;
+    private readonly ISubjectRepository _subjectRepository;
     private readonly IStudentEnrollmentRepository _studentEnrollmentRepository;
 
     public AttachmentAuthorizationHandler(
         IAttachmentRepository attachmentRepository,
         ISubmissionRepository submissionRepository,
         IAssignmentRepository assignmentRepository,
+        ISubjectRepository subjectRepository,
         IStudentEnrollmentRepository studentEnrollmentRepository)
     {
         _attachmentRepository = attachmentRepository;
         _submissionRepository = submissionRepository;
         _assignmentRepository = assignmentRepository;
+        _subjectRepository = subjectRepository;
         _studentEnrollmentRepository = studentEnrollmentRepository;
     }
 
@@ -58,11 +61,15 @@ public class AttachmentAuthorizationHandler : AuthorizationHandler<AttachmentAcc
                 var assignment = await _assignmentRepository.GetByIdAsync(attachment.OwnerId);
                 if (assignment != null)
                 {
-                    var enrollments = await _studentEnrollmentRepository.GetByStudentAsync(currentUserId);
-                    if (enrollments.Any(e => e.ClassCourseId == assignment.ClassCourseId))
+                    var subject = await _subjectRepository.GetByIdAsync(assignment.SubjectId);
+                    if (subject != null)
                     {
-                        context.Succeed(requirement);
-                        return;
+                        var enrollments = await _studentEnrollmentRepository.GetByStudentAsync(currentUserId);
+                        if (enrollments.Any(e => e.ClassCourseId == subject.ClassCourseId))
+                        {
+                            context.Succeed(requirement);
+                            return;
+                        }
                     }
                 }
             }

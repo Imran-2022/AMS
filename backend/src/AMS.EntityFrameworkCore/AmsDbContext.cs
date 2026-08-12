@@ -10,7 +10,9 @@ public class AmsDbContext : DbContext
     }
 
     public DbSet<AcademicYear> AcademicYears => Set<AcademicYear>();
-    public DbSet<AppUser> AppUsers => Set<AppUser>();
+    public DbSet<User> Users => Set<User>();
+    public DbSet<TeacherProfile> TeacherProfiles => Set<TeacherProfile>();
+    public DbSet<StudentProfile> StudentProfiles => Set<StudentProfile>();
     public DbSet<ClassCourse> ClassCourses => Set<ClassCourse>();
     public DbSet<ClassDefinition> ClassDefinitions => Set<ClassDefinition>();
     public DbSet<Group> Groups => Set<Group>();
@@ -20,6 +22,8 @@ public class AmsDbContext : DbContext
     public DbSet<Assignment> Assignments => Set<Assignment>();
     public DbSet<Submission> Submissions => Set<Submission>();
     public DbSet<Attachment> Attachments => Set<Attachment>();
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

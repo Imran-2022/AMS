@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AmsPagination } from '../../ui';
-import { AppShell } from '../../layout/AppShell';
+import { AppShell } from '@/shared/layout';
 import { getSubmissions, type SubmissionDto } from '@/lib/api';
 
 const statusClasses: Record<string, string> = {
@@ -61,7 +61,8 @@ export function AdminSubmissionsPage() {
     const total = submissions.length;
     const graded = submissions.filter((item) => item.status === 'Graded').length;
     const pending = submissions.filter((item) => item.status === 'Pending review').length;
-    return { total, graded, pending };
+    const late = submissions.filter((item) => item.isLate).length;
+    return { total, graded, pending, late };
   }, [submissions]);
 
   const visibleSubmissions = useMemo(() => {
@@ -140,67 +141,88 @@ export function AdminSubmissionsPage() {
             <p className="text-xs text-slate-400 mt-1">Submitted, awaiting marks</p>
           </div>
 
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2 flex-wrap">
-            {(['All', 'Graded', 'Pending'] as const).map((tab) => (
-              <button
-                key={tab}
-                type="button" onClick={() => setActiveTab(tab)}
-                className={`tab cursor-pointer px-4 py-2 rounded text-sm font-semibold ${activeTab === tab ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
-                {tab} <span className="opacity-70 font-normal">{tab === 'All' ? totals.total : tab === 'Graded' ? totals.graded : totals.pending}</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-2.5 flex-1 justify-end min-w-[320px] flex-wrap">
-            <select
-              value={selectedClass}
-              onChange={(event) => setSelectedClass(event.target.value)}
-              className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white">
-              {CLASS_OPTIONS.map((option) => (
-                <option key={option}>{option}</option>
-              ))}
-            </select>
-            <select
-              value={selectedAssignment}
-              onChange={(event) => setSelectedAssignment(event.target.value)}
-              className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white">
-              {ASSIGNMENT_OPTIONS.map((option) => (
-                <option key={option}>{option}</option>
-              ))}
-            </select>
-            <div className="relative flex-1 max-w-xs">
-              <input
-                type="text"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search by student…"
-                className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-brand-500"
-              />
-              <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <circle cx="11" cy="11" r="7" />
-                <path d="m21 21-4.3-4.3" />
+        <div className="bg-white rounded-2xl border border-slate-200 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-[11px] font-bold text-slate-400">LATE SUBMISSIONS</p>
+            <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 8v4l2 2" />
+                <circle cx="12" cy="12" r="9" />
               </svg>
             </div>
           </div>
+          <p className="text-2xl font-extrabold text-slate-800">{totals.late}</p>
+          <p className="text-xs text-slate-400 mt-1">Submitted after deadline</p>
         </div>
+      </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-visible">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 text-left">
-                    <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">STUDENT</th>
-                    <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">ASSIGNMENT</th>
-                    <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">SUBMITTED</th>
-                    <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">STATUS</th>
-                    <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">MARKS</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {pagedSubmissions.map((submission) => (
-                    <tr
+        {submissions.length > 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2.5 flex-1 justify-end min-w-[320px] flex-wrap">
+              <select
+                value={selectedClass}
+                onChange={(event) => setSelectedClass(event.target.value)}
+                className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white">
+                {CLASS_OPTIONS.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
+              </select>
+              <select
+                value={selectedAssignment}
+                onChange={(event) => setSelectedAssignment(event.target.value)}
+                className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white">
+                {ASSIGNMENT_OPTIONS.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
+              </select>
+              <div className="relative flex-1 max-w-xs">
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search by student…"
+                  className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-brand-500"
+                />
+                <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {visibleSubmissions.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-8 py-20 text-center">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-500 mx-auto">
+              <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 7h16" />
+                <path d="M4 12h16" />
+                <path d="M4 17h10" />
+              </svg>
+            </div>
+            <p className="text-base font-bold text-slate-800">No submissions found</p>
+            <p className="mt-2 max-w-md text-sm text-slate-500 mx-auto">
+              {search || selectedClass !== 'All classes' || selectedAssignment !== 'All assignments' || activeTab !== 'All'
+                ? 'No matching submission is available for your current filter.'
+                : 'There are no submissions yet.'}
+            </p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-visible">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 text-left">
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">STUDENT</th>
+                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">ASSIGNMENT</th>
+                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">SUBMITTED</th>
+                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">STATUS</th>
+                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">MARKS</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {pagedSubmissions.map((submission) => (
+                  <tr
                     key={submission.id}
                     tabIndex={0}
                     onClick={() => router.push(`/roles/admin/submissions/${submission.id}`)}
@@ -212,49 +234,50 @@ export function AdminSubmissionsPage() {
                     }}
                     className="cursor-pointer hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none transition-colors"
                   >
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-3">
-                          {submission.avatarUrl ? (
-                            <img
-                              src={submission.avatarUrl}
-                              alt={submission.studentName}
-                              className="w-8 h-8 rounded-full object-cover shrink-0"
-                            />
-                          ) : (
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${avatarClasses.brand}`}>
-                              {submission.studentInitials}
-                            </div>
-                          )}
-                          <span className="font-semibold text-slate-700">{submission.studentName}</span>
-                        </div>
-                      </td>
-                      <td className="px-2 py-3.5 text-slate-500">{submission.assignmentTitle}</td>
-                      <td className="px-2 py-3.5 text-slate-500">{submission.submittedAt ?? <span className="italic text-slate-400">Not submitted</span>}</td>
-                      <td className="px-2 py-3.5">
-                        <span className={`badge ${statusClasses[submission.status]}`}>
-                          <span className="badge-dot" />
-                          {submission.status}
-                        </span>
-                      </td>
-                      <td className={`px-2 py-3.5 ${submission.marks == null ? 'text-slate-400' : 'font-semibold text-slate-700'}`}>
-                        {submission.marks == null ? '—' : submission.marks}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                  </table>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-3">
+                        {submission.avatarUrl ? (
+                          <img
+                            src={submission.avatarUrl}
+                            alt={submission.studentName}
+                            className="w-8 h-8 rounded-full object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${avatarClasses.brand}`}>
+                            {submission.studentInitials}
+                          </div>
+                        )}
+                        <span className="font-semibold text-slate-700">{submission.studentName}</span>
+                      </div>
+                    </td>
+                    <td className="px-2 py-3.5 text-slate-500">{submission.assignmentTitle}</td>
+                    <td className="px-2 py-3.5 text-slate-500">{submission.submittedAt ?? <span className="italic text-slate-400">Not submitted</span>}</td>
+                    <td className="px-2 py-3.5">
+                      <span className={`badge ${statusClasses[submission.status]}`}>
+                        <span className="badge-dot" />
+                        {submission.status}
+                      </span>
+                    </td>
+                    <td className={`px-2 py-3.5 ${submission.marks == null ? 'text-slate-400' : 'font-semibold text-slate-700'}`}>
+                      {submission.marks == null ? '—' : submission.marks}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
 
-              <AmsPagination
-                currentPage={pageIndex}
-                pageSize={pageSize}
-                totalItems={visibleSubmissions.length}
-                pageSizeOptions={PAGE_SIZE_OPTIONS}
-                onPageChange={setPageIndex}
-                onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
-                label="Showing"
-                itemLabel="submissions"
-              />
-        </div>
+            <AmsPagination
+              currentPage={pageIndex}
+              pageSize={pageSize}
+              totalItems={visibleSubmissions.length}
+              pageSizeOptions={PAGE_SIZE_OPTIONS}
+              onPageChange={setPageIndex}
+              onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
+              label="Showing"
+              itemLabel="submissions"
+            />
+          </div>
+        )}
       </div>
     </AppShell>
   );

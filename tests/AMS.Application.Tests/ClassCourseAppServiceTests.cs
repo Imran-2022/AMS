@@ -14,15 +14,15 @@ public class ClassCourseAppServiceTests
     {
         var repo = new FakeClassCourseRepository(new[]
         {
-            new ClassCourse(Guid.NewGuid(), "Grade 10", "A", "2026 – 2027", Guid.NewGuid(), Guid.NewGuid())
+            new ClassCourse(Guid.NewGuid(), "Grade 10", "A", Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid())
         });
-        var service = new ClassCourseAppService(repo, new FakeTeacherAssignmentRepository(), new FakeClassDefinitionRepository(Array.Empty<ClassDefinition>()));
+        var service = new ClassCourseAppService(repo, new FakeTeacherAssignmentRepository(), new FakeClassDefinitionRepository(Array.Empty<ClassDefinition>()), new FakeSubjectRepository());
 
         var ex = await Assert.ThrowsAsync<DomainException>(() => service.CreateAsync(new CreateClassCourseDto
         {
             Name = "Grade 10",
             Section = "A",
-            AcademicYear = "2026 – 2027",
+            AcademicYearId = repo.Classes[0].AcademicYearId,
             ClassDefinitionId = repo.Classes[0].ClassDefinitionId,
             GroupId = repo.Classes[0].GroupId
         }, Guid.NewGuid(), nameof(UserRole.Admin)));
@@ -35,13 +35,13 @@ public class ClassCourseAppServiceTests
     {
         var repo = new FakeClassCourseRepository(Array.Empty<ClassCourse>());
         var classDefinition = new ClassDefinition(Guid.NewGuid(), "Nine");
-        var service = new ClassCourseAppService(repo, new FakeTeacherAssignmentRepository(), new FakeClassDefinitionRepository(new[] { classDefinition }));
+        var service = new ClassCourseAppService(repo, new FakeTeacherAssignmentRepository(), new FakeClassDefinitionRepository(new[] { classDefinition }), new FakeSubjectRepository());
 
         var ex = await Assert.ThrowsAsync<DomainException>(() => service.CreateAsync(new CreateClassCourseDto
         {
             Name = "Nine",
             Section = "A",
-            AcademicYear = "2026 – 2027",
+            AcademicYearId = Guid.NewGuid(),
             ClassDefinitionId = classDefinition.Id,
             GroupId = null
         }, Guid.NewGuid(), nameof(UserRole.Admin)));
@@ -113,5 +113,15 @@ public class ClassCourseAppServiceTests
         public Task<IReadOnlyList<TeacherSubjectAssignment>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<TeacherSubjectAssignment>>(Array.Empty<TeacherSubjectAssignment>());
         public Task<IReadOnlyList<TeacherSubjectAssignment>> GetByTeacherAsync(Guid teacherId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<TeacherSubjectAssignment>>(Array.Empty<TeacherSubjectAssignment>());
         public Task<IReadOnlyList<TeacherSubjectAssignment>> GetBySubjectAsync(Guid subjectId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<TeacherSubjectAssignment>>(Array.Empty<TeacherSubjectAssignment>());
+    }
+
+    private sealed class FakeSubjectRepository : ISubjectRepository
+    {
+        public Task<Subject?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult<Subject?>(null);
+        public Task<IReadOnlyList<Subject>> GetByClassCourseIdAsync(Guid classCourseId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Subject>>(Array.Empty<Subject>());
+        public Task<IReadOnlyList<Subject>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Subject>>(Array.Empty<Subject>());
+        public Task AddAsync(Subject subject, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task UpdateAsync(Subject subject, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 }

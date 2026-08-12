@@ -1,4 +1,4 @@
-import { LoginScreen } from '@/components';
+import { LoginScreen } from '@/shared/auth';
 
 export default function LoginPage() {
   return <LoginScreen />;

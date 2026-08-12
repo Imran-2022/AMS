@@ -2,12 +2,7 @@
 
 import { AccountSettingsPage } from '@/components/account/AccountSettingsPage'
 import type { UserDto } from '@/lib/api'
-
-type NotificationItem = {
-  title: string
-  description: string
-  checked: boolean
-}
+import { getNotificationDefinitionsForRole } from '@/shared/constants/notifications'
 
 type InfoField = {
   key: string
@@ -32,12 +27,7 @@ function formatDate(value?: string | null) {
 }
 
 export default function Page() {
-  const notificationItems: NotificationItem[] = [
-    { title: 'New submission received', description: 'Notify me when a student submits one of my assignments.', checked: true },
-    { title: 'Grading deadline reminder', description: 'Remind me when grading is due for submitted work.', checked: true },
-    { title: 'New class enrollment', description: 'Notify me when a student joins one of my classes.', checked: false },
-    { title: 'School announcements', description: 'Receive administrator announcements and policy updates.', checked: false },
-  ]
+  const notificationItems = getNotificationDefinitionsForRole('Teacher')
 
   const infoSections: InfoSection[] = [
     {
