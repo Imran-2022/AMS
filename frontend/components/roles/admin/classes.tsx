@@ -50,6 +50,10 @@ export function AdminClassesPage() {
   const [actionMenuFor, setActionMenuFor] = useState<string | null>(null);
   const [viewSubjectsForClass, setViewSubjectsForClass] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [selectedGradeFilter, setSelectedGradeFilter] = useState('All classes');
+  const [selectedSectionFilter, setSelectedSectionFilter] = useState('All sections');
+  const [selectedGroupFilter, setSelectedGroupFilter] = useState('All groups');
   const [classStudentCountsState, setClassStudentCountsState] = useState<Record<string, number>>({});
   const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
@@ -397,17 +401,76 @@ export function AdminClassesPage() {
     [assignments]
   );
 
-  const gradeOptions = useMemo(
-    () => classDefinitions.map((definition) => ({ id: definition.id, label: definition.name })),
-    [classDefinitions]
+  const availableClassDefinitionIds = useMemo(
+    () => new Set(classes.map((cls) => cls.classDefinitionId).filter(Boolean) as string[]),
+    [classes]
   );
+
+  const gradeOptions = useMemo(
+    () => classDefinitions
+      .filter((definition) => availableClassDefinitionIds.has(definition.id))
+      .map((definition) => ({ id: definition.id, label: definition.name })),
+    [classDefinitions, availableClassDefinitionIds]
+  );
+
+  const selectedGradeDefinitionId = useMemo(
+    () => classDefinitions.find((definition) => definition.name === selectedGradeFilter)?.id ?? '',
+    [selectedGradeFilter, classDefinitions]
+  );
+
+  const sectionOptions = useMemo(() => {
+    if (selectedGradeFilter === 'All classes' || !selectedGradeDefinitionId) return [];
+    return Array.from(
+      new Set(
+        classes
+          .filter((cls) => cls.classDefinitionId === selectedGradeDefinitionId)
+          .map((cls) => cls.section)
+          .filter(Boolean)
+      )
+    ).sort();
+  }, [classes, selectedGradeDefinitionId, selectedGradeFilter]);
+
+  const groupOptions = useMemo(() => {
+    if (
+      selectedGradeFilter === 'All classes' ||
+      selectedSectionFilter === 'All sections' ||
+      !selectedGradeDefinitionId
+    ) {
+      return [];
+    }
+
+    const groups = classes
+      .filter(
+        (cls) =>
+          cls.classDefinitionId === selectedGradeDefinitionId &&
+          cls.section === selectedSectionFilter &&
+          cls.groupId
+      )
+      .map((cls) => ({ id: cls.groupId, name: groupNameMap[cls.groupId ?? ''] ?? cls.groupId ?? '' }));
+
+    return Array.from(new Map(groups.map((group) => [group.id, group])).values());
+  }, [classes, selectedGradeDefinitionId, selectedGradeFilter, selectedSectionFilter, groupNameMap]);
+
+  const filteredClasses = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return classes.filter((cls) => {
+      const gradeLabel = classDefinitions.find((definition) => definition.id === cls.classDefinitionId)?.name ?? '';
+      const matchesGrade = selectedGradeFilter === 'All classes' || gradeLabel === selectedGradeFilter;
+      const matchesSection = selectedSectionFilter === 'All sections' || cls.section === selectedSectionFilter;
+      const matchesGroup = selectedGroupFilter === 'All groups' || cls.groupId === selectedGroupFilter;
+      const matchesSearch =
+        !term ||
+        `${cls.name} ${cls.section} ${gradeLabel} ${groupNameMap[cls.groupId ?? ''] ?? ''}`.toLowerCase().includes(term);
+      return matchesGrade && matchesSection && matchesGroup && matchesSearch;
+    });
+  }, [classes, search, selectedGradeFilter, selectedSectionFilter, selectedGroupFilter, classDefinitions, groupNameMap]);
 
   const pagedClasses = useMemo(() => {
     const start = pageIndex * pageSize;
-    return classes.slice(start, start + pageSize);
-  }, [classes, pageIndex, pageSize]);
+    return filteredClasses.slice(start, start + pageSize);
+  }, [filteredClasses, pageIndex, pageSize]);
 
-  const pageCount = useMemo(() => Math.max(1, Math.ceil(classes.length / pageSize)), [classes.length, pageSize]);
+  const pageCount = useMemo(() => Math.max(1, Math.ceil(filteredClasses.length / pageSize)), [filteredClasses.length, pageSize]);
 
   useEffect(() => {
     if (pageIndex >= pageCount) {
@@ -463,10 +526,80 @@ export function AdminClassesPage() {
           <div className="rounded border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>
         ) : null}
 
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-wrap gap-3">
+            <select
+              value={selectedGradeFilter}
+              onChange={(event) => {
+                setSelectedGradeFilter(event.target.value);
+                setSelectedSectionFilter('All sections');
+                setSelectedGroupFilter('All groups');
+                setPageIndex(0);
+              }}
+              className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white"
+            >
+              <option>All classes</option>
+              {gradeOptions.map((option) => (
+                <option key={option.id} value={option.label}>{option.label}</option>
+              ))}
+            </select>
+            <select
+              value={selectedSectionFilter}
+              onChange={(event) => { setSelectedSectionFilter(event.target.value); setSelectedGroupFilter('All groups'); setPageIndex(0); }}
+              disabled={selectedGradeFilter === 'All classes'}
+              className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <option>All sections</option>
+              {sectionOptions.map((section) => (
+                <option key={section} value={section}>{section}</option>
+              ))}
+            </select>
+            {selectedGradeFilter !== 'All classes' && selectedSectionFilter !== 'All sections' && groupOptions.length > 0 ? (
+              <select
+                value={selectedGroupFilter}
+                onChange={(event) => { setSelectedGroupFilter(event.target.value); setPageIndex(0); }}
+                className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white"
+              >
+                <option>All groups</option>
+                {groupOptions.map((group) => (
+                  <option key={group.id} value={group.id}>{group.name || group.id}</option>
+                ))}
+              </select>
+            ) : null}
+          </div>
+          <div className="relative max-w-xs w-full md:w-auto">
+            <input
+              value={search}
+              onChange={(event) => { setSearch(event.target.value); setPageIndex(0); }}
+              type="text"
+              placeholder="Search classes…"
+              className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-brand-500"
+            />
+            <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          </div>
+        </div>
+
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {pagedClasses.map((cls) => (
-              <div key={cls.id} className="bg-white rounded border border-slate-200 p-5">
+          {filteredClasses.length === 0 ? (
+            <div className="rounded-2xl border border-slate-200 bg-white px-8 py-20 text-center">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-500 mx-auto">
+                <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 7h16" />
+                  <path d="M4 12h16" />
+                  <path d="M4 17h10" />
+                </svg>
+              </div>
+              <p className="text-base font-bold text-slate-800">No classes found</p>
+              <p className="mt-2 max-w-md text-sm text-slate-500 mx-auto">
+                {search || selectedGradeFilter !== 'All classes' || selectedSectionFilter !== 'All sections' || selectedGroupFilter !== 'All groups'
+                  ? 'Try a different search or filter to find the class you need.'
+                  : 'There are no classes available yet. Add a class to get started.'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {pagedClasses.map((cls) => (
+                <div key={cls.id} className="bg-white rounded border border-slate-200 p-5">
                   <div className="flex items-start justify-between">
                   <div>
                     <p className="text-base font-bold text-slate-800">{cls.name} — {cls.section}{cls.groupId ? `(${groupNameMap[cls.groupId] ?? ''})` : ''}</p>
@@ -536,13 +669,13 @@ export function AdminClassesPage() {
                 </div>
               </div>
             ))}
-          </div>
+            </div>
+          )}
 
           <AmsPagination
             currentPage={pageIndex}
             pageSize={pageSize}
-            totalItems={classes.length}
-            pageSizeOptions={PAGE_SIZE_OPTIONS}
+            totalItems={filteredClasses.length}
             onPageChange={setPageIndex}
             onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
             label="Showing"

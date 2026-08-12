@@ -183,50 +183,82 @@ export default function SubjectsAssignments() {
       </div>
 
       <div className="bg-white rounded border border-slate-200 overflow-visible">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-100 text-left">
-              <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">SUBJECT</th>
-              <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">CODE</th>
-              <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">CLASS</th>
-              <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">TEACHER</th>
-              <th className="w-20 px-5 py-3.5 text-right text-[11px] font-bold text-slate-400">ACTIONS</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {pagedSubjects.map((subject) => {
-              const course = classCourseMap[subject.classCourseId];
-              const teacherName = assignmentMap[subject.id]?.teacherName ?? 'Unassigned';
-              return (
-                <tr key={subject.id}>
-                  <td className="px-5 py-3.5 font-semibold text-slate-700">{subject.name}</td>
-                  <td className="px-2 py-3.5 text-slate-500 font-mono text-xs">{subject.code}</td>
-                  <td className="px-2 py-3.5 text-slate-500">{course ? `${course.name} — ${course.section}` : 'Unassigned'}</td>
-                  <td className="px-2 py-3.5">
-                    {teacherName === 'Unassigned' ? (
-                      <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-[11.5px] font-bold text-amber-600"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"/>Unassigned</span>
-                    ) : (
-                      <div className="flex items-center gap-2"><div className="w-6 h-6 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-[10px] font-bold">{teacherName.split(' ').map((p) => p[0]).join('')}</div><span className="text-slate-600">{teacherName}</span></div>
-                    )}
-                  </td>
-                  <td className="px-5 py-3.5 text-right">
-                    <div className="relative inline-flex">
-                      <button type="button" data-action-button={`subject-${subject.id}`} onClick={(ev) => { ev.stopPropagation(); setActionMenuFor(actionMenuFor === `subject-${subject.id}` ? null : `subject-${subject.id}`); }} className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md p-0 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
-                      {actionMenuFor === `subject-${subject.id}` ? (
-                        <div data-action-menu={`subject-${subject.id}`} onClick={(ev) => ev.stopPropagation()} className="absolute right-0 top-full z-20 mt-2 w-40 overflow-hidden rounded border border-slate-200 bg-white shadow-xl">
-                          <Button type="button" variant="ghost" onClick={() => openEditSubject(subject)} className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">Edit subject</Button>
-                          <Button type="button" variant="ghost" onClick={() => handleDelete('subject', subject.id, subject.name)} className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50">Delete subject</Button>
-                        </div>
-                      ) : null}
-                    </div>
-                  </td>
+        {filteredSubjects.length === 0 ? (
+          <div className="flex min-h-[320px] flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-8 py-20 text-center">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-500">
+              <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 7h16" />
+                <path d="M4 12h16" />
+                <path d="M4 17h10" />
+                <path d="M4 4v16" />
+              </svg>
+            </div>
+            <p className="text-base font-bold text-slate-800">
+              {subjects.length === 0
+                ? 'No subjects available'
+                : search.trim() || selectedClass !== 'All classes'
+                ? 'No allocations match your filters'
+                : 'No teacher allocations yet'}
+            </p>
+            <p className="mt-2 max-w-md text-sm text-slate-500">
+              {subjects.length === 0
+                ? 'Create a subject and assign a teacher to begin managing allocation.'
+                : search.trim() || selectedClass !== 'All classes'
+                ? 'Try a different class filter or search term to find the allocation you need.'
+                : 'Assign a teacher to a subject to display allocation records here.'}
+            </p>
+            <Button type="button" onClick={() => openModal('assign')} className="mt-6">
+              Assign teacher
+            </Button>
+          </div>
+        ) : (
+          <>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 text-left">
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">SUBJECT</th>
+                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">CODE</th>
+                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">CLASS</th>
+                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">TEACHER</th>
+                  <th className="w-20 px-5 py-3.5 text-right text-[11px] font-bold text-slate-400">ACTIONS</th>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {pagedSubjects.map((subject) => {
+                  const course = classCourseMap[subject.classCourseId];
+                  const teacherName = assignmentMap[subject.id]?.teacherName ?? 'Unassigned';
+                  return (
+                    <tr key={subject.id}>
+                      <td className="px-5 py-3.5 font-semibold text-slate-700">{subject.name}</td>
+                      <td className="px-2 py-3.5 text-slate-500 font-mono text-xs">{subject.code}</td>
+                      <td className="px-2 py-3.5 text-slate-500">{course ? `${course.name} — ${course.section}` : 'Unassigned'}</td>
+                      <td className="px-2 py-3.5">
+                        {teacherName === 'Unassigned' ? (
+                          <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-[11.5px] font-bold text-amber-600"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"/>Unassigned</span>
+                        ) : (
+                          <div className="flex items-center gap-2"><div className="w-6 h-6 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-[10px] font-bold">{teacherName.split(' ').map((p) => p[0]).join('')}</div><span className="text-slate-600">{teacherName}</span></div>
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <div className="relative inline-flex">
+                          <button type="button" data-action-button={`subject-${subject.id}`} onClick={(ev) => { ev.stopPropagation(); setActionMenuFor(actionMenuFor === `subject-${subject.id}` ? null : `subject-${subject.id}`); }} className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md p-0 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+                          {actionMenuFor === `subject-${subject.id}` ? (
+                            <div data-action-menu={`subject-${subject.id}`} onClick={(ev) => ev.stopPropagation()} className="absolute right-0 top-full z-20 mt-2 w-40 overflow-hidden rounded border border-slate-200 bg-white shadow-xl">
+                              <Button type="button" variant="ghost" onClick={() => openEditSubject(subject)} className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">Edit subject</Button>
+                              <Button type="button" variant="ghost" onClick={() => handleDelete('subject', subject.id, subject.name)} className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50">Delete subject</Button>
+                            </div>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
 
-        <AmsPagination currentPage={pageIndex} pageSize={pageSize} totalItems={filteredSubjects.length} pageSizeOptions={[10,25,50]} onPageChange={setPageIndex} onPageSizeChange={(s) => setPageSize(s)} label="Showing" itemLabel="subjects" />
+            <AmsPagination currentPage={pageIndex} pageSize={pageSize} totalItems={filteredSubjects.length} pageSizeOptions={[10,25,50]} onPageChange={setPageIndex} onPageSizeChange={(s) => setPageSize(s)} label="Showing" itemLabel="subjects" />
+          </>
+        )}
       </div>
 
       <div className={`${activeModal === 'subject' ? 'flex' : 'hidden'} fixed inset-0 z-50 items-center justify-center bg-slate-900/40 p-4`}>

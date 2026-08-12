@@ -14,13 +14,17 @@ public class ClassCourseRepository : IClassCourseRepository
     }
 
     public async Task<ClassCourse?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
-        => await _dbContext.ClassCourses.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        => await _dbContext.ClassCourses
+            .Include(x => x.AcademicYear)
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
     public async Task<IReadOnlyList<ClassCourse>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            return await _dbContext.ClassCourses.ToListAsync(cancellationToken);
+            return await _dbContext.ClassCourses
+                .Include(x => x.AcademicYear)
+                .ToListAsync(cancellationToken);
         }
         catch (Exception ex)
         {

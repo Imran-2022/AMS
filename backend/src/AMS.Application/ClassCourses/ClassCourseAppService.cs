@@ -178,6 +178,8 @@ public class ClassCourseAppService : IClassCourseAppService
         AcademicYearId = entity.AcademicYearId,
         AcademicYearName = entity.AcademicYear?.Name,
         ClassDefinitionId = entity.ClassDefinitionId,
-        GroupId = entity.GroupId
+        ClassDefinitionName = entity.ClassDefinition?.Name,
+        GroupId = entity.GroupId,
+        GroupName = entity.Group?.Name
     };
 }
