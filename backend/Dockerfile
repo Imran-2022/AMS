@@ -43,4 +43,6 @@ ENTRYPOINT ["dotnet", "AMS.HttpApi.Host.dll"]
 FROM mcr.microsoft.com/dotnet/runtime:10.0 AS migrator
 WORKDIR /app
 COPY --from=build /app/migrator .
-ENTRYPOINT ["dotnet", "AMS.DbMigrator.dll"]
+COPY entrypoint-migrator.sh ./
+RUN chmod +x entrypoint-migrator.sh
+ENTRYPOINT ["./entrypoint-migrator.sh"]

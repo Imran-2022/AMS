@@ -12,17 +12,20 @@ public class StudentEnrollmentAppService : IEnrollmentAppService
     private readonly IUserRepository _userRepository;
     private readonly IClassCourseRepository _classCourseRepository;
     private readonly ITeacherSubjectAssignmentRepository _teacherSubjectAssignmentRepository;
+    private readonly ISubjectRepository _subjectRepository;
 
     public StudentEnrollmentAppService(
         IStudentEnrollmentRepository enrollmentRepository,
         IUserRepository userRepository,
         IClassCourseRepository classCourseRepository,
-        ITeacherSubjectAssignmentRepository teacherSubjectAssignmentRepository)
+        ITeacherSubjectAssignmentRepository teacherSubjectAssignmentRepository,
+        ISubjectRepository subjectRepository)
     {
         _enrollmentRepository = enrollmentRepository;
         _userRepository = userRepository;
         _classCourseRepository = classCourseRepository;
         _teacherSubjectAssignmentRepository = teacherSubjectAssignmentRepository;
+        _subjectRepository = subjectRepository;
     }
 
     public async Task<IReadOnlyList<StudentEnrollmentDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
@@ -61,9 +64,15 @@ public class StudentEnrollmentAppService : IEnrollmentAppService
     private async Task<IReadOnlyList<Domain.Entities.StudentEnrollment>> LoadTeacherEnrollmentsAsync(Guid teacherId, CancellationToken cancellationToken)
     {
         var assignments = await _teacherSubjectAssignmentRepository.GetByTeacherAsync(teacherId, cancellationToken);
-        var classIds = assignments.Select(a => a.ClassCourseId).Distinct().ToList();
-        var enrollments = new List<Domain.Entities.StudentEnrollment>();
+        var subjectIds = assignments.Select(a => a.SubjectId).Distinct().ToList();
+        var classIds = new HashSet<Guid>();
+        foreach (var sid in subjectIds)
+        {
+            var subject = await _subjectRepository.GetByIdAsync(sid, cancellationToken);
+            if (subject is not null) classIds.Add(subject.ClassCourseId);
+        }
 
+        var enrollments = new List<Domain.Entities.StudentEnrollment>();
         foreach (var classId in classIds)
         {
             var classEnrollments = await _enrollmentRepository.GetByClassCourseAsync(classId, cancellationToken);

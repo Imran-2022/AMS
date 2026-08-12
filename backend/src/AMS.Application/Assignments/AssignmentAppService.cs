@@ -254,8 +254,6 @@ public class AssignmentAppService : IAssignmentAppService
             Id = assignment.Id,
             Title = assignment.Title,
             Description = assignment.Description,
-            AttachmentUrl = null,
-            AttachmentName = null,
             ClassCourseId = subject.ClassCourseId,
             SubjectId = assignment.SubjectId,
             TeacherId = assignment.TeacherId,

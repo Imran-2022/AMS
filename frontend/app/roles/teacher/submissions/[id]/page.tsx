@@ -219,6 +219,9 @@ export default function TeacherSubmissionDetailPage() {
                       {statusBadge.label}
                     </span>
                   </div>
+                </div>
+              </div>
+            </div>
 
             <div className="grid grid-cols-[1fr_380px] gap-4 items-start">
               <div className="space-y-5">
@@ -265,7 +268,7 @@ export default function TeacherSubmissionDetailPage() {
 
                 <div className="rounded-2xl border border-slate-200 bg-white p-5">
                   <p className="text-[11px] font-bold tracking-[0.06em] text-slate-400">SUBMISSION DESCRIPTION</p>
-                  <p className="mt-3 text-sm leading-relaxed text-slate-600">“{submission.contentText || 'No description provided.'}”</p>
+                  <p className="mt-3 text-sm leading-relaxed text-slate-600">&ldquo;{submission.contentText || 'No description provided.'}&rdquo;</p>
                 </div>
 
                 <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-5">

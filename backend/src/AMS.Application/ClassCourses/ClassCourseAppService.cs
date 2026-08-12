@@ -11,15 +11,18 @@ public class ClassCourseAppService : IClassCourseAppService
     private readonly IClassCourseRepository _classCourseRepository;
     private readonly ITeacherSubjectAssignmentRepository _teacherSubjectAssignmentRepository;
     private readonly IClassDefinitionRepository _classDefinitionRepository;
+    private readonly ISubjectRepository _subjectRepository;
 
     public ClassCourseAppService(
         IClassCourseRepository classCourseRepository,
         ITeacherSubjectAssignmentRepository teacherSubjectAssignmentRepository,
-        IClassDefinitionRepository classDefinitionRepository)
+        IClassDefinitionRepository classDefinitionRepository,
+        ISubjectRepository subjectRepository)
     {
         _classCourseRepository = classCourseRepository;
         _teacherSubjectAssignmentRepository = teacherSubjectAssignmentRepository;
         _classDefinitionRepository = classDefinitionRepository;
+        _subjectRepository = subjectRepository;
     }
 
     public async Task<IReadOnlyList<ClassCourseDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
@@ -33,7 +36,14 @@ public class ClassCourseAppService : IClassCourseAppService
         if (currentUserRole == nameof(UserRole.Teacher))
         {
             var assignments = await _teacherSubjectAssignmentRepository.GetByTeacherAsync(currentUserId, cancellationToken);
-            var classIds = assignments.Select(x => x.ClassCourseId).Distinct().ToHashSet();
+            var subjectIds = assignments.Select(x => x.SubjectId).Distinct().ToList();
+            var classIds = new HashSet<Guid>();
+            foreach (var sid in subjectIds)
+            {
+                var subject = await _subjectRepository.GetByIdAsync(sid, cancellationToken);
+                if (subject is not null) classIds.Add(subject.ClassCourseId);
+            }
+
             var classes = await _classCourseRepository.GetAllAsync(cancellationToken);
             return classes.Where(x => classIds.Contains(x.Id)).Select(ToDto).ToList();
         }
@@ -50,7 +60,13 @@ public class ClassCourseAppService : IClassCourseAppService
         if (currentUserRole == nameof(UserRole.Teacher))
         {
             var assignments = await _teacherSubjectAssignmentRepository.GetByTeacherAsync(currentUserId, cancellationToken);
-            if (!assignments.Any(x => x.ClassCourseId == id)) throw new ForbiddenException("You are not assigned to this class.");
+            var allowed = false;
+            foreach (var a in assignments)
+            {
+                var subject = await _subjectRepository.GetByIdAsync(a.SubjectId, cancellationToken);
+                if (subject is not null && subject.ClassCourseId == id) { allowed = true; break; }
+            }
+            if (!allowed) throw new ForbiddenException("You are not assigned to this class.");
             return ToDto(entity);
         }
 
