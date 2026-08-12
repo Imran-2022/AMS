@@ -60,6 +60,31 @@ export default function SubjectsAssignments() {
 
   const classOptions = useMemo(() => classes.map((cls) => ({ id: cls.id, label: `${cls.name} — ${cls.section}` })), [classes]);
 
+  const summaryMetrics = useMemo(() => {
+    const totalTeachers = teachers.length;
+    const totalSubjects = subjects.length;
+    const totalAllocations = assignments.length;
+    const assignedSubjectIds = new Set(assignments.map((assignment) => assignment.subjectId));
+    const unassignedSubjects = subjects.filter((subject) => !assignedSubjectIds.has(subject.id)).length;
+    const classesPerTeacher = assignments.reduce<Record<string, Set<string>>>((acc, assignment) => {
+      if (!acc[assignment.teacherId]) {
+        acc[assignment.teacherId] = new Set();
+      }
+      acc[assignment.teacherId].add(assignment.classCourseId);
+      return acc;
+    }, {});
+    const totalAssignedClasses = Object.values(classesPerTeacher).reduce((sum, classesSet) => sum + classesSet.size, 0);
+    const avgClassesPerTeacher = totalTeachers > 0 ? totalAssignedClasses / totalTeachers : 0;
+
+    return {
+      totalTeachers,
+      totalSubjects,
+      totalAllocations,
+      unassignedSubjects,
+      avgClassesPerTeacher,
+    };
+  }, [teachers.length, subjects.length, assignments]);
+
   const filteredSubjects = useMemo(() => {
     const term = search.trim().toLowerCase();
     return subjects.filter((subject) => {
@@ -169,18 +194,66 @@ export default function SubjectsAssignments() {
         }
       />
 
-      <div className="bg-white rounded border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap">
-        <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="text-sm border border-slate-200 rounded px-3 py-2.5 text-slate-600 bg-white">
-          <option>All classes</option>
-          {classOptions.map((option) => (
-            <option key={option.id} value={option.label}>{option.label}</option>
-          ))}
-        </select>
-        <div className="relative flex-1 max-w-xs ml-auto">
-          <input value={search} onChange={(e) => setSearch(e.target.value)} type="text" placeholder="Search subjects…" className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded text-sm outline-none focus:border-brand-500" />
-          <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-        </div>
+<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-[11px] font-bold tracking-[0.12em] text-slate-400">TEACHERS</p>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z"/><path d="M4 20c0-2.21 3.58-4 8-4s8 1.79 8 4"/></svg>
+              </div>
+            </div>
+            <p className="text-2xl font-extrabold text-slate-800">{summaryMetrics.totalTeachers}</p>
+            <p className="mt-1 text-xs text-slate-400">Total teachers</p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-[11px] font-bold tracking-[0.12em] text-slate-400">SUBJECTS</p>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-500">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
+              </div>
+            </div>
+            <p className="text-2xl font-extrabold text-slate-800">{summaryMetrics.totalSubjects}</p>
+            <p className="mt-1 text-xs text-slate-400">Subjects available</p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-[11px] font-bold tracking-[0.12em] text-slate-400">ALLOCATIONS</p>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-500">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 12l2 2 4-4"/><path d="M12 5v14"/></svg>
+              </div>
+            </div>
+            <p className="text-2xl font-extrabold text-slate-800">{summaryMetrics.totalAllocations}</p>
+            <p className="mt-1 text-xs text-slate-400">Teacher allocations</p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-[11px] font-bold tracking-[0.12em] text-slate-400">AVG CLASSES PER TEACHER</p>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-500">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20V4"/><path d="M6 14l6-6 6 6"/></svg>
+              </div>
+            </div>
+            <p className="text-2xl font-extrabold text-slate-800">{summaryMetrics.avgClassesPerTeacher.toFixed(1)}</p>
+            <p className="mt-1 text-xs text-slate-400">Average classes per teacher</p>
+          </div>
       </div>
+
+      {subjects.length > 0 && classes.length > 0 ? (
+        <div className="bg-white rounded border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap">
+          <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="text-sm border border-slate-200 rounded px-3 py-2.5 text-slate-600 bg-white">
+            <option>All classes</option>
+            {classOptions.map((option) => (
+              <option key={option.id} value={option.label}>{option.label}</option>
+            ))}
+          </select>
+          <div className="relative flex-1 max-w-xs ml-auto">
+            <input value={search} onChange={(e) => setSearch(e.target.value)} type="text" placeholder="Search subjects…" className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded text-sm outline-none focus:border-brand-500" />
+            <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          </div>
+        </div>
+      ) : null}
 
       <div className="bg-white rounded border border-slate-200 overflow-visible">
         {filteredSubjects.length === 0 ? (

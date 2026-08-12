@@ -87,6 +87,13 @@ public class ClassCourseRepository : IClassCourseRepository
 
     public async Task UpdateAsync(ClassCourse classCourse, CancellationToken cancellationToken = default)
     {
+        var localEntry = _dbContext.ChangeTracker.Entries<ClassCourse>()
+            .FirstOrDefault(entry => entry.Entity.Id == classCourse.Id && entry.Entity != classCourse);
+        if (localEntry is not null)
+        {
+            localEntry.State = EntityState.Detached;
+        }
+
         _dbContext.ClassCourses.Update(classCourse);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }

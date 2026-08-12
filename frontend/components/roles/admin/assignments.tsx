@@ -68,7 +68,11 @@ export function AdminAssignmentsPage() {
     const total = assignments.length;
     const published = assignments.filter((item) => item.status === 'Published').length;
     const drafts = assignments.filter((item) => item.status === 'Draft').length;
-    return { total, published, drafts };
+    const dueSoon = assignments.filter((item) => {
+      const due = Date.parse(item.deadline);
+      return !Number.isNaN(due) && due >= Date.now() && due <= Date.now() + 7 * 24 * 60 * 60 * 1000;
+    }).length;
+    return { total, published, drafts, dueSoon };
   }, [assignments]);
 
   useEffect(() => {
@@ -158,8 +162,22 @@ export function AdminAssignmentsPage() {
             <p className="text-2xl font-extrabold text-slate-800">{totals.drafts}</p>
             <p className="text-xs text-slate-400 mt-1">Not visible to students yet</p>
           </div>
+          <div className="bg-white rounded-2xl border border-slate-200 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-[11px] font-bold text-slate-400">DUE SOON</p>
+              <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 7v5l3 3" />
+                  <circle cx="12" cy="12" r="9" />
+                </svg>
+              </div>
+            </div>
+            <p className="text-2xl font-extrabold text-slate-800">{totals.dueSoon}</p>
+            <p className="text-xs text-slate-400 mt-1">Deadlines within 7 days</p>
+          </div>
         </div>
 
+        {assignments.length > 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
             {(['All', 'Published', 'Drafts'] as const).map((tab) => (
@@ -205,77 +223,96 @@ export function AdminAssignmentsPage() {
             </div>
           </div>
         </div>
+        ) : null}
 
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 text-left">
-                    <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">TITLE</th>
-                    <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">CLASS</th>
-                    <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">TEACHER</th>
-                    <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">DEADLINE</th>
-                    <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">SUBMISSIONS</th>
-                    <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">STATUS</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {pagedAssignments.map((assignment) => {
-                    const teacherName = assignment.teacherName ?? 'Unknown';
-                    const initials = teacherName
-                      .split(' ')
-                      .map((part) => part[0])
-                      .join('');
-                    const statusClasses =
-                      assignment.status === 'Published'
-                        ? 'bg-emerald-50 text-emerald-600'
-                        : assignment.status === 'Draft'
-                        ? 'bg-slate-100 text-slate-500'
-                        : 'bg-rose-50 text-rose-600';
-
-                    return (
-                      <tr
-                  key={assignment.id}
-                  tabIndex={0}
-                  onClick={() => router.push(`/roles/admin/assignments/${assignment.id}`)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      router.push(`/roles/admin/assignments/${assignment.id}`);
-                    }
-                  }}
-                  className="cursor-pointer hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none transition-colors"
-                >
-                  <td className="px-5 py-3.5 font-semibold text-slate-700">{assignment.title}</td>
-                  <td className="px-5 py-3.5 text-slate-500">{`${assignment.classCourseName} - ${assignment.classCourseSection}`}</td>
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-[10px] font-bold">{initials}</div>
-                      <span className="text-slate-600">{assignment.teacherName ?? 'Unknown'}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">{formatDeadline(assignment.deadline)}</td>
-                  <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">{assignment.submittedCount ?? 0} / {assignment.totalStudents ?? 0}</td>
-                  <td className="px-5 py-3.5 whitespace-nowrap align-middle">
-                    <span className={`inline-flex justify-center rounded-full px-3 py-1 text-xs font-semibold leading-5 ${statusClasses}`}>
-                      {assignment.status}
-                    </span>
-                  </td>
+        {filteredAssignments.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-8 py-20 text-center">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-500 mx-auto">
+              <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 10h18" />
+                <path d="M3 14h18" />
+                <path d="M3 18h10" />
+              </svg>
+            </div>
+            <p className="text-base font-bold text-slate-800">No assignments found</p>
+            <p className="mt-2 max-w-md text-sm text-slate-500 mx-auto">
+              {search || selectedClass !== 'All classes' || selectedTeacher !== 'All teachers' || activeTab !== 'All'
+                ? 'Try a different search or filter to find assignments.'
+                : 'There are no assignments yet.'}
+            </p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 text-left">
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">TITLE</th>
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">CLASS</th>
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">TEACHER</th>
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">DEADLINE</th>
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">SUBMISSIONS</th>
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-slate-400">STATUS</th>
                 </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              <AmsPagination
-                currentPage={pageIndex}
-                pageSize={pageSize}
-                totalItems={filteredAssignments.length}
-                pageSizeOptions={PAGE_SIZE_OPTIONS}
-                onPageChange={setPageIndex}
-                onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
-                label="Showing"
-                itemLabel="assignments"
-              />
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {pagedAssignments.map((assignment) => {
+                  const teacherName = assignment.teacherName ?? 'Unknown';
+                  const initials = teacherName
+                    .split(' ')
+                    .map((part) => part[0])
+                    .join('');
+                  const statusClasses =
+                    assignment.status === 'Published'
+                      ? 'bg-emerald-50 text-emerald-600'
+                      : assignment.status === 'Draft'
+                      ? 'bg-slate-100 text-slate-500'
+                      : 'bg-rose-50 text-rose-600';
+
+                  return (
+                    <tr
+                      key={assignment.id}
+                      tabIndex={0}
+                      onClick={() => router.push(`/roles/admin/assignments/${assignment.id}`)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          router.push(`/roles/admin/assignments/${assignment.id}`);
+                        }
+                      }}
+                      className="cursor-pointer hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none transition-colors"
+                    >
+                      <td className="px-5 py-3.5 font-semibold text-slate-700">{assignment.title}</td>
+                      <td className="px-5 py-3.5 text-slate-500">{`${assignment.classCourseName} - ${assignment.classCourseSection}`}</td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-[10px] font-bold">{initials}</div>
+                          <span className="text-slate-600">{assignment.teacherName ?? 'Unknown'}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">{formatDeadline(assignment.deadline)}</td>
+                      <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">{assignment.submittedCount ?? 0} / {assignment.totalStudents ?? 0}</td>
+                      <td className="px-5 py-3.5 whitespace-nowrap align-middle">
+                        <span className={`inline-flex justify-center rounded-full px-3 py-1 text-xs font-semibold leading-5 ${statusClasses}`}>
+                          {assignment.status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <AmsPagination
+              currentPage={pageIndex}
+              pageSize={pageSize}
+              totalItems={filteredAssignments.length}
+              pageSizeOptions={PAGE_SIZE_OPTIONS}
+              onPageChange={setPageIndex}
+              onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
+              label="Showing"
+              itemLabel="assignments"
+            />
+          </div>
+        )}
       </div>
 
     </AppShell>

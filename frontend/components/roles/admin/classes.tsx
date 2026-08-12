@@ -298,23 +298,37 @@ export function AdminClassesPage() {
 
     try {
       const yearName = academicYears.find(y => y.id === classForm.year)?.name || '';
+      const nameToSend = classForm.name || classDefinitions.find((c) => c.id === classForm.classDefinitionId)?.name || '';
+      let academicYearId = classForm.year || (academicYears.find((y) => y.isActive)?.id) || '';
+      if (!academicYearId) {
+        // if academic years were not loaded yet, fetch them directly and pick the active one
+        try {
+          const years = await getAcademicYears();
+          setAcademicYears(years);
+          academicYearId = years.find((y) => y.isActive)?.id ?? years[0]?.id ?? '';
+        } catch (err) {
+          console.error('Failed to load academic years before create:', err);
+        }
+      }
+      if (!academicYearId) {
+        alert('No academic year is available. Please create an academic year first.');
+        return;
+      }
       if (editingClass) {
-        const nameToSend = classForm.name || classDefinitions.find((c) => c.id === classForm.classDefinitionId)?.name || '';
         await updateClassCourse(editingClass.id, {
           classDefinitionId: classForm.classDefinitionId || undefined,
           groupId: classForm.groupId || undefined,
           name: nameToSend,
           section: classForm.section,
-          academicYear: yearName,
+          academicYearId: academicYearId || undefined,
         });
       } else {
-        const nameToSend = classForm.name || classDefinitions.find((c) => c.id === classForm.classDefinitionId)?.name || '';
         await createClassCourse({
           classDefinitionId: classForm.classDefinitionId || undefined,
           groupId: classForm.groupId || undefined,
           name: nameToSend,
           section: classForm.section,
-          academicYear: yearName,
+          academicYearId: academicYearId,
         });
       }
       const activeYear = academicYears.find(y => y.isActive)?.id ?? academicYears[0]?.id ?? '';
@@ -487,6 +501,26 @@ export function AdminClassesPage() {
     [subjects]
   );
 
+  const summaryMetrics = useMemo(() => {
+    const classIds = new Set(classes.map((cls) => cls.id));
+    const totalClasses = classes.length;
+    const totalSections = classes.filter((cls) => cls.section).length;
+    const totalGroups = new Set(classes.filter((cls) => cls.groupId).map((cls) => cls.groupId as string)).size;
+    const totalStudents = classes.reduce((sum, cls) => sum + (classStudentCountsState[cls.id] ?? 0), 0);
+    const missingTeacherClassIds = new Set(
+      subjects
+        .filter((subject) => classIds.has(subject.classCourseId) && !assignmentMap[subject.id])
+        .map((subject) => subject.classCourseId)
+    );
+    return {
+      totalClasses,
+      totalSections,
+      totalGroups,
+      totalStudents,
+      classesMissingTeacher: missingTeacherClassIds.size,
+    };
+  }, [classes, classStudentCountsState, subjects, assignmentMap]);
+
   return (
     <AppShell role="Admin" breadcrumb="Admin / Classes & subjects">
       <div className="space-y-6">
@@ -522,8 +556,51 @@ export function AdminClassesPage() {
           <div className="rounded border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>
         ) : null}
 
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-[11px] font-bold tracking-[0.12em] text-slate-400">CLASSES</p>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/></svg>
+              </div>
+            </div>
+            <p className="text-2xl font-extrabold text-slate-800">{summaryMetrics.totalClasses}</p>
+            <p className="mt-1 text-xs text-slate-400">Total class records</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-[11px] font-bold tracking-[0.12em] text-slate-400">SECTIONS</p>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-500">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
+              </div>
+            </div>
+            <p className="text-2xl font-extrabold text-slate-800">{summaryMetrics.totalSections}</p>
+            <p className="mt-1 text-xs text-slate-400">Distinct sections</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-[11px] font-bold tracking-[0.12em] text-slate-400">STUDENTS</p>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-500">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 4a4 4 0 0 1 4 4v4a4 4 0 0 1-8 0V8a4 4 0 0 1 4-4z"/><path d="M6 20a6 6 0 0 1 12 0"/></svg>
+              </div>
+            </div>
+            <p className="text-2xl font-extrabold text-slate-800">{summaryMetrics.totalStudents}</p>
+            <p className="mt-1 text-xs text-slate-400">Enrolled students</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-[11px] font-bold tracking-[0.12em] text-slate-400">TEACHER ALLOCATION</p>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-500">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 12v-2"/><path d="M12 16v-1"/><path d="M12 20c4.418 0 8-1.79 8-4v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2c0 2.21 3.582 4 8 4z"/><circle cx="12" cy="7" r="3"/></svg>
+              </div>
+            </div>
+            <p className="text-2xl font-extrabold text-slate-800">{summaryMetrics.classesMissingTeacher}</p>
+            <p className="mt-1 text-xs text-slate-400">Classes missing teacher allocation</p>
+          </div>
+        </div>
+
         {classes.length > 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-wrap gap-3">
               <select
                 value={selectedGradeFilter}
@@ -788,29 +865,7 @@ export function AdminClassesPage() {
           </div>
           <form onSubmit={handleCreateClass} className="px-7 py-6 space-y-5">
             <div className="space-y-4">
-              <div>
-                <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Academic year <span className="text-rose-500">*</span></label>
-                <div className="relative">
-                  <select
-                    value={classForm.year}
-                    onChange={(event) => setClassForm({ ...classForm, year: event.target.value })}
-                    required
-                    className="w-full appearance-none rounded border border-slate-300 bg-white px-4 py-2.5 pr-10 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                  >
-                    <option value="">Select academic year</option>
-                    {academicYears.map((year) => (
-                      <option key={year.id} value={year.id}>
-                        {year.name} {year.isActive ? '(Active)' : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-500">
-                    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                      <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd"/>
-                    </svg>
-                  </span>
-                </div>
-              </div>
+              {/* Academic year is auto-selected to the active year; not shown in the UI */}
 
               <div>
                 <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Class <span className="text-rose-500">*</span></label>
