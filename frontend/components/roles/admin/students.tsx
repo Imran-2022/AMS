@@ -13,12 +13,17 @@ import type { ClassCourseRecord, StudentFormData, StudentUserRecord } from './ty
 
 const STATUS_OPTIONS = ['All', 'Active', 'Inactive'] as const;
 const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
+const CLASSES_WITH_GROUPS = ['Nine', 'Ten', 'Eleven', 'Twelve'];
 
 function formatDate(value?: string) {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toISOString().slice(0, 10);
+}
+
+function classHasGroups(className?: string): boolean {
+  return className ? CLASSES_WITH_GROUPS.includes(className) : false;
 }
 
 export function AdminStudentsPage() {
@@ -159,7 +164,14 @@ export function AdminStudentsPage() {
   async function handleSaveStudent(values: AddStudentFormData) {
     setStudentModalSubmitting(true);
     try {
-      const classCourse = classCourses.find((cls) => cls.name === values.className && cls.section === values.section);
+      // For classes 9-12, also filter by group
+      let classCourse = classCourses.find((cls) => cls.name === values.className && cls.section === values.section);
+      
+      if (classHasGroups(values.className) && values.group) {
+        classCourse = classCourses.find(
+          (cls) => cls.name === values.className && cls.section === values.section && cls.groupName === values.group
+        );
+      }
 
       if (editingStudent) {
         await updateUser(editingStudent.id, {

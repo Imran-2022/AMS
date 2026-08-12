@@ -36,6 +36,22 @@ export default function SubjectsAssignments() {
     void loadData();
   }, []);
 
+  useEffect(() => {
+    if (!actionMenuFor) return;
+
+    function handleDocumentClick(event: MouseEvent) {
+      const target = event.target as Node;
+      const menuEl = document.querySelector(`[data-action-menu="${actionMenuFor}"]`);
+      const btnEl = document.querySelector(`[data-action-button="${actionMenuFor}"]`);
+      if (menuEl && menuEl.contains(target)) return;
+      if (btnEl && btnEl.contains(target)) return;
+      setActionMenuFor(null);
+    }
+
+    document.addEventListener('click', handleDocumentClick);
+    return () => document.removeEventListener('click', handleDocumentClick);
+  }, [actionMenuFor]);
+
   async function loadData() {
     try {
       setError(null);
@@ -179,6 +195,34 @@ export default function SubjectsAssignments() {
     } catch (err) {
       console.error(err);
       alert('Delete failed.');
+    }
+  }
+
+  async function handleAssignTeacher(values: { teacherId: string; classCourseId: string; subjectId: string }) {
+    try {
+      // Check if this subject already has a teacher assigned
+      const existingAssignment = assignmentMap[values.subjectId];
+      
+      // If there's an existing assignment and it's different from the new one, delete it first
+      if (existingAssignment && existingAssignment.teacherId !== values.teacherId) {
+        await deleteTeacherAssignment(existingAssignment.teacherId, values.subjectId);
+      }
+      
+      // Create the new assignment (or skip if same teacher)
+      if (!existingAssignment || existingAssignment.teacherId !== values.teacherId) {
+        await createTeacherAssignment({
+          teacherId: values.teacherId,
+          classCourseId: values.classCourseId,
+          subjectId: values.subjectId,
+        });
+      }
+      
+      await loadData();
+      closeModal();
+    } catch (err) {
+      console.error('Teacher assignment failed:', err);
+      const message = err instanceof Error ? err.message : String(err);
+      alert(`Unable to assign the teacher. ${message}`);
     }
   }
 
@@ -386,7 +430,7 @@ export default function SubjectsAssignments() {
         </div>
       </Modal>
 
-      <TeacherAssignmentModal open={activeModal === 'assign'} onClose={closeModal} title="Assign teacher" submitLabel="Save assignment" teachers={teachers.map((teacher) => ({ id: teacher.id, fullName: teacher.fullName, subjectSpecialization: teacher.subjectSpecialization }))} classCourses={classes.map((cls) => ({ id: cls.id, name: cls.name, section: cls.section }))} subjects={subjects.map((subject) => ({ id: subject.id, name: subject.name, code: subject.code, classCourseId: subject.classCourseId }))} assignments={assignments.map((assignment) => ({ subjectId: assignment.subjectId, teacherId: assignment.teacherId }))} initialValues={{ teacherId: assignForm.teacherId, classCourseId: assignForm.classCourseId, subjectId: assignForm.subjectId }} isSubmitting={false} onSubmit={async (values) => { try { await createTeacherAssignment({ teacherId: values.teacherId, classCourseId: values.classCourseId, subjectId: values.subjectId }); await loadData(); closeModal(); } catch (err) { console.error('Teacher assignment failed:', err); const message = err instanceof Error ? err.message : String(err); alert(`Unable to assign the teacher. ${message}`); } }} />
+      <TeacherAssignmentModal open={activeModal === 'assign'} onClose={closeModal} title="Assign teacher" submitLabel="Save assignment" teachers={teachers.map((teacher) => ({ id: teacher.id, fullName: teacher.fullName, subjectSpecialization: teacher.subjectSpecialization }))} classCourses={classes.map((cls) => ({ id: cls.id, name: cls.name, section: cls.section }))} subjects={subjects.map((subject) => ({ id: subject.id, name: subject.name, code: subject.code, classCourseId: subject.classCourseId }))} assignments={assignments.map((assignment) => ({ subjectId: assignment.subjectId, teacherId: assignment.teacherId }))} initialValues={{ teacherId: assignForm.teacherId, classCourseId: assignForm.classCourseId, subjectId: assignForm.subjectId }} isSubmitting={false} onSubmit={handleAssignTeacher} />
 
       <AmsDeleteComfiramtionModal open={activeModal === 'delete' && Boolean(deleteTarget)} onClose={closeModal} title={deleteTarget?.type === 'subject' ? 'Remove subject?' : 'Remove'} description={`${deleteTarget?.label ?? 'This item'} will be removed.`} confirmLabel="Remove" onConfirm={confirmDelete} />
     </div>

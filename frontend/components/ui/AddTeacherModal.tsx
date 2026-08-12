@@ -110,6 +110,24 @@ export function AddTeacherModal({
     setValues((current) => ({ ...current, subjectSpecializations: selected }));
   }
 
+  async function handleSubmit() {
+    if (!values.gender) {
+      alert('Gender is required.');
+      return;
+    }
+
+    if (!values.qualification?.trim()) {
+      alert('Qualification is required.');
+      return;
+    }
+
+    try {
+      await onSubmit(values);
+    } catch (err) {
+      console.error('Form submission error:', err);
+    }
+  }
+
   return (
     <Modal
       open={open}
@@ -122,7 +140,7 @@ export function AddTeacherModal({
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="button" disabled={isSubmitting} onClick={() => onSubmit(values)}>
+          <Button type="button" disabled={isSubmitting} onClick={() => void handleSubmit()}>
             {submitLabel}
           </Button>
         </div>
@@ -189,11 +207,14 @@ export function AddTeacherModal({
               />
             </div>
             <div>
-              <label className={labelClass}>Gender</label>
+              <label className={labelClass}>
+                Gender <span className="text-rose-500">*</span>
+              </label>
               <select
                 value={values.gender}
                 onChange={(event) => handleChange('gender', event.target.value)}
                 className={`${inputClass} text-slate-700`}
+                required
               >
                 <option value="">Select gender</option>
                 <option value="Male">Male</option>
@@ -232,12 +253,15 @@ export function AddTeacherModal({
           <p className={sectionTitleClass}>PROFESSIONAL DETAILS</p>
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Qualification <span className="text-slate-400 font-normal">(optional)</span></label>
+              <label className={labelClass}>
+                Qualification <span className="text-rose-500">*</span>
+              </label>
               <input
                 value={values.qualification}
                 onChange={(event) => handleChange('qualification', event.target.value)}
                 placeholder="e.g. M.Sc in Mathematics"
                 className={inputClass}
+                required
               />
             </div>
             <div>

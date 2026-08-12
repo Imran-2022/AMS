@@ -22,6 +22,8 @@ export type ClassCourseRecord = {
   name: string;
   section: string;
   academicYear: string;
+  groupId?: string;
+  groupName?: string;
 };
 
 export type UserRecord = {

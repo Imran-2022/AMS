@@ -545,7 +545,7 @@ export function AdminTeachersPage() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Subjects</p>
+                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Subjects assigned</p>
                     <p className="text-sm text-slate-700">{selectedTeacher.subjects.length ? selectedTeacher.subjects.join(', ') : 'Not assigned'}</p>
                   </div>
                   <div>
