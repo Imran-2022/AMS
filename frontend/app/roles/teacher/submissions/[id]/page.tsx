@@ -198,11 +198,13 @@ export default function TeacherSubmissionDetailPage() {
     let uploadedAttachmentIds: string[] = [];
 
     try {
-      const wantsGrade = status === 'Graded' || Boolean(marks.trim()) || Boolean(feedback.trim()) || feedbackSelectedFiles.length > 0;
-      const nextStatus = wantsGrade ? 'Graded' : status;
       let updated: SubmissionDto;
 
-      if (wantsGrade) {
+      if (status === 'ResubmissionRequested') {
+        updated = await updateSubmissionStatus(submission.id, {
+          status: 'ResubmissionRequested',
+        });
+      } else if (status === 'Graded') {
         if (!marks.trim()) {
           setSaveError('Please enter marks before grading this submission.');
           return;
@@ -226,7 +228,7 @@ export default function TeacherSubmissionDetailPage() {
         setStatus('Graded');
       } else {
         updated = await updateSubmissionStatus(submission.id, {
-          status: nextStatus,
+          status,
         });
       }
 
