@@ -7,22 +7,26 @@ A role-based full-stack web application for schools and colleges. Teachers creat
 | | |
 | :--- | :--- |
 | **Project Type** | Full-stack web application |
+| **Live App** | [https://ams-platform.netlify.app/](https://ams-platform.netlify.app/) |
 
 ---
 
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [User Roles & Responsibilities](#user-roles--responsibilities)
-3. [Technology Stack](#technology-stack)
-4. [Key Features](#key-features)
-5. [Architecture Overview](#architecture-overview)
-6. [Project Structure](#project-structure)
-7. [Quick Start - Local Setup](#quick-start---local-setup)
-8. [Database Setup](#database-setup)
-9. [Running Tests](#running-tests)
-10. [Assumptions & Design Decisions](#assumptions--design-decisions)
-11. [Known Limitations](#known-limitations)
+2. [Live Demo](#live-demo)
+3. [Test Login Credentials](#test-login-credentials)
+4. [User Roles & Responsibilities](#user-roles--responsibilities)
+5. [Technology Stack](#technology-stack)
+6. [Key Features](#key-features)
+7. [Architecture Overview](#architecture-overview)
+8. [Project Structure](#project-structure)
+9. [Quick Start - Local Setup](#quick-start---local-setup)
+10. [Database Setup](#database-setup)
+11. [Deployment](#deployment)
+12. [Running Tests](#running-tests)
+13. [Assumptions & Design Decisions](#assumptions--design-decisions)
+14. [Known Limitations](#known-limitations)
 
 ---
 
@@ -35,6 +39,31 @@ This repository contains a complete full-stack application for managing academic
 - **Student**: Learner who views assignments, submits work, and receives feedback
 
 All features are protected by JWT-based authentication and role-based authorization.
+
+## Live Demo
+
+The application is deployed and publicly accessible:
+
+| | |
+| :--- | :--- |
+| **Frontend (Netlify)** | [https://ams-platform.netlify.app/](https://ams-platform.netlify.app/) |
+
+> See the [Deployment](#deployment) section below for full hosting details, and [Test Login Credentials](#test-login-credentials) to log in and try each role.
+
+## Test Login Credentials
+
+Use these accounts to log in to the live app (or a local instance) and test each role:
+
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | `admin@gmail.com` | `Admin123!` |
+| Teacher | `teacher@gmail.com` | `Teacher123!` |
+| Teacher 2 | `teacher2@gmail.com` | `Teacher123!` |
+| Student | `student@gmail.com` | `Student123!` |
+| Student 2 | `student2@gmail.com` | `Student123!` |
+| Student 3 | `student3@gmail.com` | `Student123!` |
+
+> These are demo/seed accounts created by `AMS.DbMigrator` and are safe to use on both the live deployment and local setups.
 
 ## User Roles & Responsibilities
 
@@ -74,6 +103,13 @@ All features are protected by JWT-based authentication and role-based authorizat
 | Node.js (Docker) | 22-alpine |
 | .NET SDK (Docker) | 10.0 |
 | Orchestration | Docker Compose |
+
+### Hosting / Deployment
+| Component | Provider |
+|-----------|---------|
+| Frontend | Netlify |
+| Backend API | Render |
+| Database | Neon (Serverless PostgreSQL) |
 
 ## Key Features
 
@@ -363,16 +399,7 @@ If you keep the defaults from `.env.example`, the services will be:
 
 ### Demo Credentials
 
-Use these credentials to test different roles:
-
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | `admin@gmail.com` | `Admin123!` |
-| Teacher | `teacher@gmail.com` | `Teacher123!` |
-| Teacher 2 | `teacher2@gmail.com` | `Teacher123!` |
-| Student | `student@gmail.com` | `Student123!` |
-| Student 2 | `student2@gmail.com` | `Student123!` |
-| Student 3 | `student3@gmail.com` | `Student123!` |
+> See the dedicated [Test Login Credentials](#test-login-credentials) section above for the full table of demo accounts across all roles.
 
 ## Database Setup
 
@@ -406,6 +433,65 @@ dotnet ef database update -p src/AMS.EntityFrameworkCore
 - **Assignments** — Created by teachers, assigned to specific classes with deadlines
 - **Submissions** — Student work submitted per assignment with status tracking
 - **Users** — Three roles with encrypted passwords (BCrypt) and JWT authentication
+
+## Deployment
+
+The application is deployed across three managed platforms — one for each layer of the stack.
+
+| Layer | Provider | Notes |
+| :--- | :--- | :--- |
+| **Frontend** | [Netlify](https://www.netlify.com/) | Hosts the Next.js app. Auto-deploys from the `frontend/` directory on push to the main branch. |
+| **Backend API** | [Render](https://render.com/) | Hosts the ASP.NET Core Web API as a web service, built from `backend/`. |
+| **Database** | [Neon](https://neon.tech/) | Serverless PostgreSQL, used as the production database via a connection string. |
+
+**Live URL:** [https://ams-platform.netlify.app/](https://ams-platform.netlify.app/)
+
+### Frontend (Netlify)
+
+1. Connect the GitHub repository to a new Netlify site, with the base directory set to `frontend/`.
+2. Build settings:
+   - **Build command:** `npm run build`
+   - **Publish directory:** `.next` (via the Next.js Netlify runtime/plugin)
+3. Set the following environment variable in Netlify → Site settings → Environment variables:
+   ```env
+   NEXT_PUBLIC_API_URL=<your-render-backend-url>
+   ```
+4. Trigger a deploy. Netlify builds and serves the frontend at the assigned `*.netlify.app` domain (in this case `ams-platform.netlify.app`), or a custom domain if configured.
+
+### Backend API (Render)
+
+1. Create a new **Web Service** on Render, connected to the same repository, with the root/build context set to `backend/`.
+2. Render builds the API using the multi-stage `backend/Dockerfile` (the `api` target).
+3. Set the following environment variables on the Render service (mirroring `.env`):
+   ```env
+   ConnectionStrings__DefaultConnection=<neon-connection-string>
+   Jwt__Key=<your-production-jwt-key>
+   Jwt__Issuer=<your-render-backend-url>
+   Jwt__Audience=<your-render-backend-url>
+   Jwt__ExpiresMinutes=60
+   FrontendUrl=https://ams-platform.netlify.app
+   ```
+4. Before (or as part of) the first deploy, run the migrator target against the Neon database so tables are created and demo data is seeded:
+   ```bash
+   dotnet run --project src/AMS.DbMigrator
+   ```
+   (or run the `migrator` Docker target once against the same `ConnectionStrings__DefaultConnection`).
+5. Once live, Swagger is available at `<your-render-backend-url>/swagger` (if enabled for the deployed environment).
+
+### Database (Neon)
+
+1. Create a new Neon project and database (e.g. `amsdb`).
+2. Copy the Neon-provided PostgreSQL connection string (includes host, database, user, password, and `sslmode=require`).
+3. Use this connection string as `ConnectionStrings__DefaultConnection` in the Render backend's environment variables.
+4. Neon's serverless Postgres autoscaling/sleep behavior means the very first request after idle time may be slightly slower while the compute resumes — this is expected.
+
+### Post-Deployment Checklist
+
+- [ ] Neon database reachable and migrations applied (via `AMS.DbMigrator`)
+- [ ] Render backend environment variables set (`ConnectionStrings__DefaultConnection`, `Jwt__*`, `FrontendUrl`)
+- [ ] Netlify frontend environment variable set (`NEXT_PUBLIC_API_URL` pointing to the Render backend)
+- [ ] CORS on the backend allows the Netlify frontend origin
+- [ ] Login works end-to-end using the [Test Login Credentials](#test-login-credentials) on the live URL
 
 ## Running Tests
 
@@ -444,9 +530,10 @@ Since the assignment brief allows a "different but suitable design," the followi
 
 - **No email/SMS notifications** — notifications are in-app only; there is no outbound email or SMS integration for assignment/grading events.
 - **No password reset / forgot-password flow** — account creation and password changes are handled by Admin/Auth endpoints; there is no self-service "forgot password" email flow.
-- **Local file storage only** — attachments are stored on local disk (`App_Data/Uploads`, or the `ams-uploads` Docker volume) rather than a cloud object store (e.g. S3/Azure Blob); this is fine for local/demo use but would need to change for a multi-instance production deployment.
+- **Local file storage only** — attachments are stored on local disk (`App_Data/Uploads`, or the `ams-uploads` Docker volume) rather than a cloud object store (e.g. S3/Azure Blob); this is fine for local/demo use but would need to change for a multi-instance production deployment. **On Render specifically, local disk storage is ephemeral across deploys/restarts**, so uploaded files should eventually move to a persistent disk or cloud object store for production use.
 - **No automated CI pipeline** — tests are run manually via `dotnet test`; the repository does not currently include a CI workflow (e.g. GitHub Actions).
 - **Single active enrollment per student** — the data model assumes a student belongs to one class/section at a time; it does not support a student being concurrently enrolled in multiple classes.
+- **Render free-tier cold starts** — if the backend is hosted on Render's free tier, the service may spin down after inactivity, causing the first request after idle time to be noticeably slower.
 
 ## Assignment Requirements Checklist
 
@@ -459,7 +546,8 @@ Since the assignment brief allows a "different but suitable design," the followi
 | Testing: Unit tests covering business rules, authorization, submission workflows | ✅ |
 | Database files: migrations + seed data, no manual table creation needed | ✅ (`AMS.DbMigrator`) |
 | README: overview, features, tech stack, structure, setup, DB setup, run frontend/backend, run tests, assumptions, limitations | ✅ (this document) |
-| Demo credentials for Admin, Teacher, Student | ✅ (see [Demo Credentials](#demo-credentials)) |
+| Demo credentials for Admin, Teacher, Student | ✅ (see [Test Login Credentials](#test-login-credentials)) |
 | `.env.example` with no real secrets | ✅ (root `.env.example` and `frontend/.env.local.example`) |
 | Optional: Docker configuration | ✅ (`docker-compose.yml`) |
 | Optional: Swagger/API URL | ✅ (`/swagger` in development) |
+| Optional: Live deployment | ✅ (Netlify + Render + Neon — see [Deployment](#deployment)) |
