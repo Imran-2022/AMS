@@ -340,7 +340,7 @@ function Topbar({ breadcrumb, role }: { breadcrumb: string; role: RoleType }) {
                 <button
                   type="button"
                   onClick={handleMarkAllAsRead}
-                  className="text-[11px] font-medium text-[#7C3AED] hover:text-[#6D28D9]"
+                  className="cursor-pointer text-[11px] font-medium text-[#7C3AED] hover:text-[#6D28D9]"
                 >
                   Mark all as read
                 </button>
@@ -355,7 +355,7 @@ function Topbar({ breadcrumb, role }: { breadcrumb: string; role: RoleType }) {
                       key={notification.id}
                       type="button"
                       onClick={() => void handleNotificationClick(notification)}
-                      className={`flex w-full items-start gap-3 border-b border-[#F3F4F6] px-4 py-3 text-left transition-colors hover:bg-[#F7F7F9] ${notification.isRead ? 'bg-white' : 'bg-[#F5F3FF]'}`}>
+                      className={`flex w-full cursor-pointer items-start gap-3 border-b border-[#F3F4F6] px-4 py-3 text-left transition-colors hover:bg-[#F7F7F9] ${notification.isRead ? 'bg-white' : 'bg-[#F5F3FF]'}`}>
                       <span className={`mt-1 h-2.5 w-2.5 rounded-full ${notification.isRead ? 'bg-transparent' : 'bg-[#7C3AED]'}`} />
                       <div className="min-w-0 flex-1">
                         <p className={`text-sm font-semibold ${notification.isRead ? 'text-[#1F2430]' : 'text-[#1F2430]'}`}>

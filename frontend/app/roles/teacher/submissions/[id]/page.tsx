@@ -195,6 +195,8 @@ export default function TeacherSubmissionDetailPage() {
     setSaveError(null);
     setSaving(true);
 
+    let uploadedAttachmentIds: string[] = [];
+
     try {
       const wantsGrade = status === 'Graded' || Boolean(marks.trim()) || Boolean(feedback.trim()) || feedbackSelectedFiles.length > 0;
       const nextStatus = wantsGrade ? 'Graded' : status;
@@ -229,7 +231,11 @@ export default function TeacherSubmissionDetailPage() {
       }
 
       if (feedbackSelectedFiles.length > 0) {
-        await Promise.all(feedbackSelectedFiles.map((file) => uploadAttachment('SubmissionFeedback', updated.id, file)));
+        const newlyUploaded = await Promise.all(feedbackSelectedFiles.map(async (file) => {
+          const created = await uploadAttachment('SubmissionFeedback', updated.id, file);
+          return created?.id ?? null;
+        }));
+        uploadedAttachmentIds = newlyUploaded.filter((id): id is string => Boolean(id));
       }
 
       const refreshed = await getSubmission(updated.id);
@@ -248,6 +254,9 @@ export default function TeacherSubmissionDetailPage() {
         sizeBytes: attachment.sizeBytes,
       })));
     } catch (err) {
+      if (uploadedAttachmentIds.length > 0) {
+        await Promise.allSettled(uploadedAttachmentIds.map((id) => deleteAttachment(id)));
+      }
       setSaveError(err instanceof Error ? err.message : 'Unable to save changes.');
     } finally {
       setSaving(false);
