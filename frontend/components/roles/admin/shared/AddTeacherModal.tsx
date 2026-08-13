@@ -40,6 +40,33 @@ function normalizeDate(value?: string) {
   return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
 }
 
+/**
+ * Validates Bangladesh mobile number format
+ * Accepts:
+ * - Domestic: 11 digits starting with 01 (e.g., 01712345678)
+ * - International: 14 digits with +88 prefix (e.g., +8801712345678)
+ */
+function isValidMobileNumber(phone: string): boolean {
+  if (!phone) return false;
+  
+  // Remove spaces and hyphens
+  const cleaned = phone.replace(/[\s\-]/g, '');
+  
+  // Domestic format: exactly 11 digits, starts with 01
+  const domesticPattern = /^01\d{9}$/;
+  if (domesticPattern.test(cleaned)) {
+    return true;
+  }
+  
+  // International format: +88 followed by 11 digits (01X XXXXXXXX)
+  const internationalPattern = /^\+8801\d{9}$/;
+  if (internationalPattern.test(cleaned)) {
+    return true;
+  }
+  
+  return false;
+}
+
 export function AddTeacherModal({
   open,
   onClose,
@@ -124,6 +151,16 @@ export function AddTeacherModal({
   async function handleSubmit() {
     if (!values.gender) {
       alert('Gender is required.');
+      return;
+    }
+
+    if (!values.phone) {
+      alert('Phone number is required.');
+      return;
+    }
+
+    if (!isValidMobileNumber(values.phone)) {
+      alert('Phone number must be valid Bangladesh format:\n- Domestic: 11 digits starting with 01 (e.g., 01712345678)\n- International: +88 prefix (e.g., +8801712345678)');
       return;
     }
 

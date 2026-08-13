@@ -11,6 +11,51 @@ export class UnauthorizedError extends Error {
   }
 }
 
+export class ValidationError extends Error {
+  constructor(public errors: Record<string, string[]> = {}, message = 'Validation failed') {
+    super(message);
+    this.name = 'ValidationError';
+  }
+}
+
+/**
+ * Parse API error response and extract user-friendly message
+ * Handles both Problem Details format (backend standard) and generic errors
+ */
+function parseErrorResponse(status: number, text: string): { message: string; errors: Record<string, string[]> } {
+  try {
+    const json = JSON.parse(text);
+    
+    // Handle Problem Details (RFC 7807) format
+    if (json.detail || json.title) {
+      const message = json.detail || json.title || 'An error occurred';
+      const errors = json.errors || {};
+      return { message, errors };
+    }
+    
+    // Fallback to any error message in the JSON
+    if (json.message) {
+      return { message: json.message, errors: {} };
+    }
+    
+    // If JSON but no recognized error format
+    return { message: 'An error occurred', errors: {} };
+  } catch {
+    // Not valid JSON - might be HTML error page or plain text
+    if (status === 404) {
+      return { message: 'Resource not found', errors: {} };
+    }
+    if (status === 403) {
+      return { message: 'You do not have permission to perform this action', errors: {} };
+    }
+    if (status === 500) {
+      return { message: 'Server error. Please try again later', errors: {} };
+    }
+    // Generic fallback
+    return { message: `Request failed with status ${status}`, errors: {} };
+  }
+}
+
 function getAuthToken() {
   if (typeof window === 'undefined') return null;
   return window.localStorage.getItem('ams-token');
@@ -144,8 +189,17 @@ export async function request<T>(path: string, init?: RequestInit, retry = false
       throw new UnauthorizedError();
     }
 
+    // Parse error response to extract meaningful message
     const errorText = await response.text();
-    throw new Error(errorText || `Request failed: ${response.status}`);
+    const { message, errors } = parseErrorResponse(response.status, errorText);
+    
+    // If there are field validation errors, throw ValidationError
+    if (Object.keys(errors).length > 0) {
+      throw new ValidationError(errors, message);
+    }
+    
+    // Otherwise throw regular error with user-friendly message
+    throw new Error(message);
   }
 
   const text = await response.text();
