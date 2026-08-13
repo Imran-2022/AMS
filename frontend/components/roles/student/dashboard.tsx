@@ -62,19 +62,11 @@ export function StudentDashboardPage() {
           return true;
         }
 
-        if (submission.status === 'Graded') {
-          return false;
-        }
-
         if (submission.status === 'ResubmissionRequested') {
           return true;
         }
 
-        if (submission.status === 'Resubmitted') {
-          return false;
-        }
-
-        return true;
+        return false;
       })
       .slice(0, 4)
       .map((assignment) => {
@@ -98,11 +90,7 @@ export function StudentDashboardPage() {
         return true;
       }
 
-      if (submission.status === 'Graded' || submission.status === 'Resubmitted') {
-        return false;
-      }
-
-      return true;
+      return false;
     }).length;
 
   const gradedSubmissions = submissions.filter((item) =>
@@ -115,9 +103,10 @@ export function StudentDashboardPage() {
   const totalPossibleMarks = gradedSubmissions.reduce((sum, item) => sum + (item.maxMarks ?? 0), 0);
   const averageGrade = totalPossibleMarks > 0 ? Math.round((totalEarnedMarks / totalPossibleMarks) * 100) : 0;
   const totalAssignmentCount = assignments.length;
-  const submittedAssignmentCount = assignments.filter((assignment) =>
-    submissions.some((submission) => submission.assignmentId === assignment.id)
-  ).length;
+  const submittedAssignmentCount = assignments.filter((assignment) => {
+    const submission = submissions.find((item) => item.assignmentId === assignment.id);
+    return !!submission && submission.status !== 'ResubmissionRequested';
+  }).length;
   const notSubmittedAssignmentCount = Math.max(0, totalAssignmentCount - submittedAssignmentCount);
   const progress = totalAssignmentCount ? Math.round((submittedAssignmentCount / totalAssignmentCount) * 100) : 0;
 
