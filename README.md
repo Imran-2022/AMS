@@ -130,7 +130,6 @@ Use these accounts to log in to the live app (or a local instance) and test each
 - **Draft Support** — Save assignments as drafts before publishing
 - **Account Settings** — Upload profile picture, change password, manage notification preferences
 - **Notification Management** — In-app notifications for new submissions, assignments, and system events
-- **Notification Center** — View and manage all notifications with real-time updates
 
 ### Student Dashboard
 - **Assignment Visibility** — View all active assignments for enrolled classes
@@ -141,7 +140,6 @@ Use these accounts to log in to the live app (or a local instance) and test each
 - **Status Tracking** — Monitor submission status (pending, submitted, graded)
 - **Account Settings** — Upload profile picture, change password, manage notification preferences
 - **Notification Management** — In-app notifications for grades, feedback, and deadlines
-- **Notification Center** — View and manage all notifications with real-time updates
 
 ### Core Features
 - **JWT Authentication** — Secure token-based authentication with access and refresh tokens
@@ -149,7 +147,6 @@ Use these accounts to log in to the live app (or a local instance) and test each
 - **File Management** — Upload and store assignment attachments, student submissions, and profile pictures
 - **Image Upload** — Upload and manage profile avatars with instant updates across the app
 - **Notification System** — Real-time notifications for assignments, submissions, grades, and system events
-- **Notification Preferences** — Customize notification channels (email, in-app) per event type
 - **Database Seeding** — Pre-populated demo data for quick testing
 - **API Documentation** — Interactive Swagger/OpenAPI at `/swagger`(development mode)
 - **Responsive Design** — Mobile-friendly UI for all devices with hamburger menu on mobile
@@ -235,9 +232,9 @@ AMS/
 ## Quick Start - Local Setup
 
 ### Prerequisites
-- .NET 10 SDK ([download](https://dotnet.microsoft.com/download))
-- Node.js 22+ ([download](https://nodejs.org))
-- PostgreSQL 17+ ([download](https://www.postgresql.org/download))
+- .NET 10 SDK 
+- Node.js 22+ 
+- PostgreSQL 17+ 
 - Docker & Docker Compose (optional, for containerized setup)
 
 ### Option 1: Local Development (Manual Setup)
@@ -428,8 +425,8 @@ dotnet ef database update -p src/AMS.EntityFrameworkCore
 ```
 
 ### Database Schema Highlights
-- **Classes & Sections** — Hierarchical structure: Academic Year → Class Definition → Group (optional) → Section
-- **Subjects** — Defined per class per academic year; teachers assigned to subject+class combinations
+- **Classes & Sections** — Hierarchical structure: Class Definition → Group (optional) → Section
+- **Subjects** — Defined per class - teachers assigned to subject+class combinations
 - **Assignments** — Created by teachers, assigned to specific classes with deadlines
 - **Submissions** — Student work submitted per assignment with status tracking
 - **Users** — Three roles with encrypted passwords (BCrypt) and JWT authentication
@@ -440,58 +437,9 @@ The application is deployed across three managed platforms — one for each laye
 
 | Layer | Provider | Notes |
 | :--- | :--- | :--- |
-| **Frontend** | [Netlify](https://www.netlify.com/) | Hosts the Next.js app. Auto-deploys from the `frontend/` directory on push to the main branch. |
+| **Frontend** | [Netlify](https://www.netlify.com/) | Hosts the Next.js app. Auto-deploys from the `frontend/` directory on push to the master branch. |
 | **Backend API** | [Render](https://render.com/) | Hosts the ASP.NET Core Web API as a web service, built from `backend/`. |
 | **Database** | [Neon](https://neon.tech/) | Serverless PostgreSQL, used as the production database via a connection string. |
-
-**Live URL:** [https://ams-platform.netlify.app/](https://ams-platform.netlify.app/)
-
-### Frontend (Netlify)
-
-1. Connect the GitHub repository to a new Netlify site, with the base directory set to `frontend/`.
-2. Build settings:
-   - **Build command:** `npm run build`
-   - **Publish directory:** `.next` (via the Next.js Netlify runtime/plugin)
-3. Set the following environment variable in Netlify → Site settings → Environment variables:
-   ```env
-   NEXT_PUBLIC_API_URL=<your-render-backend-url>
-   ```
-4. Trigger a deploy. Netlify builds and serves the frontend at the assigned `*.netlify.app` domain (in this case `ams-platform.netlify.app`), or a custom domain if configured.
-
-### Backend API (Render)
-
-1. Create a new **Web Service** on Render, connected to the same repository, with the root/build context set to `backend/`.
-2. Render builds the API using the multi-stage `backend/Dockerfile` (the `api` target).
-3. Set the following environment variables on the Render service (mirroring `.env`):
-   ```env
-   ConnectionStrings__DefaultConnection=<neon-connection-string>
-   Jwt__Key=<your-production-jwt-key>
-   Jwt__Issuer=<your-render-backend-url>
-   Jwt__Audience=<your-render-backend-url>
-   Jwt__ExpiresMinutes=60
-   FrontendUrl=https://ams-platform.netlify.app
-   ```
-4. Before (or as part of) the first deploy, run the migrator target against the Neon database so tables are created and demo data is seeded:
-   ```bash
-   dotnet run --project src/AMS.DbMigrator
-   ```
-   (or run the `migrator` Docker target once against the same `ConnectionStrings__DefaultConnection`).
-5. Once live, Swagger is available at `<your-render-backend-url>/swagger` (if enabled for the deployed environment).
-
-### Database (Neon)
-
-1. Create a new Neon project and database (e.g. `amsdb`).
-2. Copy the Neon-provided PostgreSQL connection string (includes host, database, user, password, and `sslmode=require`).
-3. Use this connection string as `ConnectionStrings__DefaultConnection` in the Render backend's environment variables.
-4. Neon's serverless Postgres autoscaling/sleep behavior means the very first request after idle time may be slightly slower while the compute resumes — this is expected.
-
-### Post-Deployment Checklist
-
-- [ ] Neon database reachable and migrations applied (via `AMS.DbMigrator`)
-- [ ] Render backend environment variables set (`ConnectionStrings__DefaultConnection`, `Jwt__*`, `FrontendUrl`)
-- [ ] Netlify frontend environment variable set (`NEXT_PUBLIC_API_URL` pointing to the Render backend)
-- [ ] CORS on the backend allows the Netlify frontend origin
-- [ ] Login works end-to-end using the [Test Login Credentials](#test-login-credentials) on the live URL
 
 ## Running Tests
 
@@ -513,41 +461,10 @@ dotnet test tests/AMS.HttpApi.Tests/AMS.HttpApi.Tests.csproj
 - **Domain Tests** — Entity validation, domain rules (e.g., submissions, assignments)
 - **Controller Tests** — API endpoints, HTTP status codes, integration scenarios (including a dedicated RBAC integration suite that checks every role/endpoint combination)
 
-## Assumptions & Design Decisions
-
-Since the assignment brief allows a "different but suitable design," the following decisions were made where requirements were not explicit:
-
-- **User model split** — `User` holds shared account fields (name, email, password hash, role, avatar, contact info); `TeacherProfile` and `StudentProfile` are one-to-one extensions holding role-specific fields (employee ID/qualification for teachers, student ID/guardian info for students). The application layer enforces that a `TeacherProfile` can only exist for a `Teacher` and a `StudentProfile` only for a `Student`.
-- **Class hierarchy** — Classes are modeled as `AcademicYear → ClassDefinition → Group (optional) → ClassCourse (section)`, with `Subject` scoped to a `ClassCourse`. Teachers are assigned to a `Subject` + `ClassCourse` pair via `TeacherSubjectAssignment`, and students are linked to a `ClassCourse` via `StudentEnrollment` (at most one active enrollment per student at a time).
-- **Assignment → Subject, not Assignment → Class directly** — an assignment is created against a `Subject`, which is itself scoped to a class/section, so "assign to a class" is satisfied indirectly and consistently with who teaches what.
-- **One submission per student per assignment** — a student's submission is a single row that gets updated (not re-inserted) on resubmission; history of status changes (Submitted → Late/UnderReview → Graded/ResubmissionRequested → Resubmitted) is tracked via the `SubmissionStatus` enum rather than a separate audit table.
-- **File attachments are unified** — assignment attachments, submission attachments, and user avatars all go through a single `Attachment` entity (`OwnerType` + `OwnerId`) and a local file storage service, rather than separate upload pipelines per feature.
-- **Draft vs. Published assignments** — draft assignments are only visible to the owning teacher and admins; students only see assignments once `AssignmentStatus = Published`.
-- **Notifications are in-app only** — the notification system (assignment published, submission received, graded, resubmission requested) is delivered and stored in-app with per-user, per-type preferences; it does not send email/SMS (see Known Limitations).
-- **PostgreSQL over MongoDB** — chosen because the domain is inherently relational (users/roles/classes/subjects/assignments/submissions with strict foreign-key relationships), which Entity Framework Core + PostgreSQL models directly with migrations, constraints, and unique indexes.
-
 ## Known Limitations
 
 - **No email/SMS notifications** — notifications are in-app only; there is no outbound email or SMS integration for assignment/grading events.
 - **No password reset / forgot-password flow** — account creation and password changes are handled by Admin/Auth endpoints; there is no self-service "forgot password" email flow.
 - **Local file storage only** — attachments are stored on local disk (`App_Data/Uploads`, or the `ams-uploads` Docker volume) rather than a cloud object store (e.g. S3/Azure Blob); this is fine for local/demo use but would need to change for a multi-instance production deployment. **On Render specifically, local disk storage is ephemeral across deploys/restarts**, so uploaded files should eventually move to a persistent disk or cloud object store for production use.
 - **No automated CI pipeline** — tests are run manually via `dotnet test`; the repository does not currently include a CI workflow (e.g. GitHub Actions).
-- **Single active enrollment per student** — the data model assumes a student belongs to one class/section at a time; it does not support a student being concurrently enrolled in multiple classes.
 - **Render free-tier cold starts** — if the backend is hosted on Render's free tier, the service may spin down after inactivity, causing the first request after idle time to be noticeably slower.
-
-## Assignment Requirements Checklist
-
-| Requirement | Status |
-| :--- | :--- |
-| Frontend: Next.js, React, TypeScript, responsive UI, form validation, API integration | ✅ |
-| Backend: ASP.NET Core Web API, C#, RESTful API, validation, error handling, logging, Swagger/OpenAPI | ✅ |
-| Database: PostgreSQL with defined relationships | ✅ |
-| Authentication: Login, JWT-based auth, role-based authorization | ✅ |
-| Testing: Unit tests covering business rules, authorization, submission workflows | ✅ |
-| Database files: migrations + seed data, no manual table creation needed | ✅ (`AMS.DbMigrator`) |
-| README: overview, features, tech stack, structure, setup, DB setup, run frontend/backend, run tests, assumptions, limitations | ✅ (this document) |
-| Demo credentials for Admin, Teacher, Student | ✅ (see [Test Login Credentials](#test-login-credentials)) |
-| `.env.example` with no real secrets | ✅ (root `.env.example` and `frontend/.env.local.example`) |
-| Optional: Docker configuration | ✅ (`docker-compose.yml`) |
-| Optional: Swagger/API URL | ✅ (`/swagger` in development) |
-| Optional: Live deployment | ✅ (Netlify + Render + Neon — see [Deployment](#deployment)) |
