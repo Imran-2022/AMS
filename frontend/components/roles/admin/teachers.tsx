@@ -33,6 +33,23 @@ function formatDate(value?: string) {
   return date.toISOString().slice(0, 10);
 }
 
+function normalizeSubjectValues(raw?: string | string[]) {
+  const values = Array.isArray(raw)
+    ? raw
+    : raw
+      ? String(raw).split(',')
+      : [];
+
+  return Array.from(
+    new Set(
+      values
+        .map((value) => value.trim())
+        .map((value) => value.replace(/\s*[-–—]\s*.*$/, '').trim())
+        .filter(Boolean)
+    )
+  );
+}
+
 function mapUserToTeacherRow(user: {
   id: string;
   fullName: string;
@@ -54,9 +71,7 @@ function mapUserToTeacherRow(user: {
     .slice(0, 2)
     .toUpperCase();
 
-  const subjectSpecializations = user.subjectSpecialization
-    ? user.subjectSpecialization.split(',').map((value) => value.trim()).filter(Boolean)
-    : [];
+  const subjectSpecializations = normalizeSubjectValues(user.subjectSpecialization);
 
   return {
     id: user.id,
@@ -71,7 +86,7 @@ function mapUserToTeacherRow(user: {
     gender: user.gender,
     qualification: user.qualification,
     joiningDate: user.joiningDate,
-    subjectSpecialization: user.subjectSpecialization,
+    subjectSpecialization: subjectSpecializations.join(', '),
     employeeId: user.employeeId,
     avatarUrl: user.avatarUrl,
   } as TeacherRow;
@@ -203,7 +218,7 @@ export function AdminTeachersPage() {
 
     setTeacherModalSubmitting(true);
     try {
-      const specializationValue = (values.subjectSpecializations ?? []).join(', ');
+      const specializationValue = normalizeSubjectValues(values.subjectSpecializations).join(', ');
       if (editingTeacher) {
         await updateUser(editingTeacher.id, {
           fullName: values.fullName,
@@ -355,6 +370,7 @@ export function AdminTeachersPage() {
                     <tr className="border-b border-slate-100 text-left">
                       <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">NAME</th>
                       <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">EMAIL</th>
+                      <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">SPECIALIZATION</th>
                       <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">SUBJECTS ASSIGNED</th>
                       <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">CLASSES</th>
                       <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">STATUS</th>
@@ -365,23 +381,25 @@ export function AdminTeachersPage() {
                     {pagedRows.map((t) => (
                       <tr key={t.id} className="hover:bg-slate-50 transition-colors duration-150 cursor-pointer" onClick={() => setSelectedTeacher(t)}>
                         <td className="px-2 py-3.5">
-                          <div className="flex items-center gap-3">
-                            {t.avatarUrl ? (
-                              <div className="relative h-8 w-8 overflow-hidden rounded-full bg-indigo-100">
-                                <img src={t.avatarUrl.startsWith('http') ? t.avatarUrl : `${API_BASE_URL}${t.avatarUrl}`} alt={t.name} className="h-full w-full object-cover" />
-                              </div>
-                            ) : (
-                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-semibold">
-                                {t.initials}
-                              </div>
-                            )}
-                            <span className="font-semibold text-slate-700">{t.name}</span>
-                          </div>
+                          <span className="font-semibold text-slate-700">{t.name}</span>
                         </td>
                         <td className="px-2 py-3.5 text-slate-500">{t.email}</td>
-                        <td className="px-2 py-3.5">
+                        <td className="px-2 py-3.5 align-top">
+                          {t.subjectSpecialization ? (
+                            <div className="flex max-w-[220px] flex-col gap-1">
+                              {t.subjectSpecialization.split(',').map((s) => s.trim()).filter(Boolean).map((s) => (
+                                <span key={s} className="chip w-fit">{s}</span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-slate-500">Not assigned</span>
+                          )}
+                        </td>
+                        <td className="px-2 py-3.5 align-top">
                           {t.subjects.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">{t.subjects.map((s) => <span key={s} className="chip">{s}</span>)}</div>
+                            <div className="flex max-w-[220px] flex-col gap-1">
+                              {t.subjects.map((s) => <span key={s} className="chip w-fit">{s}</span>)}
+                            </div>
                           ) : (
                             <span className="text-slate-500">Not assigned</span>
                           )}
@@ -488,16 +506,7 @@ export function AdminTeachersPage() {
           gender: editingTeacher.gender ?? '',
           qualification: editingTeacher.qualification ?? '',
           joiningDate: editingTeacher.joiningDate ?? '',
-          subjectSpecializations: editingTeacher.subjectSpecialization
-            ? editingTeacher.subjectSpecialization
-                .split(',')
-                .map((v) => v.trim())
-                .map((val) => {
-                  const parts = val.split('—');
-                  return parts[0].trim();
-                })
-                .filter(Boolean)
-            : editingTeacher.subjects,
+          subjectSpecializations: normalizeSubjectValues(editingTeacher.subjectSpecialization ?? editingTeacher.subjects),
           avatarUrl: editingTeacher.avatarUrl ?? '',
         } : undefined}
         isSubmitting={teacherModalSubmitting}

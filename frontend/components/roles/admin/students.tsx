@@ -14,6 +14,26 @@ import type { ClassCourseRecord, StudentFormData, StudentUserRecord } from './ty
 const STATUS_OPTIONS = ['All', 'Active', 'Inactive'] as const;
 const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 const CLASSES_WITH_GROUPS = ['Nine', 'Ten', 'Eleven', 'Twelve'];
+const CLASS_NAME_ORDER = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'];
+
+function sortClassName(a: string, b: string) {
+  const aIndex = CLASS_NAME_ORDER.indexOf(a);
+  const bIndex = CLASS_NAME_ORDER.indexOf(b);
+
+  const normalizedA = aIndex >= 0 ? aIndex : Number.MAX_SAFE_INTEGER;
+  const normalizedB = bIndex >= 0 ? bIndex : Number.MAX_SAFE_INTEGER;
+  return normalizedA - normalizedB;
+}
+
+function sortSectionValue(section: string) {
+  const raw = (section ?? '').trim();
+  if (!raw) return Number.MAX_SAFE_INTEGER;
+
+  const alpha = raw.match(/[A-Za-z]+/)?.[0] ?? '';
+  const numeric = Number.parseInt(raw.match(/\d+/)?.[0] ?? '0', 10);
+  const alphaScore = alpha ? alpha.toUpperCase().charCodeAt(0) - 64 : 0;
+  return alphaScore * 100 + numeric;
+}
 
 function formatDate(value?: string) {
   if (!value) return '—';
@@ -242,10 +262,16 @@ export function AdminStudentsPage() {
   }
 
 
-  const classNames = useMemo(() => Array.from(new Set(classCourses.map((cls) => cls.name))), [classCourses]);
+  const classNames = useMemo(
+    () => Array.from(new Set(classCourses.map((cls) => cls.name))).sort(sortClassName),
+    [classCourses]
+  );
   const sectionNames = useMemo(() => {
-    const sections = classFilter === 'All classes' ? classCourses.map((cls) => cls.section) : classCourses.filter((cls) => cls.name === classFilter).map((cls) => cls.section);
-    return Array.from(new Set(sections));
+    const sections = classFilter === 'All classes'
+      ? classCourses.map((cls) => cls.section)
+      : classCourses.filter((cls) => cls.name === classFilter).map((cls) => cls.section);
+
+    return Array.from(new Set(sections)).sort((a, b) => sortSectionValue(a) - sortSectionValue(b));
   }, [classCourses, classFilter]);
 
   const filteredStudents = useMemo(() => {
@@ -445,6 +471,7 @@ export function AdminStudentsPage() {
                 <table className="w-full min-w-[960px] text-sm">
                   <thead>
                     <tr className="border-b border-slate-100 text-left text-xs uppercase text-slate-400">
+                      <Th>Roll / Student ID</Th>
                       <Th>Name</Th>
                       <Th>Email</Th>
                       <Th>Class</Th>
@@ -457,28 +484,9 @@ export function AdminStudentsPage() {
                   <tbody className="divide-y divide-slate-100">
                     {paginatedStudents.map((student) => (
                       <tr key={student.id} className="hover:bg-slate-50 transition-colors duration-150 cursor-pointer" onClick={() => setSelectedStudent(student)}>
+                        <Td className="px-2 py-3.5 font-semibold text-slate-700">{student.studentId || '—'}</Td>
                         <Td className="px-2 py-3.5">
-                          <div className="flex items-center gap-3">
-                            {student.avatarUrl ? (
-                              <div className="relative h-8 w-8 overflow-hidden rounded-full bg-indigo-100">
-                                <img
-                                  src={student.avatarUrl.startsWith('http') ? student.avatarUrl : `${API_BASE_URL}${student.avatarUrl}`}
-                                  alt={student.fullName}
-                                  className="h-full w-full object-cover"
-                                />
-                              </div>
-                            ) : (
-                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-semibold">
-                                {student.fullName
-                                  .split(' ')
-                                  .map((part) => part[0])
-                                  .join('')
-                                  .slice(0, 2)
-                                  .toUpperCase()}
-                              </div>
-                            )}
-                            <span className="font-semibold text-slate-700">{student.fullName}</span>
-                          </div>
+                          <span className="font-semibold text-slate-700">{student.fullName}</span>
                         </Td>
                         <Td className="px-2 py-3.5 text-slate-500">{student.email}</Td>
                         <Td className="px-2 py-3.5 text-slate-500">{student.classCourseName || 'Unassigned'}</Td>

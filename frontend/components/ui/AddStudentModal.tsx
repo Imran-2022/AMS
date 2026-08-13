@@ -52,6 +52,26 @@ const hintClass = 'mt-1 text-[11.5px] text-slate-500';
 const sectionTitleClass = 'text-[11px] font-semibold uppercase tracking-[0.06em] text-brand-600';
 
 const CLASSES_WITH_GROUPS = ['Nine', 'Ten', 'Eleven', 'Twelve'];
+const CLASS_NAME_ORDER = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'];
+
+function sortClassName(a: string, b: string) {
+  const aIndex = CLASS_NAME_ORDER.indexOf(a);
+  const bIndex = CLASS_NAME_ORDER.indexOf(b);
+
+  const normalizedA = aIndex >= 0 ? aIndex : Number.MAX_SAFE_INTEGER;
+  const normalizedB = bIndex >= 0 ? bIndex : Number.MAX_SAFE_INTEGER;
+  return normalizedA - normalizedB;
+}
+
+function sortSectionValue(section: string) {
+  const raw = (section ?? '').trim();
+  if (!raw) return Number.MAX_SAFE_INTEGER;
+
+  const alpha = raw.match(/[A-Za-z]+/)?.[0] ?? '';
+  const numeric = Number.parseInt(raw.match(/\d+/)?.[0] ?? '0', 10);
+  const alphaScore = alpha ? alpha.toUpperCase().charCodeAt(0) - 64 : 0;
+  return alphaScore * 100 + numeric;
+}
 
 function normalizeDate(value?: string) {
   if (!value) return '';
@@ -100,67 +120,39 @@ export function AddStudentModal({
   hidePasswordField = false,
   onSubmit,
 }: AddStudentModalProps) {
-  const [values, setValues] = useState<AddStudentFormData>({
-    fullName: '',
-    email: '',
-    password: '',
-    status: 'Active',
-    dateOfBirth: '',
-    gender: '',
-    studentId: '',
-    className: classCourses[0]?.name ?? '',
-    section: classCourses[0]?.section ?? '',
-    admissionDate: '',
-    guardianName: '',
-    parentMobile: '',
-    guardianEmail: '',
-    avatarUrl: '',
-    group: '',
-  });
+  const getInitialFormValues = (source?: AddStudentFormData): AddStudentFormData => {
+    const defaultClass = source?.className ?? '';
+    const defaultSection = source?.section ?? '';
+
+    return {
+      fullName: source?.fullName ?? '',
+      email: source?.email ?? '',
+      password: '',
+      status: source?.status ?? 'Active',
+      dateOfBirth: normalizeDate(source?.dateOfBirth),
+      gender: source?.gender ?? '',
+      studentId: source?.studentId ?? '',
+      className: defaultClass,
+      section: defaultSection,
+      admissionDate: normalizeDate(source?.admissionDate),
+      guardianName: source?.guardianName ?? '',
+      parentMobile: source?.parentMobile ?? '',
+      guardianEmail: source?.guardianEmail ?? '',
+      avatarUrl: source?.avatarUrl ?? '',
+      group: source?.group ?? '',
+    };
+  };
+
+  const [values, setValues] = useState<AddStudentFormData>(() => getInitialFormValues(initialValues));
   const [isGeneratingId, setIsGeneratingId] = useState(false);
 
-  // Reset form only when modal opens/closes, not when parent re-renders
   useEffect(() => {
     if (!open) return;
-    
-    setValues((current) => {
-      // Only reset if values are completely empty (first time opening)
-      if (current.fullName === '' && current.studentId === '') {
-        return {
-          fullName: initialValues?.fullName ?? '',
-          email: initialValues?.email ?? '',
-          password: '',
-          status: initialValues?.status ?? 'Active',
-          dateOfBirth: normalizeDate(initialValues?.dateOfBirth),
-          gender: initialValues?.gender ?? '',
-          studentId: initialValues?.studentId ?? '',
-          className: initialValues?.className ?? '',
-          section: initialValues?.section ?? '',
-          admissionDate: normalizeDate(initialValues?.admissionDate),
-          guardianName: initialValues?.guardianName ?? '',
-          parentMobile: initialValues?.parentMobile ?? '',
-          guardianEmail: initialValues?.guardianEmail ?? '',
-          avatarUrl: initialValues?.avatarUrl ?? '',
-          group: initialValues?.group ?? '',
-        };
-      }
-      // Keep existing values while modal is open
-      return current;
-    });
-  }, [open, classCourses]);
-
-  useEffect(() => {
-    if (classCourses.length && !values.className) {
-      setValues((current) => ({
-        ...current,
-        className: classCourses[0].name,
-        section: classCourses[0].section,
-      }));
-    }
-  }, [classCourses, values.className]);
+    setValues(getInitialFormValues(initialValues));
+  }, [open, initialValues, classCourses]);
 
   const classNames = useMemo(
-    () => Array.from(new Set(classCourses.map((cls) => cls.name))),
+    () => Array.from(new Set(classCourses.map((cls) => cls.name))).sort(sortClassName),
     [classCourses]
   );
 
@@ -177,7 +169,8 @@ export function AddStudentModal({
           group: cls.groupName ?? '',
         }));
 
-      return Array.from(new Map(entries.map((entry) => [entry.value, entry])).values());
+      return Array.from(new Map(entries.map((entry) => [entry.value, entry])).values())
+        .sort((a, b) => sortSectionValue(a.section) - sortSectionValue(b.section));
     },
     [classCourses, values.className, needsGroup]
   );
@@ -464,7 +457,7 @@ export function AddStudentModal({
                 value={values.className}
                 onChange={(event) => handleChange('className', event.target.value)}
                 className={`${inputClass} text-slate-700`}>
-                <option value="">No classes loaded</option>
+                <option value="">{classCourses.length ? 'Select class' : 'No classes loaded'}</option>
                 {classNames.map((name) => (
                   <option key={name} value={name}>
                     {name}

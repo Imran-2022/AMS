@@ -55,9 +55,9 @@ export function AddTeacherModal({
   const uniqueSubjects = useMemo(() => {
     const seen = new Set<string>();
     return subjects.filter((subject) => {
-      const key = `${subject.name}:${subject.code}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
+      if (!subject.name) return false;
+      if (seen.has(subject.name)) return false;
+      seen.add(subject.name);
       return true;
     });
   }, [subjects]);
@@ -294,8 +294,8 @@ export function AddTeacherModal({
               className="w-full min-h-[10rem] rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
             >
               {uniqueSubjects.map((subject) => (
-                <option key={`${subject.name}-${subject.code}`} value={subject.name} className="cursor-pointer">
-                  {subject.name} — {subject.code}
+                <option key={subject.name} value={subject.name} className="cursor-pointer">
+                  {subject.name}
                 </option>
               ))}
             </select>
