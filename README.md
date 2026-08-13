@@ -212,67 +212,33 @@ Why this is necessary:
 - It reads `FrontendUrl` for CORS and cross-origin access
 - The root `.env` is also used as a template for Docker/local environment injection
 
-If you are using Bash/macOS/Linux, load the values into your current shell before running backend commands:
+Important for local manual runs:
+- If environment variables are not exported into the current shell, the backend will fall back to the values in `backend/src/AMS.HttpApi.Host/appsettings.json`
+- That file must also match your local PostgreSQL username/password and your local JWT/URL settings
+- For example, if your pgAdmin PostgreSQL user is `postgres` and the password is `root`, then the backend connection string must use `Password=root` as well
 
-```bash
-set -a
-source .env
-set +a
-```
 
-If you are using PowerShell on Windows:
 
-```powershell
-Get-Content .env | ForEach-Object {
-  if ($_ -match '^(.*?)=(.*)$') {
-    [Environment]::SetEnvironmentVariable($matches[1], $matches[2], 'Process')
-  }
-}
-```
+#### Step 2: Make sure PostgreSQL is running and the database is ready
+Before the backend can run, PostgreSQL must be up and reachable on `localhost:5432`.
 
-#### Step 2: Make sure PostgreSQL is running and the database exists
-Before the backend can run, PostgreSQL must be up and reachable on localhost:5432.
-
-Verify it:
-
-```bash
-pg_isready -h localhost -p 5432
-```
-
-Create the database if needed:
-
-```bash
-createdb -h localhost -p 5432 -U postgres amsdb
-```
-
-If `createdb` is not available, create it from the PostgreSQL client:
-
-```bash
-psql -h localhost -p 5432 -U postgres -d postgres -c "CREATE DATABASE amsdb;"
-```
-
-> If PostgreSQL is not running, start the local PostgreSQL service first. Without a reachable database, the API and tests will fail.
-
-#### Step 3: Prepare the backend before `dotnet run`
-From the repo root or inside the `backend` folder:
+Then initialize the database schema and seed the demo data before starting the API:
 
 ```bash
 cd backend
 dotnet restore
-```
-
-Then apply the database migration and seed the demo users before launching the API:
-
-```bash
 dotnet run --project src/AMS.DbMigrator
 ```
 
-This step is important because it:
+This step is required because it:
 - creates/updates database tables
 - applies EF Core migrations
 - seeds demo users and test data
 - makes sure login and admin/teacher/student flows work immediately
 
+> If PostgreSQL is not running, start the local PostgreSQL service first. Without a reachable database, the API and tests will fail.
+
+#### Step 3: Start the backend API
 After the migrator finishes successfully, start the API:
 
 ```bash
@@ -326,12 +292,20 @@ cp .env.example .env
 # Edit .env to set:
 # - POSTGRES_PASSWORD=your_secure_password
 # - JWT_KEY=your_secret_key_min_32_chars
+# - OPTIONAL: change API_PORT, FRONTEND_PORT, POSTGRES_PORT if needed
 
 # Build and start all services
 docker compose up --build
 ```
 
-Services:
+The actual service URLs depend on the values in the root `.env` file:
+- `POSTGRES_PORT` controls where PostgreSQL is exposed on the host
+- `API_PORT` controls where the backend API is exposed on the host
+- `FRONTEND_PORT` controls where the frontend is exposed on the host
+- `FRONTEND_URL` and `NEXT_PUBLIC_API_URL` must match the frontend/backend host URLs used by the app
+
+
+If you keep the defaults from `.env.example`, the services will be:
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:5000
 - Swagger: http://localhost:5000/swagger
@@ -343,12 +317,12 @@ Use these credentials to test different roles:
 
 | Role | Email | Password |
 |------|-------|----------|
-| Admin | `admin@ams.local` | `Admin123!` |
-| Teacher | `teacher@ams.local` | `Teacher123!` |
-| Teacher 2 | `teacher2@ams.local` | `Teacher123!` |
-| Student | `student@ams.local` | `Student123!` |
-| Student 2 | `student2@ams.local` | `Student123!` |
-| Student 3 | `student3@ams.local` | `Student123!` |
+| Admin | `admin@gmail.com` | `Admin123!` |
+| Teacher | `teacher@gmail.com` | `Teacher123!` |
+| Teacher 2 | `teacher2@gmail.com` | `Teacher123!` |
+| Student | `student@gmail.com` | `Student123!` |
+| Student 2 | `student2@gmail.com` | `Student123!` |
+| Student 3 | `student3@gmail.com` | `Student123!` |
 
 ## Database Setup
 
@@ -377,7 +351,6 @@ dotnet ef database update -p src/AMS.EntityFrameworkCore
 ```
 
 ### Database Schema Highlights
-- **Academic Years** — System operates within academic years; only one can be active at a time
 - **Classes & Sections** — Hierarchical structure: Academic Year → Class Definition → Group (optional) → Section
 - **Subjects** — Defined per class per academic year; teachers assigned to subject+class combinations
 - **Assignments** — Created by teachers, assigned to specific classes with deadlines
@@ -390,202 +363,16 @@ Unit tests are organized by layer with focused coverage on business rules and au
 
 ```bash
 # Run all tests
-dotnet test backend/
+dotnet test backend/AMS.sln
 
 # Run specific test project
-dotnet test backend/tests/AMS.Application.Tests/
-dotnet test backend/tests/AMS.Domain.Tests/
-dotnet test backend/tests/AMS.HttpApi.Tests/
+dotnet test tests/AMS.Application.Tests/AMS.Application.Tests.csproj
+dotnet test tests/AMS.Domain.Tests/AMS.Domain.Tests.csproj
+dotnet test tests/AMS.HttpApi.Tests/AMS.HttpApi.Tests.csproj
 
-# Run with verbose output
-dotnet test backend/ --logger "console;verbosity=detailed"
-
-# Run tests matching a pattern
-dotnet test backend/ --filter "NamePattern"
 ```
 
 ### Test Coverage
 - **Application Tests** — Business logic, authorization checks, submission workflows
 - **Domain Tests** — Entity validation, domain rules (e.g., submissions, assignments)
 - **Controller Tests** — API endpoints, HTTP status codes, integration scenarios
-
-## Environment Configuration
-
-Copy `.env.example` to `.env` and configure:
-
-```env
-# Database
-POSTGRES_DB=amsdb
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=your_secure_password_here
-POSTGRES_PORT=5432
-
-# JWT Authentication
-JWT_KEY=YourSecretKeyMustBeAtLeast32CharactersLong!
-JWT_ISSUER=http://localhost:5000
-JWT_AUDIENCE=http://localhost:5000
-JWT_ACCESS_MINUTES=15
-JWT_REFRESH_MINUTES=21600
-
-# Frontend Configuration
-FRONTEND_URL=http://localhost:3000
-NEXT_PUBLIC_API_URL=http://localhost:5000
-
-# Server Ports
-API_PORT=5000
-FRONTEND_PORT=3000
-```
-
-**Important:** 
-- Never commit `.env` with real secrets
-- `.env.example` documents required variables
-- `JWT_KEY` must be at least 32 characters
-- Change `POSTGRES_PASSWORD` from default
-
-## Account Management & Notification System
-
-### User Account Settings
-All users (Admin, Teacher, Student) can manage their account from the Account Settings page:
-
-**Profile Management:**
-- Upload and update profile picture/avatar
-- Changes sync instantly across the application (sidebar, headers, etc.)
-- Previous avatar cached prevented with automatic timestamp management
-
-**Security:**
-- Change password with validation
-- Current password verification required
-- New password must meet security requirements
-- Password hashing with BCrypt for storage
-
-### Notification Management
-
-#### For Teachers:
-Access Settings → Notifications to configure:
-- **New Submissions** — Notifications when students submit assignments
-- **New Assignments** — Alerts for system or admin-created assignments
-- **Submission Status** — Updates on resubmissions or deadline extensions
-- **Grading Reminders** — Reminders for pending submissions to grade
-
-**Notification Channels:**
-- In-app notifications (real-time in notification center)
-- Email notifications (configurable per event type)
-
-**Notification Center:**
-- View all recent notifications with timestamps
-- Click notifications to jump directly to related assignment/submission
-- Mark individual or all notifications as read
-- Auto-dismissal of read notifications
-
-#### For Students:
-Access Settings → Notifications to configure:
-- **New Assignments** — Alerts when teachers assign new work
-- **Grades Published** — Notifications when assignments are graded
-- **Feedback Received** — Updates when teachers add feedback
-- **Deadline Reminders** — Reminders for upcoming deadlines
-- **Resubmission Requests** — Alerts to resubmit work
-
-**Notification Center:**
-- View all notifications including grades and feedback
-- Click to navigate directly to assignment or grade details
-- Mark notifications as read
-- Real-time updates to unread count
-
-#### For Admins:
-Access Settings → Notifications to manage system-level notification settings:
-- Configure system email for notifications
-- Manage notification templates
-- View activity notifications
-
-### Notification API Endpoints
-
-Backend provides complete notification management:
-- `GET /api/notifications` — Retrieve user notifications with pagination
-- `GET /api/notifications/unread-count` — Get count of unread notifications
-- `POST /api/notifications/{id}/mark-read` — Mark single notification as read
-- `POST /api/notifications/mark-all-read` — Mark all notifications as read
-- `GET /api/notification-preferences` — Get user notification preferences
-- `PUT /api/notification-preferences/{type}/{channel}` — Update notification preferences
-
-## Assumptions & Design Decisions
-
-### System Assumptions
-1. **Academic Year Constraint** — Only one academic year can be active at a time; all operations occur within the active academic year
-2. **Class Hierarchy** — Classes may optionally have groups (e.g., Science, Arts groups in grade 9-12), and sections within those
-3. **Teacher Assignment** — A subject in a class can have only one assigned teacher; reassigning overwrites the previous assignment
-4. **Single Active Year** — Switching the active academic year is an admin-only operation
-5. **Stateless API** — The backend is stateless; session data is managed via JWT tokens
-6. **File Storage** — Uploaded files (assignments, submissions) are stored locally in `/app/App_Data/Uploads`
-7. **Email as Unique Identifier** — User emails must be unique across the system for authentication
-
-### Technical Decisions
-1. **JWT over Session Cookies** — Chosen for stateless, scalable API design suitable for both web and mobile clients
-2. **Role-Based Authorization** — Implemented at both controller (`[Authorize]`) and service layer for defense in depth
-3. **Entity Framework Core** — ORM used for database abstraction and automatic migrations
-4. **PostgreSQL** — Chosen for reliability, JSON support, and production-grade features
-5. **Next.js Standalone Build** — Minimizes Docker image size and removes Node.js development dependencies
-6. **Multi-Stage Dockerfiles** — Separates build environment from runtime for smaller, more secure images
-7. **Named Volumes** — Database and upload data persists across container restarts
-
-## Data Validation
-
-### Mobile Number Format
-All mobile number fields (teacher phone number and student guardian mobile) follow **Bangladesh format requirements**:
-
-- **Domestic Format**: Exactly 11 digits starting with `01`
-  - Example: `01712345678`
-  - Represents: 01 (mobile prefix) + 9 additional digits
-
-- **International Format**: `+88` country code followed by 11 digits
-  - Example: `+8801712345678`
-  - Represents: +88 (country code) + 01 (mobile prefix) + 9 additional digits
-
-- **Flexible Input**: Spaces and hyphens are allowed in input (e.g., `+880 1712-345-678`)
-
-**Validation is enforced on both frontend and backend:**
-- Frontend: Real-time validation in add/edit forms with user-friendly error messages
-- Backend: API rejects invalid formats with detailed error responses
-
-### Other Input Constraints
-- **Email**: Standard RFC 5322 format validation
-- **Gender**: Only "Male" or "Female" are accepted
-- **Passwords**: Minimum 6 characters (BCrypt hashed)
-- **File Names**: Sanitized to prevent directory traversal attacks
-- **Text Fields**: Max length constraints enforced at database level
-
-## Known Limitations
-
-1. **Submission Updates** — Students can only update submissions before the deadline; no late submissions are allowed by design
-2. **Single Teacher per Subject** — Only one teacher can be assigned to a subject per class (no co-teaching workflow)
-3. **File Size Limits** — Large file uploads may be restricted by server configuration (default 100MB)
-4. **Real-Time Updates** — The system uses polling; no WebSocket support for real-time notifications
-5. **Pagination** — Large lists (assignments, submissions) may need client-side filtering; server-side pagination is not implemented
-6. **Timezone Handling** — All timestamps are stored in UTC; client-side timezone conversion uses browser locale
-7. **Email Notifications** — Demo doesn't include email notifications; this would require SMTP configuration
-8. **Concurrent Operations** — No locking mechanism for concurrent assignment/submission edits by multiple users
-9. **Bulk Operations** — No bulk import/export features for users, classes, or assignments (except via database migrations)
-10. **Audit Trail** — User action logs are not maintained; this could be added via application/database triggers
-
-## Verification Checklist
-
-After setup, verify everything works:
-
-- [ ] Backend health check: `GET http://localhost:5000/health`
-- [ ] Swagger documentation: `http://localhost:5000/swagger`
-- [ ] Frontend loads: `http://localhost:3000`
-- [ ] Login with admin credentials: `admin@ams.local` / `Admin123!`
-- [ ] Create a new assignment as teacher
-- [ ] Submit an assignment as student
-- [ ] Grade a submission as teacher
-- [ ] View submission feedback as student
-- [ ] Tests pass: `dotnet test backend/`
-
-## Security Notes
-
-- **JWT Tokens** — Stored in localStorage on frontend (vulnerable to XSS); consider using secure httpOnly cookies in production
-- **Password Storage** — User passwords are hashed with BCrypt, never stored in plain text
-- **CORS** — Configured to accept requests from frontend URL only; change for production
-- **HTTPS** — Required for production; local dev uses HTTP
-- **Secret Management** — Use `.env` for secrets; never commit sensitive values
-- **SQL Injection** — Protected via Entity Framework's parameterized queries
-- **Authorization** — Enforced at controller and service layer; deletion/modification verifies ownership
