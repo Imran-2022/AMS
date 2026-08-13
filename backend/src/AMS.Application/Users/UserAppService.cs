@@ -3,6 +3,7 @@ using AMS.Application.Contracts.Dtos;
 using AMS.Domain.Entities;
 using AMS.Domain.Repositories;
 using AMS.Domain.Shared;
+using System.Text.RegularExpressions;
 
 namespace AMS.Application.Services;
 
@@ -29,6 +30,30 @@ public class UserAppService : IUserAppService
         _classCourseRepository = classCourseRepository;
         _groupRepository = groupRepository;
         _notificationPreferenceRepository = notificationPreferenceRepository;
+    }
+
+    /// <summary>
+    /// Validates Bangladesh mobile number format
+    /// Accepts:
+    /// - Domestic: 11 digits starting with 01 (e.g., 01712345678)
+    /// - International: 14 digits with +88 prefix (e.g., +8801712345678)
+    /// </summary>
+    private static bool IsValidMobileNumber(string? phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone)) return false;
+
+        // Remove spaces and hyphens
+        var cleaned = Regex.Replace(phone.Trim(), @"[\s\-]", "");
+
+        // Domestic format: exactly 11 digits, starts with 01
+        if (Regex.IsMatch(cleaned, @"^01\d{9}$"))
+            return true;
+
+        // International format: +88 followed by 11 digits (01X XXXXXXXX)
+        if (Regex.IsMatch(cleaned, @"^\+8801\d{9}$"))
+            return true;
+
+        return false;
     }
 
     private async Task InitializeNotificationPreferencesAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -90,6 +115,8 @@ public class UserAppService : IUserAppService
         if (role == UserRole.Teacher)
         {
             if (string.IsNullOrWhiteSpace(employeeId)) throw new ValidationException("EmployeeId is required for teacher.");
+            if (string.IsNullOrWhiteSpace(input.PhoneNumber)) throw new ValidationException("Phone number is required for teacher.");
+            if (!IsValidMobileNumber(input.PhoneNumber)) throw new ValidationException("Phone number must be valid Bangladesh format: 11 digits starting with 01 (e.g., 01712345678) or +88 prefix (e.g., +8801712345678).");
             if (string.IsNullOrWhiteSpace(input.SubjectSpecialization)) throw new ValidationException("Subject specialization is required for teacher.");
             if (string.IsNullOrWhiteSpace(input.Qualification)) throw new ValidationException("Qualification is required for teacher.");
             var joining = NormalizeDateTimeUtc(input.JoiningDate) ?? DateTime.UtcNow;
@@ -103,6 +130,7 @@ public class UserAppService : IUserAppService
             if (string.IsNullOrWhiteSpace(input.StudentId)) throw new ValidationException("StudentId is required for student.");
             if (string.IsNullOrWhiteSpace(input.GuardianName)) throw new ValidationException("Guardian name is required for student.");
             if (string.IsNullOrWhiteSpace(input.ParentMobile)) throw new ValidationException("Parent mobile is required for student.");
+            if (!IsValidMobileNumber(input.ParentMobile)) throw new ValidationException("Parent mobile must be valid Bangladesh format: 11 digits starting with 01 (e.g., 01712345678) or +88 prefix (e.g., +8801712345678).");
             if (input.AdmissionDate == null) throw new ValidationException("Admission date is required for student.");
             var admission = NormalizeDateTimeUtc(input.AdmissionDate) ?? DateTime.UtcNow;
             studentProfile = new StudentProfile(userId, input.StudentId, input.GuardianName, input.GuardianEmail ?? string.Empty, input.ParentMobile, admission);
@@ -177,6 +205,8 @@ public class UserAppService : IUserAppService
             var subj = input.SubjectSpecialization ?? user.SubjectSpecialization;
             var qual = input.Qualification ?? user.Qualification;
             var joining = input.JoiningDate is not null ? NormalizeDateTimeUtc(input.JoiningDate)!.Value : user.JoiningDate ?? DateTime.UtcNow;
+            if (input.PhoneNumber is not null && !IsValidMobileNumber(input.PhoneNumber))
+                throw new ValidationException("Phone number must be valid Bangladesh format: 11 digits starting with 01 (e.g., 01712345678) or +88 prefix (e.g., +8801712345678).");
             if (string.IsNullOrWhiteSpace(emp) || string.IsNullOrWhiteSpace(subj) || string.IsNullOrWhiteSpace(qual))
             {
                 if (user.TeacherProfile is not null)
@@ -203,6 +233,8 @@ public class UserAppService : IUserAppService
             var gEmail = input.GuardianEmail ?? user.GuardianEmail;
             var pMobile = input.ParentMobile ?? user.ParentMobile;
             var admission = input.AdmissionDate is not null ? NormalizeDateTimeUtc(input.AdmissionDate)!.Value : user.AdmissionDate ?? DateTime.UtcNow;
+            if (input.ParentMobile is not null && !IsValidMobileNumber(input.ParentMobile))
+                throw new ValidationException("Parent mobile must be valid Bangladesh format: 11 digits starting with 01 (e.g., 01712345678) or +88 prefix (e.g., +8801712345678).");
             if (string.IsNullOrWhiteSpace(sid) || string.IsNullOrWhiteSpace(gName) || string.IsNullOrWhiteSpace(pMobile))
             {
                 if (user.StudentProfile is not null)

@@ -82,6 +82,33 @@ function classHasGroups(className?: string): boolean {
   return className ? CLASSES_WITH_GROUPS.includes(className) : false;
 }
 
+/**
+ * Validates Bangladesh mobile number format
+ * Accepts:
+ * - Domestic: 11 digits starting with 01 (e.g., 01712345678)
+ * - International: 14 digits with +88 prefix (e.g., +8801712345678)
+ */
+function isValidMobileNumber(phone: string): boolean {
+  if (!phone) return false;
+  
+  // Remove spaces and hyphens
+  const cleaned = phone.replace(/[\s\-]/g, '');
+  
+  // Domestic format: exactly 11 digits, starts with 01
+  const domesticPattern = /^01\d{9}$/;
+  if (domesticPattern.test(cleaned)) {
+    return true;
+  }
+  
+  // International format: +88 followed by 11 digits (01X XXXXXXXX)
+  const internationalPattern = /^\+8801\d{9}$/;
+  if (internationalPattern.test(cleaned)) {
+    return true;
+  }
+  
+  return false;
+}
+
 function generateStudentId(className?: string, group?: string, existingCount: number = 0): string {
   if (!className) return '';
   
@@ -289,6 +316,11 @@ export function AddStudentModal({
 
     if (!values.parentMobile) {
       alert('Guardian mobile is required.');
+      return;
+    }
+
+    if (!isValidMobileNumber(values.parentMobile)) {
+      alert('Guardian mobile must be valid Bangladesh format:\n- Domestic: 11 digits starting with 01 (e.g., 01712345678)\n- International: +88 prefix (e.g., +8801712345678)');
       return;
     }
 

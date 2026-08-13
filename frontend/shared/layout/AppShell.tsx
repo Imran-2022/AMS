@@ -227,7 +227,7 @@ function formatRelativeTime(value: string) {
   return `${diffDays}d ago`;
 }
 
-function Topbar({ breadcrumb, role }: { breadcrumb: string; role: RoleType }) {
+function Topbar({ breadcrumb, role, onMobileMenuToggle }: { breadcrumb: string; role: RoleType; onMobileMenuToggle: () => void }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -313,8 +313,17 @@ function Topbar({ breadcrumb, role }: { breadcrumb: string; role: RoleType }) {
 
   return (
     <header className="sticky top-0 z-10 border-[#ECECEF] bg-white">
-      <div className="flex h-16 items-center justify-between px-6">
-        <div>
+      <div className="flex h-16 items-center justify-between px-4 lg:px-6">
+        {/* Mobile hamburger menu button */}
+        <button
+          type="button"
+          onClick={onMobileMenuToggle}
+          className="lg:hidden flex items-center justify-center w-9 h-9 rounded-lg hover:bg-[#F5F5F7] cursor-pointer"
+          aria-label="Toggle navigation menu">
+          <Menu className="h-5 w-5 text-[#1F2430]" />
+        </button>
+
+        <div className="flex-1 lg:flex-none">
           <p className="text-sm font-semibold leading-tight">{breadcrumb}</p>
           <p className="text-[12px] text-[#8A8F98] leading-tight">Manage assignments, users and classes.</p>
         </div>
@@ -485,7 +494,15 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
           avatarUrl={avatarUrl}
         />
         <div className={`flex-1 flex flex-col min-h-0 transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed ? 'lg:ml-[76px]' : 'lg:ml-64'}`}>
-          <Topbar breadcrumb={computedBreadcrumb} role={role} />
+          <Topbar 
+            breadcrumb={computedBreadcrumb} 
+            role={role}
+            onMobileMenuToggle={() => {
+              if (isMobile) {
+                setMobileOpen((value) => !value);
+              }
+            }}
+          />
           <main className="layout-main flex-1 min-h-0 w-full overflow-y-auto">
             <div className="px-6 py-6">{children}</div>
           </main>
