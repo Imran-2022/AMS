@@ -57,6 +57,7 @@ export function AccountSettingsPage({
 }: AccountSettingsPageProps) {
   const [activeTab, setActiveTab] = useState<AccountTab>('security')
   const [profileImage, setProfileImage] = useState<string | null>(null)
+  const [imageLoadError, setImageLoadError] = useState(false)
   const [user, setUser] = useState<UserDto | null>(null)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -121,25 +122,22 @@ export function AccountSettingsPage({
       const updated = await updateUser(user.id, { avatarUrl: uploadResult.fileUrl })
       setUser(updated)
       
-      // Increment cache version for this update
-      const currentVersion = parseInt(typeof window !== 'undefined' ? window.localStorage.getItem('ams-avatar-cache-v') || '0' : '0', 10)
-      const newVersion = currentVersion + 1
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('ams-avatar-cache-v', String(newVersion))
-      }
-      
-      const baseUrl = updated.avatarUrl
+      const avatarUrl = updated.avatarUrl
         ? updated.avatarUrl.startsWith('http')
           ? updated.avatarUrl
           : `${API_BASE_URL}${updated.avatarUrl}`
         : null
       
-      if (baseUrl) {
-        // Add cache-busting with version and timestamp
-        const avatarUrl = `${baseUrl}?v=${newVersion}`
+      if (avatarUrl) {
+        const avatarUrlWithTimestamp = `${avatarUrl}${avatarUrl.includes('?') ? '&' : '?'}t=${Date.now()}`
+
+        console.log('📸 AccountSettings: Image uploaded successfully')
+        console.log('📸 AccountSettings: Avatar URL:', avatarUrlWithTimestamp)
         
-        // Set the image directly without preloading (simpler and more reliable)
-        setProfileImage(avatarUrl)
+        // Update profile image in account settings page
+        setProfileImage(avatarUrlWithTimestamp)
+        setImageLoadError(false)
+        console.log('📸 AccountSettings: Profile image state updated')
         
         // Update stored user
         setStoredUser({
@@ -150,15 +148,18 @@ export function AccountSettingsPage({
           isActive: updated.isActive,
           avatarUrl: updated.avatarUrl,
         })
+        console.log('📸 AccountSettings: Stored user updated')
+        
+        // Notify sidebar about avatar change
+        if (typeof window !== 'undefined') {
+          console.log('📸 AccountSettings: Setting localStorage ams-avatar-url:', avatarUrlWithTimestamp)
+          window.localStorage.setItem('ams-avatar-url', avatarUrlWithTimestamp)
+          console.log('📸 AccountSettings: Dispatching ams-avatar-updated event')
+          window.dispatchEvent(new Event('ams-avatar-updated'))
+          console.log('📸 AccountSettings: Event dispatched')
+        }
         
         emitToast('Profile photo updated', 'success')
-        
-        // Dispatch event to update sidebar with the same URL and version
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('ams-user-changed', {
-            detail: { avatarCacheBuster: newVersion }
-          }))
-        }
       } else {
         emitToast('Profile photo updated', 'success')
       }
@@ -213,7 +214,12 @@ export function AccountSettingsPage({
           <aside className="w-full xl:w-72 bg-white rounded-2xl border border-slate-200 p-6 shrink-0 space-y-3">
             <div className="avatar-wrap">
               {profileImage ? (
-                <img src={profileImage} alt="Profile photo" className="base object-cover" />
+                <img 
+                  src={profileImage} 
+                  alt="Profile photo" 
+                  className="base object-cover" 
+                  onError={() => setImageLoadError(true)}
+                />
               ) : (
                 <div className="base">
                   <svg className="w-10 h-10 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

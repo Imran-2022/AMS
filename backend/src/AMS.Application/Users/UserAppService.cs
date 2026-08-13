@@ -224,7 +224,7 @@ public class UserAppService : IUserAppService
             }
         }
 
-        return ToDto(user);
+        return ToDto(updatedUser);
     }
 
     public async Task<UserDto> ToggleActiveAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)

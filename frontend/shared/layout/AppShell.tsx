@@ -394,14 +394,22 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
     const isSmall = window.innerWidth < 1024;
     setIsMobile(isSmall);
     setIsCollapsed(stored === 'true' || (!stored && isSmall));
+    
     const user = getStoredUser();
-    const base = API_BASE_URL;
-    const avatar = user?.avatarUrl ? (user.avatarUrl.startsWith('http') ? user.avatarUrl : `${base}${user.avatarUrl}`) : undefined;
-    // Add simple cache-busting with version counter
-    const cacheVersion = window.localStorage.getItem('ams-avatar-cache-v') || '0';
-    const avatarWithCacheBust = avatar ? `${avatar}?v=${cacheVersion}` : undefined;
     setUserName(user?.fullName ?? user?.email ?? undefined);
-    setAvatarUrl(avatarWithCacheBust);
+    
+    // Check localStorage for avatar URL first (stored by AccountSettingsPage on upload)
+    const storedAvatarUrl = window.localStorage.getItem('ams-avatar-url');
+    if (storedAvatarUrl) {
+      setAvatarUrl(storedAvatarUrl.includes('?') ? `${storedAvatarUrl}&t=${Date.now()}` : `${storedAvatarUrl}?t=${Date.now()}`);
+    } else if (user?.avatarUrl) {
+      // Fallback: construct from user data on first load and add timestamp for cache busting
+      const base = API_BASE_URL;
+      const avatar = user.avatarUrl.startsWith('http') ? user.avatarUrl : `${base}${user.avatarUrl}`;
+      const timestamp = Date.now();
+      const avatarWithTimestamp = `${avatar}${avatar.includes('?') ? '&' : '?'}t=${timestamp}`;
+      setAvatarUrl(avatarWithTimestamp);
+    }
 
     const handleResize = () => {
       const small = window.innerWidth < 1024;
@@ -423,24 +431,28 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
   }, [isCollapsed]);
 
   useEffect(() => {
-    const handleUserChanged = (event: Event) => {
-      const customEvent = event as CustomEvent
-      const cacheBuster = customEvent.detail?.avatarCacheBuster
-      
-      const user = getStoredUser()
-      const base = API_BASE_URL
-      const avatar = user?.avatarUrl ? (user.avatarUrl.startsWith('http') ? user.avatarUrl : `${base}${user.avatarUrl}`) : undefined
-      
-      // Use the cache buster from the event (incremented by account page)
-      const version = cacheBuster || parseInt(window.localStorage.getItem('ams-avatar-cache-v') || '0', 10)
-      const avatarWithCacheBust = avatar ? `${avatar}?v=${version}` : undefined
-      
-      setUserName(user?.fullName ?? user?.email ?? undefined)
-      setAvatarUrl(avatarWithCacheBust)
+    const handleAvatarUpdate = () => {
+      console.log('🎯 Sidebar: ams-avatar-updated event received')
+      const storedAvatarUrl = window.localStorage.getItem('ams-avatar-url')
+      console.log('🎯 Sidebar: Read from localStorage:', storedAvatarUrl)
+      if (storedAvatarUrl) {
+        const refreshedAvatarUrl = storedAvatarUrl.includes('?')
+          ? `${storedAvatarUrl}&t=${Date.now()}`
+          : `${storedAvatarUrl}?t=${Date.now()}`
+        console.log('🎯 Sidebar: Updating avatar state')
+        setAvatarUrl(refreshedAvatarUrl)
+        console.log('🎯 Sidebar: Avatar state updated')
+      } else {
+        console.log('🎯 Sidebar: No URL in localStorage')
+      }
     }
 
-    window.addEventListener('ams-user-changed', handleUserChanged)
-    return () => window.removeEventListener('ams-user-changed', handleUserChanged)
+    console.log('🎯 Sidebar: Attaching ams-avatar-updated listener')
+    window.addEventListener('ams-avatar-updated', handleAvatarUpdate)
+    
+    return () => {
+      window.removeEventListener('ams-avatar-updated', handleAvatarUpdate)
+    }
   }, [])
 
   useEffect(() => {

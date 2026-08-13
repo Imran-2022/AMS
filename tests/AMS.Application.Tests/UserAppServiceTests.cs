@@ -108,6 +108,42 @@ public class UserAppServiceTests
     }
 
     [Fact]
+    public async Task UpdateAsync_Should_Return_Updated_Avatar_Url()
+    {
+        var id = Guid.NewGuid();
+        var user = new User(
+            id,
+            "Test User",
+            "test@example.com",
+            "hash",
+            UserRole.Student,
+            "/old-avatar.jpg",
+            "1234567890",
+            "Male",
+            DateTime.UtcNow.AddYears(-20),
+            "Address",
+            true,
+            teacherProfile: null,
+            studentProfile: new StudentProfile(id, "S-001", "Parent Name", "parent@example.com", "1234567890", DateTime.UtcNow.AddYears(-2)));
+
+        var repo = new Mock<IUserRepository>(MockBehavior.Strict);
+        repo.Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        repo.Setup(r => r.UpdateAsync(It.IsAny<User>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+        var service = new UserAppService(
+            repo.Object,
+            Mock.Of<IFileAppService>(),
+            Mock.Of<IStudentEnrollmentRepository>(),
+            Mock.Of<IClassCourseRepository>(),
+            Mock.Of<IGroupRepository>());
+
+        var result = await service.UpdateAsync(id, new UpdateUserDto { AvatarUrl = "/new-avatar.jpg" }, id, nameof(UserRole.Student));
+
+        Assert.Equal("/new-avatar.jpg", result.AvatarUrl);
+        repo.Verify(r => r.UpdateAsync(It.Is<User>(u => u.AvatarUrl == "/new-avatar.jpg"), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task ToggleActiveAsync_Should_Flip_User_Status()
     {
         var id = Guid.NewGuid();
