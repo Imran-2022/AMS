@@ -10,10 +10,19 @@ public class UserAppService : IUserAppService
 {
     private readonly IUserRepository _userRepository;
     private readonly IFileAppService _fileAppService;
-    public UserAppService(IUserRepository userRepository, IFileAppService fileAppService)
+    private readonly IStudentEnrollmentRepository _enrollmentRepository;
+    private readonly IClassCourseRepository _classCourseRepository;
+
+    public UserAppService(
+        IUserRepository userRepository,
+        IFileAppService fileAppService,
+        IStudentEnrollmentRepository enrollmentRepository,
+        IClassCourseRepository classCourseRepository)
     {
         _userRepository = userRepository;
         _fileAppService = fileAppService;
+        _enrollmentRepository = enrollmentRepository;
+        _classCourseRepository = classCourseRepository;
     }
 
     private static DateTime? NormalizeDateTimeUtc(DateTime? value)
@@ -76,10 +85,9 @@ public class UserAppService : IUserAppService
         {
             if (string.IsNullOrWhiteSpace(input.StudentId)) throw new ValidationException("StudentId is required for student.");
             if (string.IsNullOrWhiteSpace(input.GuardianName)) throw new ValidationException("Guardian name is required for student.");
-            if (string.IsNullOrWhiteSpace(input.GuardianEmail)) throw new ValidationException("Guardian email is required for student.");
             if (string.IsNullOrWhiteSpace(input.ParentMobile)) throw new ValidationException("Parent mobile is required for student.");
             var admission = NormalizeDateTimeUtc(input.AdmissionDate) ?? DateTime.UtcNow;
-            studentProfile = new StudentProfile(userId, input.StudentId, input.GuardianName, input.GuardianEmail, input.ParentMobile, admission);
+            studentProfile = new StudentProfile(userId, input.StudentId, input.GuardianName, input.GuardianEmail ?? string.Empty, input.ParentMobile, admission);
         }
 
         var user = new User(
@@ -173,7 +181,7 @@ public class UserAppService : IUserAppService
             var gEmail = input.GuardianEmail ?? user.GuardianEmail;
             var pMobile = input.ParentMobile ?? user.ParentMobile;
             var admission = input.AdmissionDate is not null ? NormalizeDateTimeUtc(input.AdmissionDate)!.Value : user.AdmissionDate ?? DateTime.UtcNow;
-            if (string.IsNullOrWhiteSpace(sid) || string.IsNullOrWhiteSpace(gName) || string.IsNullOrWhiteSpace(gEmail) || string.IsNullOrWhiteSpace(pMobile))
+            if (string.IsNullOrWhiteSpace(sid) || string.IsNullOrWhiteSpace(gName) || string.IsNullOrWhiteSpace(pMobile))
             {
                 if (user.StudentProfile is not null)
                 {
@@ -181,12 +189,12 @@ public class UserAppService : IUserAppService
                 }
                 else
                 {
-                    throw new ValidationException("Student profile requires student id, guardian info and parent mobile.");
+                    throw new ValidationException("Student profile requires student id, guardian name and parent mobile.");
                 }
             }
             else
             {
-                studentProfile = new StudentProfile(user.Id, sid, gName, gEmail, pMobile, admission);
+                studentProfile = new StudentProfile(user.Id, sid, gName, gEmail ?? string.Empty, pMobile, admission);
             }
         }
 
@@ -227,6 +235,111 @@ public class UserAppService : IUserAppService
     {
         if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can manage users.");
         await _userRepository.DeleteAsync(id, cancellationToken);
+    }
+
+    public async Task<string> GetNextStudentIdAsync(Guid classCourseId, Guid? groupId, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
+    {
+        if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can manage users.");
+        
+        // Get the class course to determine if it needs groups
+        var classCourse = await _classCourseRepository.GetByIdAsync(classCourseId, cancellationToken) 
+            ?? throw new NotFoundException("Class/course not found.");
+
+        // Get all enrollments for this class
+        var enrollments = await _enrollmentRepository.GetByClassCourseAsync(classCourseId, cancellationToken);
+
+        // Filter by group if provided
+        if (groupId.HasValue)
+        {
+            // Get only students in this specific group
+            var groupEnrollments = new List<StudentEnrollment>();
+            foreach (var enrollment in enrollments)
+            {
+                var user = await _userRepository.GetByIdAsync(enrollment.StudentId, cancellationToken);
+                if (user?.Role == UserRole.Student && !string.IsNullOrWhiteSpace(user.StudentId))
+                {
+                    // Check if student ID matches group pattern (e.g., "9-S-001")
+                    var parts = user.StudentId.Split('-');
+                    if (parts.Length == 3 && parts[1].Length == 1)
+                    {
+                        groupEnrollments.Add(enrollment);
+                    }
+                }
+            }
+            enrollments = groupEnrollments;
+        }
+
+        // Get all student IDs for this class/group
+        var studentIds = new List<string>();
+        foreach (var enrollment in enrollments)
+        {
+            var user = await _userRepository.GetByIdAsync(enrollment.StudentId, cancellationToken);
+            if (user?.Role == UserRole.Student && !string.IsNullOrWhiteSpace(user.StudentId))
+            {
+                studentIds.Add(user.StudentId);
+            }
+        }
+
+        // Parse group if present to determine format
+        if (groupId.HasValue)
+        {
+            // Format: "9-S-001" where 9 is class, S is group initial, 001 is sequence
+            var classNumber = ExtractClassNumber(classCourse.Name);
+            if (!string.IsNullOrWhiteSpace(classNumber))
+            {
+                // Get the group name (assuming it's passed or we fetch it)
+                // For now, we'll generate based on max sequence in existing IDs
+                var maxSequence = 0;
+                foreach (var id in studentIds)
+                {
+                    var parts = id.Split('-');
+                    if (parts.Length == 3 && int.TryParse(parts[2], out var seq))
+                    {
+                        maxSequence = Math.Max(maxSequence, seq);
+                    }
+                }
+                
+                // Extract group initial from first existing ID if available
+                string groupInitial = "A";
+                if (studentIds.Count > 0)
+                {
+                    var firstParts = studentIds[0].Split('-');
+                    if (firstParts.Length == 3)
+                    {
+                        groupInitial = firstParts[1];
+                    }
+                }
+
+                return $"{classNumber}-{groupInitial}-{(maxSequence + 1):D3}";
+            }
+        }
+        else
+        {
+            // Format: "STU-0001"
+            var maxValue = 0;
+            foreach (var id in studentIds)
+            {
+                if (id.StartsWith("STU-") && int.TryParse(id.Substring(4), out var num))
+                {
+                    maxValue = Math.Max(maxValue, num);
+                }
+            }
+            return $"STU-{(maxValue + 1):D4}";
+        }
+
+        throw new ValidationException("Unable to generate student ID for this class.");
+    }
+
+    private static string? ExtractClassNumber(string className)
+    {
+        return className switch
+        {
+            "Nine" => "9",
+            "Ten" => "10",
+            "Eleven" => "11",
+            "Twelve" => "12",
+            _ => null
+        };
     }
 
     private static UserDto ToDto(User user) => new()

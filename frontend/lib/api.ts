@@ -482,6 +482,12 @@ export async function toggleUserStatus(id: string) {
   });
 }
 
+export async function getNextStudentId(classCourseId: string, groupId?: string) {
+  const params = new URLSearchParams({ classCourseId });
+  if (groupId) params.append('groupId', groupId);
+  return request<{ studentId: string }>(`/api/users/next-student-id?${params}`);
+}
+
 export async function getClassCourses() {
   return request<ClassCourseDto[]>(`/api/classes`);
 }

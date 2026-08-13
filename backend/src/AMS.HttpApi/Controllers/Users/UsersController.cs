@@ -82,4 +82,14 @@ public class UsersController : ControllerBase
         await _userAppService.DeleteAsync(id, currentUserId, currentUserRole);
         return NoContent();
     }
+
+    [HttpGet("next-student-id")]
+    [Authorize(Policy = "AdminsOnly")]
+    public async Task<ActionResult<object>> GetNextStudentId([FromQuery] Guid classCourseId, [FromQuery] Guid? groupId = null)
+    {
+        var currentUserId = _currentUser.UserId;
+        var currentUserRole = _currentUser.Role;
+        var nextId = await _userAppService.GetNextStudentIdAsync(classCourseId, groupId, currentUserId, currentUserRole);
+        return Ok(new { studentId = nextId });
+    }
 }

@@ -83,7 +83,13 @@ export function AdminStudentsPage() {
       const classMap = Object.fromEntries(classes.map((cls) => [cls.id, cls]));
       const enrollmentMap = Object.fromEntries(enrollments.map((enrollment) => [enrollment.studentId, enrollment.classCourseId]));
 
-      setClassCourses(classes);
+      // Enrich classes with groupName data
+      const enrichedClasses = classes.map((cls) => ({
+        ...cls,
+        groupName: cls.groupId ? groupMap[cls.groupId] : undefined,
+      }));
+
+      setClassCourses(enrichedClasses);
       setGroupNameMap(groupMap);
       setStats(dashboardStats);
 
@@ -150,15 +156,6 @@ export function AdminStudentsPage() {
     if (!id) return 0;
     const match = id.match(/(\d+)$/);
     return match ? Number(match[1]) : 0;
-  }
-
-  function generateNextStudentId(existing: StudentUserRecord[]) {
-    const maxValue = existing.reduce((max, student) => {
-      const numeric = parseStudentId(student.studentId);
-      return numeric > max ? numeric : max;
-    }, 0);
-
-    return `STU-${String(maxValue + 1).padStart(4, '0')}`;
   }
 
   async function handleSaveStudent(values: AddStudentFormData) {
@@ -619,7 +616,7 @@ export function AdminStudentsPage() {
           email: '',
           password: '',
           status: 'Active',
-          studentId: generateNextStudentId(students),
+          studentId: '',
           className: classCourses[0]?.name ?? '',
           section: classCourses[0]?.section ?? '',
           guardianName: '',

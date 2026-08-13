@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { getNextStudentId } from '@/lib/api';
 import { Button } from './Button';
 import { Modal } from './Modal';
 
@@ -74,15 +75,15 @@ function generateStudentId(className?: string, group?: string, existingCount: nu
   };
   
   const classNum = classMap[className];
-  if (!classNum) return ''; // Non-9-12 classes don't auto-generate
   
-  if (group) {
-    // Format: 9-S-001 (class-group-serial)
+  if (classNum && group) {
+    // For classes 9-12 with groups: Format 9-S-001 (class-group-serial)
     const groupAbbr = group.charAt(0).toUpperCase();
     const serial = String(existingCount + 1).padStart(3, '0');
     return `${classNum}-${groupAbbr}-${serial}`;
   }
   
+  // Default: return empty (will be set by parent component)
   return '';
 }
 
@@ -116,27 +117,37 @@ export function AddStudentModal({
     avatarUrl: '',
     group: '',
   });
+  const [isGeneratingId, setIsGeneratingId] = useState(false);
 
+  // Reset form only when modal opens/closes, not when parent re-renders
   useEffect(() => {
     if (!open) return;
-    setValues({
-      fullName: initialValues?.fullName ?? '',
-      email: initialValues?.email ?? '',
-      password: initialValues?.password ?? '',
-      status: initialValues?.status ?? 'Active',
-      dateOfBirth: normalizeDate(initialValues?.dateOfBirth),
-      gender: initialValues?.gender ?? '',
-      studentId: initialValues?.studentId ?? '',
-      className: initialValues?.className ?? classCourses[0]?.name ?? '',
-      section: initialValues?.section ?? classCourses[0]?.section ?? '',
-      admissionDate: normalizeDate(initialValues?.admissionDate),
-      guardianName: initialValues?.guardianName ?? '',
-      parentMobile: initialValues?.parentMobile ?? '',
-      guardianEmail: initialValues?.guardianEmail ?? '',
-      avatarUrl: initialValues?.avatarUrl ?? '',
-      group: '',
+    
+    setValues((current) => {
+      // Only reset if values are completely empty (first time opening)
+      if (current.fullName === '' && current.studentId === '') {
+        return {
+          fullName: initialValues?.fullName ?? '',
+          email: initialValues?.email ?? '',
+          password: initialValues?.password ?? '',
+          status: initialValues?.status ?? 'Active',
+          dateOfBirth: normalizeDate(initialValues?.dateOfBirth),
+          gender: initialValues?.gender ?? '',
+          studentId: initialValues?.studentId ?? '',
+          className: initialValues?.className ?? classCourses[0]?.name ?? '',
+          section: initialValues?.section ?? classCourses[0]?.section ?? '',
+          admissionDate: normalizeDate(initialValues?.admissionDate),
+          guardianName: initialValues?.guardianName ?? '',
+          parentMobile: initialValues?.parentMobile ?? '',
+          guardianEmail: initialValues?.guardianEmail ?? '',
+          avatarUrl: initialValues?.avatarUrl ?? '',
+          group: '',
+        };
+      }
+      // Keep existing values while modal is open
+      return current;
     });
-  }, [open, initialValues, classCourses]);
+  }, [open, classCourses]);
 
   useEffect(() => {
     if (classCourses.length && !values.className) {
@@ -182,18 +193,47 @@ export function AddStudentModal({
     }
   }, [needsGroup]);
 
-  // Auto-generate student ID for classes 9-12
+  // Auto-generate student ID from backend based on class and group
   useEffect(() => {
-    if (classHasGroups(values.className) && values.group) {
-      const newStudentId = generateStudentId(values.className, values.group, 0);
-      setValues((current) => ({ ...current, studentId: newStudentId }));
-    } else if (!classHasGroups(values.className)) {
-      // For other classes, clear auto-generated ID (allow manual entry)
-      if (values.studentId && /^\d+-[A-Z]-\d{3}$/.test(values.studentId)) {
+    async function generateId() {
+      // Find the class course ID for the selected class/section
+      const selectedCourse = classCourses.find(
+        (cls) => cls.name === values.className && cls.section === values.section
+      );
+
+      if (!selectedCourse) {
         setValues((current) => ({ ...current, studentId: '' }));
+        return;
+      }
+
+      // For grouped classes, we need to select a course with matching group
+      let courseToUse = selectedCourse;
+      if (needsGroup && values.group) {
+        const groupedCourse = classCourses.find(
+          (cls) => cls.name === values.className && cls.section === values.section && cls.groupName === values.group
+        );
+        if (groupedCourse) courseToUse = groupedCourse;
+      }
+
+      try {
+        setIsGeneratingId(true);
+        const response = await getNextStudentId(
+          courseToUse.id,
+          courseToUse.groupId
+        );
+        setValues((current) => ({ ...current, studentId: response.studentId }));
+      } catch (err) {
+        console.error('Failed to generate student ID:', err);
+        setValues((current) => ({ ...current, studentId: '' }));
+      } finally {
+        setIsGeneratingId(false);
       }
     }
-  }, [values.className, values.group]);
+
+    if (open && values.className && values.section) {
+      void generateId();
+    }
+  }, [open, values.className, values.section, values.group, classCourses, needsGroup]);
 
   function handleChange<Key extends keyof AddStudentFormData>(field: Key, value: AddStudentFormData[Key]) {
     setValues((current) => ({ ...current, [field]: value }));
@@ -227,6 +267,11 @@ export function AddStudentModal({
 
     if (needsGroup && !values.group) {
       alert('Group is required for classes 9-12.');
+      return;
+    }
+
+    if (!values.studentId) {
+      alert('Student ID is required.');
       return;
     }
 
@@ -360,8 +405,8 @@ export function AddStudentModal({
                 value={values.studentId}
                 onChange={(event) => handleChange('studentId', event.target.value)}
                 placeholder="e.g. STU-0142"
-                className={`${inputClass} ${(needsGroup && values.group) || (studentIdReadOnly && values.studentId) ? 'bg-slate-100 text-slate-500' : ''}`}
-                readOnly={(needsGroup && !!values.group) || (studentIdReadOnly && !!values.studentId)}
+                className={`${inputClass} bg-slate-100 text-slate-500`}
+                readOnly
               />
               {needsGroup && <p className={hintClass}>Auto-generated based on class and group</p>}
             </div>
@@ -398,33 +443,35 @@ export function AddStudentModal({
               </select>
             </div>
           </div>
-          {needsGroup && (
-            <div className="mt-4">
-              <label className={labelClass}>
-                Group <span className="text-rose-500">*</span>
-              </label>
-              <select
-                value={values.group}
-                onChange={(event) => handleChange('group', event.target.value)}
-                className={`${inputClass} text-slate-700`}
-                required>
-                <option value="">Select group</option>
-                {availableGroups.map((groupName) => (
-                  <option key={groupName} value={groupName}>
-                    {groupName}
-                  </option>
-                ))}
-              </select>
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            {needsGroup && (
+              <div>
+                <label className={labelClass}>
+                  Group <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={values.group}
+                  onChange={(event) => handleChange('group', event.target.value)}
+                  className={`${inputClass} text-slate-700`}
+                  required>
+                  <option value="">Select group</option>
+                  {availableGroups.map((groupName) => (
+                    <option key={groupName} value={groupName}>
+                      {groupName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div>
+              <label className={labelClass}>Admission date</label>
+              <input
+                value={values.admissionDate}
+                onChange={(event) => handleChange('admissionDate', event.target.value)}
+                className={`${inputClass} text-slate-500`}
+                type="date"
+              />
             </div>
-          )}
-          <div className="mt-4">
-            <label className={labelClass}>Admission date</label>
-            <input
-              value={values.admissionDate}
-              onChange={(event) => handleChange('admissionDate', event.target.value)}
-              className={`${inputClass} max-w-[240px] text-slate-500`}
-              type="date"
-            />
           </div>
         </div>
 
