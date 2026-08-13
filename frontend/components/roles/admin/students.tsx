@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AppShell } from '@/shared/layout';
-import { AmsDeleteComfiramtionModal, AmsPagination, Button, Card, Pill, Th, Td, AddStudentModal, type AddStudentFormData } from '@/shared/ui';
+import { AmsDeleteComfiramtionModal, AmsPagination, Button, Card, Pill, Th, Td } from '@/shared/ui';
+import { AddStudentModal, type AddStudentFormData } from '@/components/roles/admin/shared';
 import { API_BASE_URL } from '@/lib/api';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
 import { createUser, deleteUser, getClassCourses, getGroupsForClass, getUsers, updateUser } from '@/lib/api';

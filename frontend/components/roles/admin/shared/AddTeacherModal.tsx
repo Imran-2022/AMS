@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
-import { Button } from './Button';
-import { Modal } from './Modal';
+import { Button, Modal } from '@/shared/ui';
 import { getSubjects, type SubjectDto } from '@/lib/api';
 
 export type AddTeacherFormData = {

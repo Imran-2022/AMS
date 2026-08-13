@@ -5,7 +5,7 @@ import { AppShell } from '@/shared/layout'
 import { API_BASE_URL, changePassword, getCurrentUser, updateUser, type UserDto } from '@/lib/api'
 import { getNotificationPreferences, updateNotificationPreference } from '@/lib/api/notifications'
 import { uploadFile } from '@/lib/api/files'
-import { setStoredUser } from '@/lib/auth'
+import { notifyAvatarUpdated, setStoredAvatarUrl, setStoredUser, withAvatarCacheBust } from '@/lib/auth'
 import { emitToast } from '@/components/ui'
 import { getNotificationDefinitionsForRole } from '@/shared/constants/notifications'
 
@@ -129,17 +129,16 @@ export function AccountSettingsPage({
         : null
       
       if (avatarUrl) {
-        const avatarUrlWithTimestamp = `${avatarUrl}${avatarUrl.includes('?') ? '&' : '?'}t=${Date.now()}`
+        const avatarUrlWithTimestamp = withAvatarCacheBust(avatarUrl)
 
-        console.log('📸 AccountSettings: Image uploaded successfully')
-        console.log('📸 AccountSettings: Avatar URL:', avatarUrlWithTimestamp)
-        
-        // Update profile image in account settings page
+        if (!avatarUrlWithTimestamp) {
+          emitToast('Profile photo updated', 'success')
+          return
+        }
+
         setProfileImage(avatarUrlWithTimestamp)
         setImageLoadError(false)
-        console.log('📸 AccountSettings: Profile image state updated')
-        
-        // Update stored user
+
         setStoredUser({
           id: updated.id,
           email: updated.email,
@@ -148,17 +147,9 @@ export function AccountSettingsPage({
           isActive: updated.isActive,
           avatarUrl: updated.avatarUrl,
         })
-        console.log('📸 AccountSettings: Stored user updated')
-        
-        // Notify sidebar about avatar change
-        if (typeof window !== 'undefined') {
-          console.log('📸 AccountSettings: Setting localStorage ams-avatar-url:', avatarUrlWithTimestamp)
-          window.localStorage.setItem('ams-avatar-url', avatarUrlWithTimestamp)
-          console.log('📸 AccountSettings: Dispatching ams-avatar-updated event')
-          window.dispatchEvent(new Event('ams-avatar-updated'))
-          console.log('📸 AccountSettings: Event dispatched')
-        }
-        
+
+        setStoredAvatarUrl(avatarUrlWithTimestamp)
+        notifyAvatarUpdated()
         emitToast('Profile photo updated', 'success')
       } else {
         emitToast('Profile photo updated', 'success')

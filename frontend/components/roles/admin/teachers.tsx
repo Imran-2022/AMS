@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AmsDeleteComfiramtionModal, AmsPagination, AddTeacherModal, Button, type AddTeacherFormData } from '@/shared/ui';
+import { AmsDeleteComfiramtionModal, AmsPagination, Button } from '@/shared/ui';
+import { AddTeacherModal, type AddTeacherFormData } from '@/components/roles/admin/shared';
 import { AppShell } from '@/shared/layout';
 import { API_BASE_URL, createUser, deleteUser, getUsers, updateUser } from '@/lib/api';
 import { getTeacherAssignments, type TeacherSubjectAssignmentDto } from '@/lib/api/teacherAssignments';

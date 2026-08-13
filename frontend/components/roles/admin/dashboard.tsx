@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/shared/layout';
-import { Button, Card, Metric, PageHeader, Pill, RoleBadge, Th, Td, AddStudentModal, AddTeacherModal, TeacherAssignmentModal } from '@/shared/ui';
+import { Button, Card, Metric, PageHeader, Pill, RoleBadge, Th, Td } from '@/shared/ui';
+import { AddStudentModal, AddTeacherModal, TeacherAssignmentModal } from '@/components/roles/admin/shared';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
 import { getAssignments, getSubmissions, getUsers as apiGetUsers, getSubjects } from '@/lib/api';
 import { MoreVertical, UserPlus, UserCheck, BookOpen, ClipboardList } from 'lucide-react';

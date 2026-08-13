@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Button } from './Button';
-import { Modal } from './Modal';
+import { Button, Modal } from '@/shared/ui';
 
 type ClassCourseOption = {
   id: string;
   name: string;
   section: string;
+  groupName?: string;
 };
 
 type SubjectOption = {
@@ -65,9 +65,13 @@ export function TeacherAssignmentModal({
   const [subjectId, setSubjectId] = useState(initialValues?.subjectId ?? '');
 
   const classNames = Array.from(new Set(classCourses.map((cls) => cls.name)));
-  const sectionOptions = classCourses
-    .filter((cls) => cls.name === selectedClassName)
-    .map((cls) => cls.section);
+  const sectionOptions = Array.from(
+    new Map(
+      classCourses
+        .filter((cls) => cls.name === selectedClassName)
+        .map((cls) => [`${cls.name}|${cls.section}|${cls.groupName ?? 'default'}`, cls])
+    ).values()
+  );
   const selectedClass = classCourses.find((cls) => cls.name === selectedClassName && cls.section === selectedSection);
   const classCourseId = selectedClass?.id ?? '';
 
@@ -213,9 +217,9 @@ export function TeacherAssignmentModal({
               <option value="" disabled>
                 {selectedClassName ? 'Select section' : 'Select class first'}
               </option>
-              {sectionOptions.map((section) => (
-                <option key={section} value={section}>
-                  {section}
+              {sectionOptions.map((option) => (
+                <option key={`${selectedClassName}-${option.section}-${option.groupName ?? 'default'}`} value={option.section}>
+                  {option.section}
                 </option>
               ))}
             </select>

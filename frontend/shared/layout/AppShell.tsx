@@ -21,7 +21,7 @@ import {
   Files,
   Users,
 } from 'lucide-react';
-import { clearStoredAuth, getStoredUser } from '@/lib/auth';
+import { clearStoredAuth, getStoredAvatarUrl, getStoredUser, withAvatarCacheBust } from '@/lib/auth';
 import { API_BASE_URL } from '@/lib/api';
 import { getNotifications, getUnreadNotificationCount, markAllNotificationsRead, markNotificationRead } from '@/lib/api/notifications';
 import { ToastContainer } from '../ui';
@@ -398,17 +398,13 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
     const user = getStoredUser();
     setUserName(user?.fullName ?? user?.email ?? undefined);
     
-    // Check localStorage for avatar URL first (stored by AccountSettingsPage on upload)
-    const storedAvatarUrl = window.localStorage.getItem('ams-avatar-url');
+    const storedAvatarUrl = getStoredAvatarUrl();
     if (storedAvatarUrl) {
-      setAvatarUrl(storedAvatarUrl.includes('?') ? `${storedAvatarUrl}&t=${Date.now()}` : `${storedAvatarUrl}?t=${Date.now()}`);
+      setAvatarUrl(withAvatarCacheBust(storedAvatarUrl));
     } else if (user?.avatarUrl) {
-      // Fallback: construct from user data on first load and add timestamp for cache busting
       const base = API_BASE_URL;
       const avatar = user.avatarUrl.startsWith('http') ? user.avatarUrl : `${base}${user.avatarUrl}`;
-      const timestamp = Date.now();
-      const avatarWithTimestamp = `${avatar}${avatar.includes('?') ? '&' : '?'}t=${timestamp}`;
-      setAvatarUrl(avatarWithTimestamp);
+      setAvatarUrl(withAvatarCacheBust(avatar));
     }
 
     const handleResize = () => {
@@ -432,27 +428,17 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
 
   useEffect(() => {
     const handleAvatarUpdate = () => {
-      console.log('🎯 Sidebar: ams-avatar-updated event received')
-      const storedAvatarUrl = window.localStorage.getItem('ams-avatar-url')
-      console.log('🎯 Sidebar: Read from localStorage:', storedAvatarUrl)
+      const storedAvatarUrl = getStoredAvatarUrl();
       if (storedAvatarUrl) {
-        const refreshedAvatarUrl = storedAvatarUrl.includes('?')
-          ? `${storedAvatarUrl}&t=${Date.now()}`
-          : `${storedAvatarUrl}?t=${Date.now()}`
-        console.log('🎯 Sidebar: Updating avatar state')
-        setAvatarUrl(refreshedAvatarUrl)
-        console.log('🎯 Sidebar: Avatar state updated')
-      } else {
-        console.log('🎯 Sidebar: No URL in localStorage')
+        setAvatarUrl(withAvatarCacheBust(storedAvatarUrl));
       }
-    }
+    };
 
-    console.log('🎯 Sidebar: Attaching ams-avatar-updated listener')
-    window.addEventListener('ams-avatar-updated', handleAvatarUpdate)
-    
+    window.addEventListener('ams-avatar-updated', handleAvatarUpdate);
+
     return () => {
-      window.removeEventListener('ams-avatar-updated', handleAvatarUpdate)
-    }
+      window.removeEventListener('ams-avatar-updated', handleAvatarUpdate);
+    };
   }, [])
 
   useEffect(() => {

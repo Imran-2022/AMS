@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { getNextStudentId } from '@/lib/api';
-import { Button } from './Button';
-import { Modal } from './Modal';
+import { Button, Modal } from '@/shared/ui';
 
 type ClassCourseOption = {
   id: string;
