@@ -1,6 +1,33 @@
-# AMS - Assignment & Submission Management System
+# AMS — Assignment & Submission Management System
 
-A role-based school/college application for evaluating understanding of requirements, system design, API development, frontend implementation, and testing. Built with ASP.NET Core 10, Next.js 16, React 19, and PostgreSQL.
+**Stack:** ASP.NET Core 10 · Next.js 16 · React 19 · PostgreSQL 17 · Architecture: Layered + DDD
+
+A role-based school/college web application built for the **Assistant Software Engineer Recruitment Project — "Assignment & Submission Management System"** (OnnoRokom Projukti Limited). It lets teachers create and grade assignments, students submit and track their work, and admins manage the underlying users, classes, and subjects — with everything guarded by JWT authentication and role-based authorization. Built with ASP.NET Core 10, Next.js 16, React 19, and PostgreSQL.
+
+| | |
+| :--- | :--- |
+| **Project Type** | Full-stack web application |
+| **Assignment Brief** | Assistant Software Engineer Recruitment Project — Assignment & Submission Management System |
+| **Submission Deadline** | 14 August, 2026 |
+
+---
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [User Roles & Responsibilities](#user-roles--responsibilities)
+3. [Technology Stack](#technology-stack)
+4. [Key Features](#key-features)
+5. [Architecture Overview](#architecture-overview)
+6. [Project Structure](#project-structure)
+7. [Quick Start - Local Setup](#quick-start---local-setup)
+8. [Database Setup](#database-setup)
+9. [Running Tests](#running-tests)
+10. [Assumptions & Design Decisions](#assumptions--design-decisions)
+11. [Known Limitations](#known-limitations)
+12. [Assignment Requirements Checklist](#assignment-requirements-checklist)
+
+---
 
 ## Overview
 
@@ -11,6 +38,14 @@ This repository contains a complete full-stack application for managing academic
 - **Student**: Learner who views assignments, submits work, and receives feedback
 
 All features are protected by JWT-based authentication and role-based authorization.
+
+## User Roles & Responsibilities
+
+| Role | Responsibilities |
+| :--- | :--- |
+| **Admin** | Manage users (admins, teachers, students); manage classes/courses and subjects; assign teachers to subjects/classes; view all assignments and submissions across the institution; manage application-level settings (academic years, system configuration). |
+| **Teacher** | Create, update, and delete assignments; assign an assignment to a specific class/course and subject; define title, description, deadline, and maximum marks; publish an assignment or keep it as a draft; view student submissions; assign marks and provide feedback; change submission status when necessary (e.g. request a resubmission). |
+| **Student** | View assignments assigned to their class/course; view assignment details and deadline; submit an answer (with attachments); update a submission before the deadline; view submission status, marks, and teacher feedback. |
 
 ## Technology Stack
 
@@ -87,6 +122,24 @@ All features are protected by JWT-based authentication and role-based authorizat
 - **Responsive Design** — Mobile-friendly UI for all devices with hamburger menu on mobile
 - **Error Handling** — Comprehensive validation and error responses
 - **Docker Support** — Complete containerization with docker-compose for easy deployment
+
+## Architecture Overview
+
+The backend is organized into layered projects to separate business rules from persistence and presentation concerns:
+
+| Layer (Project) | Responsibility | Key Contents |
+| :--- | :--- | :--- |
+| **AMS.Domain** | Core business entities and rules | `User`, `TeacherProfile`, `StudentProfile`, `Assignment`, `Submission`, `ClassCourse`, repository interfaces |
+| **AMS.Domain.Shared** | Cross-cutting shared types | `UserRole`, `AssignmentStatus`, `SubmissionStatus`, `NotificationType` enums, domain exceptions |
+| **AMS.Application** | Business logic and use cases | App services (`AssignmentAppService`, `SubmissionAppService`, `AuthAppService`, etc.), authorization handlers, validators |
+| **AMS.Application.Contracts** | DTOs and service interfaces | Request/response DTOs, `I*AppService` interfaces — the contract between API and business logic |
+| **AMS.EntityFrameworkCore** | Data access | `AmsDbContext`, entity configurations, repository implementations, EF Core migrations |
+| **AMS.HttpApi** | API controllers | REST controllers per feature area, mapped to application services |
+| **AMS.HttpApi.Host** | Composition root | Startup, dependency injection, JWT/auth configuration, Swagger, CORS |
+| **AMS.Infrastructure** | External services | Local file storage service for attachments and avatars |
+| **AMS.DbMigrator** | Database bootstrap | Applies EF Core migrations and seeds demo data |
+| **ClientApp (frontend)** | Presentation | Next.js App Router UI, one route group per role |
+| **Tests** | Quality assurance | xUnit projects covering domain rules, application services, and controllers/authorization |
 
 ## Project Structure
 
@@ -375,4 +428,41 @@ dotnet test tests/AMS.HttpApi.Tests/AMS.HttpApi.Tests.csproj
 ### Test Coverage
 - **Application Tests** — Business logic, authorization checks, submission workflows
 - **Domain Tests** — Entity validation, domain rules (e.g., submissions, assignments)
-- **Controller Tests** — API endpoints, HTTP status codes, integration scenarios
+- **Controller Tests** — API endpoints, HTTP status codes, integration scenarios (including a dedicated RBAC integration suite that checks every role/endpoint combination)
+
+## Assumptions & Design Decisions
+
+Since the assignment brief allows a "different but suitable design," the following decisions were made where requirements were not explicit:
+
+- **User model split** — `User` holds shared account fields (name, email, password hash, role, avatar, contact info); `TeacherProfile` and `StudentProfile` are one-to-one extensions holding role-specific fields (employee ID/qualification for teachers, student ID/guardian info for students). The application layer enforces that a `TeacherProfile` can only exist for a `Teacher` and a `StudentProfile` only for a `Student`.
+- **Class hierarchy** — Classes are modeled as `AcademicYear → ClassDefinition → Group (optional) → ClassCourse (section)`, with `Subject` scoped to a `ClassCourse`. Teachers are assigned to a `Subject` + `ClassCourse` pair via `TeacherSubjectAssignment`, and students are linked to a `ClassCourse` via `StudentEnrollment` (at most one active enrollment per student at a time).
+- **Assignment → Subject, not Assignment → Class directly** — an assignment is created against a `Subject`, which is itself scoped to a class/section, so "assign to a class" is satisfied indirectly and consistently with who teaches what.
+- **One submission per student per assignment** — a student's submission is a single row that gets updated (not re-inserted) on resubmission; history of status changes (Submitted → Late/UnderReview → Graded/ResubmissionRequested → Resubmitted) is tracked via the `SubmissionStatus` enum rather than a separate audit table.
+- **File attachments are unified** — assignment attachments, submission attachments, and user avatars all go through a single `Attachment` entity (`OwnerType` + `OwnerId`) and a local file storage service, rather than separate upload pipelines per feature.
+- **Draft vs. Published assignments** — draft assignments are only visible to the owning teacher and admins; students only see assignments once `AssignmentStatus = Published`.
+- **Notifications are in-app only** — the notification system (assignment published, submission received, graded, resubmission requested) is delivered and stored in-app with per-user, per-type preferences; it does not send email/SMS (see Known Limitations).
+- **PostgreSQL over MongoDB** — chosen because the domain is inherently relational (users/roles/classes/subjects/assignments/submissions with strict foreign-key relationships), which Entity Framework Core + PostgreSQL models directly with migrations, constraints, and unique indexes.
+
+## Known Limitations
+
+- **No email/SMS notifications** — notifications are in-app only; there is no outbound email or SMS integration for assignment/grading events.
+- **No password reset / forgot-password flow** — account creation and password changes are handled by Admin/Auth endpoints; there is no self-service "forgot password" email flow.
+- **Local file storage only** — attachments are stored on local disk (`App_Data/Uploads`, or the `ams-uploads` Docker volume) rather than a cloud object store (e.g. S3/Azure Blob); this is fine for local/demo use but would need to change for a multi-instance production deployment.
+- **No automated CI pipeline** — tests are run manually via `dotnet test`; the repository does not currently include a CI workflow (e.g. GitHub Actions).
+- **Single active enrollment per student** — the data model assumes a student belongs to one class/section at a time; it does not support a student being concurrently enrolled in multiple classes.
+
+## Assignment Requirements Checklist
+
+| Requirement | Status |
+| :--- | :--- |
+| Frontend: Next.js, React, TypeScript, responsive UI, form validation, API integration | ✅ |
+| Backend: ASP.NET Core Web API, C#, RESTful API, validation, error handling, logging, Swagger/OpenAPI | ✅ |
+| Database: PostgreSQL with defined relationships | ✅ |
+| Authentication: Login, JWT-based auth, role-based authorization | ✅ |
+| Testing: Unit tests covering business rules, authorization, submission workflows | ✅ |
+| Database files: migrations + seed data, no manual table creation needed | ✅ (`AMS.DbMigrator`) |
+| README: overview, features, tech stack, structure, setup, DB setup, run frontend/backend, run tests, assumptions, limitations | ✅ (this document) |
+| Demo credentials for Admin, Teacher, Student | ✅ (see [Demo Credentials](#demo-credentials)) |
+| `.env.example` with no real secrets | ✅ (root `.env.example` and `frontend/.env.local.example`) |
+| Optional: Docker configuration | ✅ (`docker-compose.yml`) |
+| Optional: Swagger/API URL | ✅ (`/swagger` in development) |
