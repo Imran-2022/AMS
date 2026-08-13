@@ -95,6 +95,17 @@ function normalizeApiPayload<T>(payload: T): T {
     });
   }
 
+  if (Array.isArray(clone.feedbackAttachments)) {
+    clone.feedbackAttachments = clone.feedbackAttachments.map((item: unknown) => {
+      if (!item || typeof item !== 'object') return item;
+      const normalized = { ...(item as any) };
+      if (typeof normalized.downloadUrl === 'string') {
+        normalized.downloadUrl = normalizeDownloadUrl(normalized.downloadUrl);
+      }
+      return normalized;
+    });
+  }
+
   return clone;
 }
 
@@ -202,6 +213,7 @@ export type SubmissionDto = {
   classCourseSection: string;
   groupName?: string;
   attachments?: AttachmentDto[];
+  feedbackAttachments?: AttachmentDto[];
 };
 
 export type UserDto = {

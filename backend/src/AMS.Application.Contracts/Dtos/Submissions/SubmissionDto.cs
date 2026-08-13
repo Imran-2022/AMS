@@ -24,6 +24,7 @@ public class SubmissionDto
     public string ClassCourseSection { get; set; } = string.Empty;
     public string? GroupName { get; set; }
     public IReadOnlyList<AttachmentDto> Attachments { get; set; } = Array.Empty<AttachmentDto>();
+    public IReadOnlyList<AttachmentDto> FeedbackAttachments { get; set; } = Array.Empty<AttachmentDto>();
 }
 
 public class CreateSubmissionDto

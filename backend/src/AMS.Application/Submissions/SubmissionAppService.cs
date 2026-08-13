@@ -262,6 +262,7 @@ public class SubmissionAppService : ISubmissionAppService
         var classCourse = await _classCourseRepository.GetByIdAsync(subject.ClassCourseId, cancellationToken) ?? throw new NotFoundException("Class/course not found.");
         var group = classCourse.GroupId.HasValue ? await _groupRepository.GetByIdAsync(classCourse.GroupId.Value, cancellationToken) : null;
         var attachments = await _attachmentAppService.ListAsync("Submission", submission.Id);
+        var feedbackAttachments = await _attachmentAppService.ListAsync("SubmissionFeedback", submission.Id);
 
         var initials = string.Concat(student.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => x[0])).ToUpperInvariant();
 
@@ -288,7 +289,8 @@ public class SubmissionAppService : ISubmissionAppService
             ClassCourseName = classCourse.Name,
             ClassCourseSection = classCourse.Section,
             GroupName = group?.Name,
-            Attachments = attachments
+            Attachments = attachments,
+            FeedbackAttachments = feedbackAttachments
         };
     }
 }
