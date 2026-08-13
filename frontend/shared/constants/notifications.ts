@@ -2,7 +2,9 @@ export type NotificationTypeKey =
   | 'AssignmentPublished'
   | 'SubmissionReceived'
   | 'SubmissionGraded'
-  | 'ResubmissionRequested';
+  | 'ResubmissionRequested'
+  | 'SubmissionResubmitted'
+  | 'SubmissionResubmissionGraded';
 
 export type NotificationDefinition = {
   type: NotificationTypeKey;
@@ -28,6 +30,14 @@ export const NOTIFICATION_DEFINITIONS: Record<NotificationTypeKey, Omit<Notifica
     title: 'Resubmission requested',
     description: 'Prompt me when a resubmission is requested.',
   },
+  SubmissionResubmitted: {
+    title: 'Submission resubmitted',
+    description: 'Notify me when a student resubmits work after being requested.',
+  },
+  SubmissionResubmissionGraded: {
+    title: 'Resubmission graded',
+    description: 'Notify me when my resubmitted work has been graded.',
+  },
 };
 
 export function getNotificationDefinitionsForRole(role: 'Admin' | 'Teacher' | 'Student'): NotificationDefinition[] {
@@ -43,11 +53,12 @@ export function getNotificationDefinitionsForRole(role: 'Admin' | 'Teacher' | 'S
         { type: 'AssignmentPublished', ...NOTIFICATION_DEFINITIONS.AssignmentPublished, checked: true },
         { type: 'SubmissionGraded', ...NOTIFICATION_DEFINITIONS.SubmissionGraded, checked: true },
         { type: 'ResubmissionRequested', ...NOTIFICATION_DEFINITIONS.ResubmissionRequested, checked: true },
+        { type: 'SubmissionResubmissionGraded', ...NOTIFICATION_DEFINITIONS.SubmissionResubmissionGraded, checked: true },
       ];
     case 'Teacher':
       return [
         { type: 'SubmissionReceived', ...NOTIFICATION_DEFINITIONS.SubmissionReceived, checked: true },
-        { type: 'SubmissionGraded', ...NOTIFICATION_DEFINITIONS.SubmissionGraded, checked: true },
+        { type: 'SubmissionResubmitted', ...NOTIFICATION_DEFINITIONS.SubmissionResubmitted, checked: true },
       ];
     default:
       return base;

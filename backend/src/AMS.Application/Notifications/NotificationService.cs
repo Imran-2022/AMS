@@ -10,6 +10,8 @@ public interface INotificationService
     Task NotifySubmissionReceivedAsync(Submission submission, Assignment assignment, CancellationToken cancellationToken = default);
     Task NotifySubmissionGradedAsync(Submission submission, Assignment assignment, CancellationToken cancellationToken = default);
     Task NotifyResubmissionRequestedAsync(Submission submission, Assignment assignment, CancellationToken cancellationToken = default);
+    Task NotifySubmissionResubmittedAsync(Submission submission, Assignment assignment, CancellationToken cancellationToken = default);
+    Task NotifySubmissionResubmissionGradedAsync(Submission submission, Assignment assignment, CancellationToken cancellationToken = default);
 }
 
 public class NotificationService : INotificationService
@@ -84,6 +86,30 @@ public class NotificationService : INotificationService
             NotificationType.ResubmissionRequested,
             "Resubmission requested",
             $"The teacher has requested a resubmission for '{assignment.Title}'.",
+            "Submission",
+            submission.Id,
+            cancellationToken);
+    }
+
+    public async Task NotifySubmissionResubmittedAsync(Submission submission, Assignment assignment, CancellationToken cancellationToken = default)
+    {
+        await CreateIfEnabledAsync(
+            assignment.TeacherId,
+            NotificationType.SubmissionResubmitted,
+            "Submission resubmitted",
+            $"A student has resubmitted work for '{assignment.Title}'.",
+            "Submission",
+            submission.Id,
+            cancellationToken);
+    }
+
+    public async Task NotifySubmissionResubmissionGradedAsync(Submission submission, Assignment assignment, CancellationToken cancellationToken = default)
+    {
+        await CreateIfEnabledAsync(
+            submission.StudentId,
+            NotificationType.SubmissionResubmissionGraded,
+            "Resubmission graded",
+            $"Your resubmission for '{assignment.Title}' has been graded.",
             "Submission",
             submission.Id,
             cancellationToken);

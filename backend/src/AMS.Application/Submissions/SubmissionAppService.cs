@@ -148,14 +148,26 @@ public class SubmissionAppService : ISubmissionAppService
         if (submission.Status == SubmissionStatus.ResubmissionRequested)
         {
             submission.Resubmit(input.ContentText ?? submission.ContentText, DateTime.UtcNow, assignment.Deadline, assignment.AllowLateSubmission);
+            
+            // Delete feedback attachments when student resubmits
+            var feedbackAttachments = await _attachmentAppService.ListAsync("SubmissionFeedback", submission.Id);
+            foreach (var attachment in feedbackAttachments)
+            {
+                await _attachmentAppService.DeleteAsync(attachment.Id);
+            }
+            
+            await _submissionRepository.UpdateAsync(submission, cancellationToken);
+            
+            // Notify teacher of student resubmission
+            await _notificationService.NotifySubmissionResubmittedAsync(submission, assignment, cancellationToken);
         }
         else
         {
             // Allow editing before deadline (or if late submissions allowed). Disallow edits to graded submissions.
             submission.EditBeforeDeadline(input.ContentText ?? submission.ContentText, DateTime.UtcNow, assignment.Deadline, assignment.AllowLateSubmission);
+            await _submissionRepository.UpdateAsync(submission, cancellationToken);
         }
 
-        await _submissionRepository.UpdateAsync(submission, cancellationToken);
         return await ToDtoAsync(submission, cancellationToken).ConfigureAwait(false);
     }
 
@@ -176,11 +188,20 @@ public class SubmissionAppService : ISubmissionAppService
         var auth = await _authorizationService.AuthorizeAsync(principal, id, "TeachersOrAdmins");
         if (!auth.Succeeded) throw new ForbiddenException("Only teachers and admins can grade submissions.");
 
+        var wasResubmitted = submission.Status == SubmissionStatus.Resubmitted;
+        
         submission.MarkGraded(input.Marks, input.Feedback, _currentUser.UserId, assignment);
         await _submissionRepository.UpdateAsync(submission, cancellationToken);
 
-        // Await the student notification before returning so it is definitely saved.
-        await _notificationService.NotifySubmissionGradedAsync(submission, assignment, cancellationToken);
+        // Send appropriate notification based on whether this is grading a resubmission
+        if (wasResubmitted)
+        {
+            await _notificationService.NotifySubmissionResubmissionGradedAsync(submission, assignment, cancellationToken);
+        }
+        else
+        {
+            await _notificationService.NotifySubmissionGradedAsync(submission, assignment, cancellationToken);
+        }
 
         return await ToDtoAsync(submission, cancellationToken).ConfigureAwait(false);
     }

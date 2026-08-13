@@ -196,11 +196,16 @@ export default function TeacherSubmissionDetailPage() {
   const saveGrade = () => {
     if (!submission) return;
 
-    const isResubmissionRequest = status === 'ResubmissionRequested';
-    setConfirmModal({
-      open: true,
-      mode: isResubmissionRequest ? 'resubmission' : 'update',
-    });
+    // Only show confirmation for destructive resubmission action
+    if (status === 'ResubmissionRequested') {
+      setConfirmModal({
+        open: true,
+        mode: 'resubmission',
+      });
+    } else {
+      // Direct save for normal updates
+      void performSaveGrade();
+    }
   };
 
   const performSaveGrade = async () => {
@@ -219,7 +224,7 @@ export default function TeacherSubmissionDetailPage() {
         updated = await updateSubmissionStatus(submission.id, {
           status: 'ResubmissionRequested',
         });
-      } else if (status === 'Graded') {
+      } else if (status === 'Graded' || status === 'Resubmitted') {
         if (!marks.trim()) {
           setSaveError('Please enter marks before grading this submission.');
           return;
