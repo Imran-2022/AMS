@@ -50,7 +50,7 @@ public class DashboardAppService : IDashboardAppService
             TotalStudents = users.Count(u => u.Role == UserRole.Student),
             TotalClasses = classes.Count,
             TotalSubjects = subjects.Count,
-            TotalAssignments = assignments.Count,
+            TotalAssignments = assignments.Count(a => a.Status == AssignmentStatus.Published),
             TotalSubmissions = submissions.Count
         };
     }

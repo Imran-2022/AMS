@@ -277,6 +277,7 @@ public class AssignmentAppService : IAssignmentAppService
             AllowLateSubmission = assignment.AllowLateSubmission,
             AllowResubmission = assignment.AllowResubmission,
             CreatedAt = assignment.CreatedAt,
+            UpdatedAt = assignment.UpdatedAt ?? assignment.CreatedAt,
             ClassCourseName = classCourse.Name,
             ClassCourseSection = classCourse.Section,
             GroupName = group?.Name,

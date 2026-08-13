@@ -162,6 +162,7 @@ export type AssignmentDto = {
   allowLateSubmission: boolean;
   allowResubmission: boolean;
   createdAt: string;
+  updatedAt?: string;
   submittedCount?: number;
   totalStudents?: number;
   attachments?: AttachmentDto[];

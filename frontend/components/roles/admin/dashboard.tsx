@@ -59,7 +59,7 @@ export function AdminDashboardPage() {
         getSubjects(),
       ]);
       setStats(s);
-      setRecentAssignments(assignments.slice(0, 8));
+      setRecentAssignments(assignments.filter((assignment) => assignment.status === 'Published').slice(0, 8));
       setRecentSubmissions(submissions.slice(0, 8));
       setDashboardClassCourses(classes.map((cls) => ({
         id: cls.id,
