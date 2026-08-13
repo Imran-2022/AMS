@@ -96,10 +96,12 @@ export function AddTeacherModal({
       gender: initialValues?.gender ?? '',
       qualification: initialValues?.qualification ?? '',
       joiningDate: normalizeDate(initialValues?.joiningDate),
-      subjectSpecializations: initialValues?.subjectSpecializations ?? [],
+      subjectSpecializations: Array.isArray(initialValues?.subjectSpecializations)
+        ? [...initialValues.subjectSpecializations]
+        : [],
       avatarUrl: initialValues?.avatarUrl ?? '',
     });
-  }, [open, initialValues]);
+  }, [open]);
 
   function handleChange<Key extends keyof AddTeacherFormData>(field: Key, value: AddTeacherFormData[Key]) {
     setValues((current) => ({ ...current, [field]: value }));
@@ -108,6 +110,16 @@ export function AddTeacherModal({
   function handleSpecializationChange(event: ChangeEvent<HTMLSelectElement>) {
     const selected = Array.from(event.target.selectedOptions).map((option) => option.value);
     setValues((current) => ({ ...current, subjectSpecializations: selected }));
+  }
+
+  function toggleSubjectSelection(subjectName: string) {
+    setValues((current) => {
+      const selected = current.subjectSpecializations ?? [];
+      const next = selected.includes(subjectName)
+        ? selected.filter((name) => name !== subjectName)
+        : [...selected, subjectName];
+      return { ...current, subjectSpecializations: next };
+    });
   }
 
   async function handleSubmit() {
@@ -286,20 +298,32 @@ export function AddTeacherModal({
             <label className={labelClass}>
               Subject specialization <span className="text-rose-500">*</span>
             </label>
-            <select
-              multiple
-              required
-              value={values.subjectSpecializations ?? []}
-              onChange={handleSpecializationChange}
-              className="w-full min-h-[10rem] rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-            >
-              {uniqueSubjects.map((subject) => (
-                <option key={subject.name} value={subject.name}>
-                  {subject.name}
-                </option>
-              ))}
-            </select>
-            <p className={hintClass}>Hold Ctrl/Cmd to select multiple subjects.</p>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <div className="flex flex-wrap gap-2">
+                {uniqueSubjects.map((subject) => {
+                  const checked = (values.subjectSpecializations ?? []).includes(subject.name);
+                  return (
+                    <label
+                      key={subject.name}
+                      className={`flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition ${
+                        checked
+                          ? 'border-brand-500 bg-brand-100 text-brand-700'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-100'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleSubjectSelection(subject.name)}
+                        className="h-3.5 w-3.5 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                      />
+                      <span className="select-none">{subject.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+            <p className={hintClass}>Select all subjects that apply.</p>
           </div>
         </div>
       </div>

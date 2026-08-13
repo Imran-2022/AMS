@@ -223,6 +223,8 @@ export type UserDto = {
   admissionDate?: string;
   joiningDate?: string;
   parentMobile: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type CreateUserDto = {

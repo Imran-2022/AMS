@@ -117,7 +117,13 @@ export function AdminTeachersPage() {
   async function loadTeachers() {
     try {
       const [apiUsers, apiAssignments] = await Promise.all([getUsers(), getTeacherAssignments()]);
-      const teacherUsers = apiUsers.filter((user) => user.role === 'Teacher');
+      const teacherUsers = apiUsers
+        .filter((user) => user.role === 'Teacher')
+        .sort((a, b) => {
+          const aTime = new Date((a.updatedAt ?? a.createdAt ?? a.joiningDate ?? '1970-01-01') as string).getTime();
+          const bTime = new Date((b.updatedAt ?? b.createdAt ?? b.joiningDate ?? '1970-01-01') as string).getTime();
+          return bTime - aTime;
+        });
       setTeacherAssignments(apiAssignments);
       const teacherRows = teacherUsers.map((user) => {
         const classesForTeacher = new Set(
@@ -158,6 +164,22 @@ export function AdminTeachersPage() {
     return () => document.removeEventListener('click', handleDocumentClick);
   }, [actionMenuFor]);
 
+  useEffect(() => {
+    if (!actionMenuFor) return;
+
+    function handleScrollOrResize() {
+      setActionMenuFor(null);
+    }
+
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
+  }, [actionMenuFor]);
+
   function setState(s: 'data' | 'empty' | 'error') {
     setMode(s);
     if (s !== 'data') setActionMenuFor(null);
@@ -183,6 +205,24 @@ export function AdminTeachersPage() {
     setEditingTeacher(t);
     setIsTeacherModalOpen(true);
     setActionMenuFor(null);
+  }
+
+  function openActionMenuForTeacher(t: TeacherRow, button: HTMLButtonElement) {
+    const rect = button.getBoundingClientRect();
+    const menuWidth = 176;
+    const menuHeight = 180;
+    const padding = 8;
+    const left = Math.min(
+      Math.max(padding, rect.right - menuWidth),
+      window.innerWidth - menuWidth - padding
+    );
+    const top = Math.min(
+      Math.max(padding, rect.bottom + 8),
+      window.innerHeight - menuHeight - padding
+    );
+
+    setMenuPosition({ top, left });
+    setActionMenuFor(actionMenuFor === t.id ? null : t.id);
   }
 
   async function confirmDeleteTeacher() {
@@ -419,9 +459,7 @@ export function AdminTeachersPage() {
                               type="button" data-action-button={t.id}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const target = e.currentTarget.getBoundingClientRect();
-                                setMenuPosition({ top: target.bottom + 8, left: target.right - 176 });
-                                setActionMenuFor(actionMenuFor === t.id ? null : t.id);
+                                openActionMenuForTeacher(t, e.currentTarget);
                               }}
                               className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 cursor-pointer"
                             >

@@ -373,7 +373,7 @@ export default function SubjectsAssignments() {
                         {teacherName === 'Unassigned' ? (
                           <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-[11.5px] font-bold text-amber-600"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"/>Unassigned</span>
                         ) : (
-                          <div className="flex items-center gap-2"><div className="w-6 h-6 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-[10px] font-bold">{teacherName.split(' ').map((p) => p[0]).join('')}</div><span className="text-slate-600">{teacherName}</span></div>
+                          <span className="text-slate-600">{teacherName}</span>
                         )}
                       </td>
                       <td className="px-5 py-3.5 text-right">

@@ -313,6 +313,8 @@ public class UserAppService : IUserAppService
         DateOfBirth = user.DateOfBirth,
         AdmissionDate = user.AdmissionDate,
         JoiningDate = user.JoiningDate,
-        ParentMobile = user.ParentMobile
+        ParentMobile = user.ParentMobile,
+        CreatedAt = user.CreatedAt,
+        UpdatedAt = user.UpdatedAt
     };
 }

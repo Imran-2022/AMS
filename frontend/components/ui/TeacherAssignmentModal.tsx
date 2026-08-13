@@ -65,9 +65,13 @@ export function TeacherAssignmentModal({
   const [subjectId, setSubjectId] = useState(initialValues?.subjectId ?? '');
 
   const classNames = Array.from(new Set(classCourses.map((cls) => cls.name)));
-  const sectionOptions = classCourses
-    .filter((cls) => cls.name === selectedClassName)
-    .map((cls) => cls.section);
+  const sectionOptions = Array.from(
+    new Set(
+      classCourses
+        .filter((cls) => cls.name === selectedClassName)
+        .map((cls) => cls.section)
+    )
+  );
   const selectedClass = classCourses.find((cls) => cls.name === selectedClassName && cls.section === selectedSection);
   const classCourseId = selectedClass?.id ?? '';
 
@@ -214,7 +218,7 @@ export function TeacherAssignmentModal({
                 {selectedClassName ? 'Select section' : 'Select class first'}
               </option>
               {sectionOptions.map((section) => (
-                <option key={section} value={section}>
+                <option key={`${selectedClassName}-${section}`} value={section}>
                   {section}
                 </option>
               ))}
