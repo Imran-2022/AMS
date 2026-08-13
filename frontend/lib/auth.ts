@@ -50,6 +50,7 @@ export function clearStoredAuth() {
   window.localStorage.removeItem('ams-user');
   window.localStorage.removeItem('ams-token');
   window.localStorage.removeItem('ams-refresh-token');
+  window.localStorage.removeItem('ams-avatar-url');
 }
 
 export function getStoredAvatarUrl() {

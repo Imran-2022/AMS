@@ -398,10 +398,8 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
     const user = getStoredUser();
     setUserName(user?.fullName ?? user?.email ?? undefined);
     
-    const storedAvatarUrl = getStoredAvatarUrl();
-    if (storedAvatarUrl) {
-      setAvatarUrl(withAvatarCacheBust(storedAvatarUrl));
-    } else if (user?.avatarUrl) {
+    // Use avatar from user object, not separate localStorage key
+    if (user?.avatarUrl) {
       const base = API_BASE_URL;
       const avatar = user.avatarUrl.startsWith('http') ? user.avatarUrl : `${base}${user.avatarUrl}`;
       setAvatarUrl(withAvatarCacheBust(avatar));
@@ -428,9 +426,12 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
 
   useEffect(() => {
     const handleAvatarUpdate = () => {
-      const storedAvatarUrl = getStoredAvatarUrl();
-      if (storedAvatarUrl) {
-        setAvatarUrl(withAvatarCacheBust(storedAvatarUrl));
+      // Reload user data to get the updated avatar
+      const user = getStoredUser();
+      if (user?.avatarUrl) {
+        const base = API_BASE_URL;
+        const avatar = user.avatarUrl.startsWith('http') ? user.avatarUrl : `${base}${user.avatarUrl}`;
+        setAvatarUrl(withAvatarCacheBust(avatar));
       }
     };
 
@@ -439,7 +440,7 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
     return () => {
       window.removeEventListener('ams-avatar-updated', handleAvatarUpdate);
     };
-  }, [])
+  }, []);
 
   useEffect(() => {
     // Mirror legacy layout CSS which relies on `body.sidebar-collapsed`

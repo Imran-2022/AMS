@@ -7,6 +7,7 @@ import { AppShell } from '@/shared/layout';
 import { Button } from '@/shared/ui/Button';
 import { AmsPermissionConfirmationModal, FileUpload } from '@/components/ui';
 import { FileText, X } from 'lucide-react';
+import { emitToast } from '@/components/ui/Toast';
 import {
   getSubmission,
   gradeSubmission,
@@ -275,6 +276,9 @@ export default function TeacherSubmissionDetailPage() {
         downloadUrl: attachment.downloadUrl,
         sizeBytes: attachment.sizeBytes,
       })));
+      
+      // Show success toast
+      emitToast('Feedback submitted successfully', 'success');
     } catch (err) {
       if (uploadedAttachmentIds.length > 0) {
         await Promise.allSettled(uploadedAttachmentIds.map((id) => deleteAttachment(id)));

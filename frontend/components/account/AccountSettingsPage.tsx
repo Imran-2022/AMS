@@ -5,7 +5,7 @@ import { AppShell } from '@/shared/layout'
 import { API_BASE_URL, changePassword, getCurrentUser, updateUser, type UserDto } from '@/lib/api'
 import { getNotificationPreferences, updateNotificationPreference } from '@/lib/api/notifications'
 import { uploadFile } from '@/lib/api/files'
-import { notifyAvatarUpdated, setStoredAvatarUrl, setStoredUser, withAvatarCacheBust } from '@/lib/auth'
+import { notifyAvatarUpdated, setStoredUser, withAvatarCacheBust } from '@/lib/auth'
 import { emitToast } from '@/components/ui'
 import { getNotificationDefinitionsForRole } from '@/shared/constants/notifications'
 
@@ -148,7 +148,6 @@ export function AccountSettingsPage({
           avatarUrl: updated.avatarUrl,
         })
 
-        setStoredAvatarUrl(avatarUrlWithTimestamp)
         notifyAvatarUpdated()
         emitToast('Profile photo updated', 'success')
       } else {
