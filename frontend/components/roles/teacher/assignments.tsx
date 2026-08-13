@@ -173,22 +173,28 @@ export function TeacherAssignmentsPage() {
   }, [selectedClassLabel]);
 
   const visibleAssignments = useMemo(() => {
-    return assignments.filter((assignment) => {
-      const matchesFilter =
-        filter === 'all' ||
-        (filter === 'published' && assignment.status === 'Published') ||
-        (filter === 'drafts' && assignment.status === 'Draft');
+    return assignments
+      .filter((assignment) => {
+        const matchesFilter =
+          filter === 'all' ||
+          (filter === 'published' && assignment.status === 'Published') ||
+          (filter === 'drafts' && assignment.status === 'Draft');
 
-      const matchesClass = classFilter === 'All classes' || `${assignment.classCourseName} — ${assignment.classCourseSection}` === classFilter;
-      const matchesSection = sectionFilter === 'All sections' || assignment.classCourseSection === sectionFilter;
-      const matchesSubject = subjectFilter === 'All subjects' || assignment.subjectName === subjectFilter;
-      const matchesSearch = [assignment.title, assignment.subjectName, assignment.classCourseName]
-        .join(' ')
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
+        const matchesClass = classFilter === 'All classes' || `${assignment.classCourseName} — ${assignment.classCourseSection}` === classFilter;
+        const matchesSection = sectionFilter === 'All sections' || assignment.classCourseSection === sectionFilter;
+        const matchesSubject = subjectFilter === 'All subjects' || assignment.subjectName === subjectFilter;
+        const matchesSearch = [assignment.title, assignment.subjectName, assignment.classCourseName]
+          .join(' ')
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase());
 
-      return matchesFilter && matchesClass && matchesSection && matchesSubject && matchesSearch;
-    });
+        return matchesFilter && matchesClass && matchesSection && matchesSubject && matchesSearch;
+      })
+      .sort((a, b) => {
+        const aTime = new Date((a.updatedAt ?? a.createdAt) as string).getTime();
+        const bTime = new Date((b.updatedAt ?? b.createdAt) as string).getTime();
+        return bTime - aTime;
+      });
   }, [assignments, classFilter, filter, searchTerm, sectionFilter, subjectFilter]);
 
   useEffect(() => {

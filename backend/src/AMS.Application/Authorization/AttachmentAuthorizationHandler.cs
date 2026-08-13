@@ -56,6 +56,15 @@ public class AttachmentAuthorizationHandler : AuthorizationHandler<AttachmentAcc
                     return;
                 }
             }
+            else if (attachment.OwnerType == "SubmissionFeedback")
+            {
+                var submission = await _submissionRepository.GetByIdAsync(attachment.OwnerId);
+                if (submission != null && submission.StudentId == currentUserId)
+                {
+                    context.Succeed(requirement);
+                    return;
+                }
+            }
             else if (attachment.OwnerType == "Assignment")
             {
                 var assignment = await _assignmentRepository.GetByIdAsync(attachment.OwnerId);
@@ -77,6 +86,19 @@ public class AttachmentAuthorizationHandler : AuthorizationHandler<AttachmentAcc
         else
         {
             if (attachment.OwnerType == "Submission")
+            {
+                var submission = await _submissionRepository.GetByIdAsync(attachment.OwnerId);
+                if (submission != null)
+                {
+                    var assignment = await _assignmentRepository.GetByIdAsync(submission.AssignmentId);
+                    if (assignment != null && assignment.TeacherId == currentUserId)
+                    {
+                        context.Succeed(requirement);
+                        return;
+                    }
+                }
+            }
+            else if (attachment.OwnerType == "SubmissionFeedback")
             {
                 var submission = await _submissionRepository.GetByIdAsync(attachment.OwnerId);
                 if (submission != null)

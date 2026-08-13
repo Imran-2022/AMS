@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/shared/layout';
-import { Button, Card, Metric, PageHeader, Pill, RoleBadge, Th, Td, AddStudentModal, AddTeacherModal, TeacherAssignmentModal } from '@/shared/ui';
+import { Button, Card, Metric, PageHeader, Pill, RoleBadge, Th, Td } from '@/shared/ui';
+import { AddStudentModal, AddTeacherModal, TeacherAssignmentModal } from '@/components/roles/admin/shared';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
 import { getAssignments, getSubmissions, getUsers as apiGetUsers, getSubjects } from '@/lib/api';
 import { MoreVertical, UserPlus, UserCheck, BookOpen, ClipboardList } from 'lucide-react';
@@ -59,16 +60,16 @@ export function AdminDashboardPage() {
         getSubjects(),
       ]);
       setStats(s);
-      setRecentAssignments(assignments.slice(0, 8));
+      setRecentAssignments(assignments.filter((assignment) => assignment.status === 'Published').slice(0, 8));
       setRecentSubmissions(submissions.slice(0, 8));
       setDashboardClassCourses(classes.map((cls) => ({
         id: cls.id,
         name: cls.name,
         section: cls.section,
-        academicYear: cls.academicYear,
-        groupId: cls.groupId,
-        groupName: cls.groupName,
-      })));
+        academicYear: cls.academicYear ?? '',
+        groupId: cls.groupId ?? undefined,
+        groupName: cls.groupName ?? undefined,
+      })) as ClassCourseRecord[]);
       setDashboardTeachers(users.filter((user: any) => user.role === 'Teacher').map((teacher: any) => ({
         id: teacher.id,
         fullName: teacher.fullName,

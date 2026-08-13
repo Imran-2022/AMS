@@ -77,11 +77,25 @@ public class NotificationAppService : INotificationAppService
         var existing = await _notificationPreferenceRepository.GetAsync(userId, type, cancellationToken);
         if (existing is null)
         {
+            // Create new preference if it doesn't exist
             existing = new NotificationPreference(userId, type, isEnabled);
-            await _notificationPreferenceRepository.AddAsync(existing, cancellationToken);
+            try
+            {
+                await _notificationPreferenceRepository.AddAsync(existing, cancellationToken);
+            }
+            catch (InvalidOperationException)
+            {
+                // Handle race condition: another request already created this preference
+                // Re-fetch and update it instead
+                existing = await _notificationPreferenceRepository.GetAsync(userId, type, cancellationToken) 
+                    ?? throw new InvalidOperationException("Failed to create or retrieve notification preference.");
+                existing.SetEnabled(isEnabled);
+                await _notificationPreferenceRepository.UpdateAsync(existing, cancellationToken);
+            }
         }
         else
         {
+            // Update existing preference
             existing.SetEnabled(isEnabled);
             await _notificationPreferenceRepository.UpdateAsync(existing, cancellationToken);
         }

@@ -10,10 +10,35 @@ public class UserAppService : IUserAppService
 {
     private readonly IUserRepository _userRepository;
     private readonly IFileAppService _fileAppService;
-    public UserAppService(IUserRepository userRepository, IFileAppService fileAppService)
+    private readonly IStudentEnrollmentRepository _enrollmentRepository;
+    private readonly IClassCourseRepository _classCourseRepository;
+    private readonly IGroupRepository _groupRepository;
+    private readonly INotificationPreferenceRepository _notificationPreferenceRepository;
+
+    public UserAppService(
+        IUserRepository userRepository,
+        IFileAppService fileAppService,
+        IStudentEnrollmentRepository enrollmentRepository,
+        IClassCourseRepository classCourseRepository,
+        IGroupRepository groupRepository,
+        INotificationPreferenceRepository notificationPreferenceRepository)
     {
         _userRepository = userRepository;
         _fileAppService = fileAppService;
+        _enrollmentRepository = enrollmentRepository;
+        _classCourseRepository = classCourseRepository;
+        _groupRepository = groupRepository;
+        _notificationPreferenceRepository = notificationPreferenceRepository;
+    }
+
+    private async Task InitializeNotificationPreferencesAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        // Create default notification preferences for all notification types
+        foreach (NotificationType type in Enum.GetValues<NotificationType>())
+        {
+            var preference = new NotificationPreference(userId, type, isEnabled: true);
+            await _notificationPreferenceRepository.AddAsync(preference, cancellationToken);
+        }
     }
 
     private static DateTime? NormalizeDateTimeUtc(DateTime? value)
@@ -74,12 +99,13 @@ public class UserAppService : IUserAppService
         StudentProfile? studentProfile = null;
         if (role == UserRole.Student)
         {
+            if (string.IsNullOrWhiteSpace(input.Email)) throw new ValidationException("Email is required for student (needed for login).");
             if (string.IsNullOrWhiteSpace(input.StudentId)) throw new ValidationException("StudentId is required for student.");
             if (string.IsNullOrWhiteSpace(input.GuardianName)) throw new ValidationException("Guardian name is required for student.");
-            if (string.IsNullOrWhiteSpace(input.GuardianEmail)) throw new ValidationException("Guardian email is required for student.");
             if (string.IsNullOrWhiteSpace(input.ParentMobile)) throw new ValidationException("Parent mobile is required for student.");
+            if (input.AdmissionDate == null) throw new ValidationException("Admission date is required for student.");
             var admission = NormalizeDateTimeUtc(input.AdmissionDate) ?? DateTime.UtcNow;
-            studentProfile = new StudentProfile(userId, input.StudentId, input.GuardianName, input.GuardianEmail, input.ParentMobile, admission);
+            studentProfile = new StudentProfile(userId, input.StudentId, input.GuardianName, input.GuardianEmail ?? string.Empty, input.ParentMobile, admission);
         }
 
         var user = new User(
@@ -100,6 +126,10 @@ public class UserAppService : IUserAppService
             studentProfile: studentProfile);
 
         await _userRepository.AddAsync(user, cancellationToken);
+        
+        // Initialize notification preferences for the new user with all types enabled by default
+        await InitializeNotificationPreferencesAsync(userId, cancellationToken);
+        
         return ToDto(user);
     }
 
@@ -173,7 +203,7 @@ public class UserAppService : IUserAppService
             var gEmail = input.GuardianEmail ?? user.GuardianEmail;
             var pMobile = input.ParentMobile ?? user.ParentMobile;
             var admission = input.AdmissionDate is not null ? NormalizeDateTimeUtc(input.AdmissionDate)!.Value : user.AdmissionDate ?? DateTime.UtcNow;
-            if (string.IsNullOrWhiteSpace(sid) || string.IsNullOrWhiteSpace(gName) || string.IsNullOrWhiteSpace(gEmail) || string.IsNullOrWhiteSpace(pMobile))
+            if (string.IsNullOrWhiteSpace(sid) || string.IsNullOrWhiteSpace(gName) || string.IsNullOrWhiteSpace(pMobile))
             {
                 if (user.StudentProfile is not null)
                 {
@@ -181,12 +211,12 @@ public class UserAppService : IUserAppService
                 }
                 else
                 {
-                    throw new ValidationException("Student profile requires student id, guardian info and parent mobile.");
+                    throw new ValidationException("Student profile requires student id, guardian name and parent mobile.");
                 }
             }
             else
             {
-                studentProfile = new StudentProfile(user.Id, sid, gName, gEmail, pMobile, admission);
+                studentProfile = new StudentProfile(user.Id, sid, gName, gEmail ?? string.Empty, pMobile, admission);
             }
         }
 
@@ -211,7 +241,7 @@ public class UserAppService : IUserAppService
             }
         }
 
-        return ToDto(user);
+        return ToDto(updatedUser);
     }
 
     public async Task<UserDto> ToggleActiveAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
@@ -227,6 +257,57 @@ public class UserAppService : IUserAppService
     {
         if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can manage users.");
         await _userRepository.DeleteAsync(id, cancellationToken);
+    }
+
+    public async Task<string> GetNextStudentIdAsync(Guid classCourseId, Guid? groupId, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
+    {
+        if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can manage users.");
+
+        var classCourse = await _classCourseRepository.GetByIdAsync(classCourseId, cancellationToken)
+            ?? throw new NotFoundException("Class/course not found.");
+
+        // A ClassCourse already represents one specific class + section + group
+        // combination (see ClassCourse.GroupId), so every enrollment scoped to this
+        // classCourseId already belongs to exactly the class/group being asked about.
+        // No extra string-based filtering is needed (and the previous implementation's
+        // heuristic of matching student-id string shape was unreliable and ignored
+        // which group was actually selected).
+        var enrollments = await _enrollmentRepository.GetByClassCourseAsync(classCourseId, cancellationToken);
+        var nextSerial = enrollments.Count + 1;
+
+        var effectiveGroupId = groupId ?? classCourse.GroupId;
+        if (effectiveGroupId.HasValue)
+        {
+            var classNumber = ExtractClassNumber(classCourse.Name)
+                ?? throw new ValidationException("Unable to generate a grouped student ID for this class.");
+
+            var group = await _groupRepository.GetByIdAsync(effectiveGroupId.Value, cancellationToken)
+                ?? throw new NotFoundException("Group not found.");
+
+            var trimmedGroupName = group.Name.Trim();
+            var groupInitial = trimmedGroupName.Length > 0
+                ? char.ToUpperInvariant(trimmedGroupName[0]).ToString()
+                : "G";
+
+            // Format: "9-S-001" (class number - group initial - serial), serial is
+            // simply "how many students are already enrolled in this exact class-course + 1".
+            return $"{classNumber}-{groupInitial}-{nextSerial:D3}";
+        }
+
+        // No group for this class (classes 1-8): "STU-0001" sequential format.
+        return $"STU-{nextSerial:D4}";
+    }
+
+    private static string? ExtractClassNumber(string className)
+    {
+        return className switch
+        {
+            "Nine" => "9",
+            "Ten" => "10",
+            "Eleven" => "11",
+            "Twelve" => "12",
+            _ => null
+        };
     }
 
     private static UserDto ToDto(User user) => new()
@@ -249,6 +330,8 @@ public class UserAppService : IUserAppService
         DateOfBirth = user.DateOfBirth,
         AdmissionDate = user.AdmissionDate,
         JoiningDate = user.JoiningDate,
-        ParentMobile = user.ParentMobile
+        ParentMobile = user.ParentMobile,
+        CreatedAt = user.CreatedAt,
+        UpdatedAt = user.UpdatedAt
     };
 }

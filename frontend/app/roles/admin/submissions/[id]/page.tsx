@@ -181,9 +181,42 @@ export default function AdminSubmissionDetailPage() {
 
               <div className="rounded-2xl border border-slate-200 bg-white p-6">
                 <p className="mb-3 text-[11px] font-bold tracking-[0.06em] text-slate-400">TEACHER'S FEEDBACK</p>
-                {isGraded && feedbackText ? (
-                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-                    <p className="text-sm text-slate-600">{feedbackText}</p>
+                {isGraded && (feedbackText || submission.feedbackAttachments?.length) ? (
+                  <div className="space-y-3">
+                    {feedbackText ? (
+                      <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                        <p className="text-sm text-slate-600">{feedbackText}</p>
+                      </div>
+                    ) : null}
+                    {submission.feedbackAttachments?.length ? (
+                      <div className="space-y-2.5">
+                        {submission.feedbackAttachments.map((attachment) => (
+                          <Button
+                            key={attachment.id}
+                            type="button"
+                            variant="ghost"
+                            onClick={() => void downloadAttachmentToBrowser(attachment.downloadUrl, attachment.originalFileName)}
+                            className="flex w-full cursor-pointer items-center gap-3 border border-slate-100 p-3 text-left transition hover:bg-slate-50"
+                          >
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
+                              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                              </svg>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold text-slate-700">{attachment.originalFileName}</p>
+                              <p className="text-[11px] text-slate-400">{attachment.contentType} · {Math.max(1, Math.round((attachment.sizeBytes ?? 0) / 1024))} KB</p>
+                            </div>
+                            <svg className="h-4 w-4 shrink-0 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                              <polyline points="7 10 12 15 17 10" />
+                              <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
+                          </Button>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 ) : isGraded ? (
                   <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">

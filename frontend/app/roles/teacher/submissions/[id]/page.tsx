@@ -4,9 +4,10 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { AppShell } from '@/shared/layout';
-import { Button } from '@/components/ui/Button';
-import { FileUpload } from '@/components/ui';
+import { Button } from '@/shared/ui/Button';
+import { AmsPermissionConfirmationModal, FileUpload } from '@/components/ui';
 import { FileText, X } from 'lucide-react';
+import { emitToast } from '@/components/ui/Toast';
 import {
   getSubmission,
   gradeSubmission,
@@ -15,6 +16,7 @@ import {
   uploadAttachment,
   deleteAttachment,
   renameAttachment,
+  listAttachments,
   type SubmissionDto,
 } from '@/lib/api';
 
@@ -41,10 +43,14 @@ export default function TeacherSubmissionDetailPage() {
   const [marks, setMarks] = useState('');
   const [feedback, setFeedback] = useState('');
   const [status, setStatus] = useState('Submitted');
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [feedbackSelectedFiles, setFeedbackSelectedFiles] = useState<File[]>([]);
+  const [feedbackAttachments, setFeedbackAttachments] = useState<Array<{ id: string; originalFileName: string; downloadUrl: string; sizeBytes: number }>>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [originalAttachmentIds, setOriginalAttachmentIds] = useState<string[]>([]);
+  const [confirmModal, setConfirmModal] = useState<{ open: boolean; mode: 'update' | 'resubmission' }>({
+    open: false,
+    mode: 'update',
+  });
 
   useEffect(() => {
     if (!submissionId) {
@@ -66,8 +72,14 @@ export default function TeacherSubmissionDetailPage() {
           setMarks(data.marks?.toString() ?? '');
           setFeedback(normalizedFeedback);
           setStatus(data.status);
-          setOriginalAttachmentIds((data.attachments ?? []).map((attachment) => attachment.id));
-          setSelectedFiles([]);
+          setFeedbackSelectedFiles([]);
+          const feedbackItems = await listAttachments('SubmissionFeedback', data.id);
+          setFeedbackAttachments(feedbackItems.map((attachment) => ({
+            id: attachment.id,
+            originalFileName: attachment.originalFileName,
+            downloadUrl: attachment.downloadUrl,
+            sizeBytes: attachment.sizeBytes,
+          })));
         }
       } catch (err) {
         if (!cancelled) {
@@ -148,42 +160,72 @@ export default function TeacherSubmissionDetailPage() {
     return { label, classes, dotClasses };
   }, [submission?.status]);
 
-  async function handleRemoveExistingAttachment(id: string) {
+  async function handleRemoveFeedbackAttachment(id: string) {
     if (!submission) return;
 
     try {
       await deleteAttachment(id);
-      const refreshed = await getSubmission(submission.id);
-      setSubmission(refreshed);
-      setOriginalAttachmentIds((refreshed.attachments ?? []).map((attachment) => attachment.id));
+      const next = await listAttachments('SubmissionFeedback', submission.id);
+      setFeedbackAttachments(next.map((attachment) => ({
+        id: attachment.id,
+        originalFileName: attachment.originalFileName,
+        downloadUrl: attachment.downloadUrl,
+        sizeBytes: attachment.sizeBytes,
+      })));
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Unable to delete attachment.');
+      setSaveError(err instanceof Error ? err.message : 'Unable to delete feedback attachment.');
     }
   }
 
-  async function handleRenameExistingAttachment(id: string, newName: string) {
+  async function handleRenameFeedbackAttachment(id: string, newName: string) {
     if (!submission) return;
 
     try {
       await renameAttachment(id, newName);
-      const refreshed = await getSubmission(submission.id);
-      setSubmission(refreshed);
-      setOriginalAttachmentIds((refreshed.attachments ?? []).map((attachment) => attachment.id));
+      const next = await listAttachments('SubmissionFeedback', submission.id);
+      setFeedbackAttachments(next.map((attachment) => ({
+        id: attachment.id,
+        originalFileName: attachment.originalFileName,
+        downloadUrl: attachment.downloadUrl,
+        sizeBytes: attachment.sizeBytes,
+      })));
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Unable to rename attachment.');
+      setSaveError(err instanceof Error ? err.message : 'Unable to rename feedback attachment.');
     }
   }
 
-  const saveGrade = async () => {
+  const saveGrade = () => {
     if (!submission) return;
 
+    // Only show confirmation for destructive resubmission action
+    if (status === 'ResubmissionRequested') {
+      setConfirmModal({
+        open: true,
+        mode: 'resubmission',
+      });
+    } else {
+      // Direct save for normal updates
+      void performSaveGrade();
+    }
+  };
+
+  const performSaveGrade = async () => {
+    if (!submission) return;
+
+    setConfirmModal({ open: false, mode: 'update' });
     setSaveError(null);
     setSaving(true);
+
+    let uploadedAttachmentIds: string[] = [];
 
     try {
       let updated: SubmissionDto;
 
-      if (status === 'Graded') {
+      if (status === 'ResubmissionRequested') {
+        updated = await updateSubmissionStatus(submission.id, {
+          status: 'ResubmissionRequested',
+        });
+      } else if (status === 'Graded' || status === 'Resubmitted') {
         if (!marks.trim()) {
           setSaveError('Please enter marks before grading this submission.');
           return;
@@ -204,26 +246,43 @@ export default function TeacherSubmissionDetailPage() {
           marks: numericMarks,
           feedback: feedback.trim() || undefined,
         });
+        setStatus('Graded');
       } else {
         updated = await updateSubmissionStatus(submission.id, {
           status,
         });
       }
 
-      if (selectedFiles.length > 0) {
-        await Promise.all(selectedFiles.map((file) => uploadAttachment('Submission', updated.id, file)));
+      if (feedbackSelectedFiles.length > 0) {
+        const newlyUploaded = await Promise.all(feedbackSelectedFiles.map(async (file) => {
+          const created = await uploadAttachment('SubmissionFeedback', updated.id, file);
+          return created?.id ?? null;
+        }));
+        uploadedAttachmentIds = newlyUploaded.filter((id): id is string => Boolean(id));
       }
 
       const refreshed = await getSubmission(updated.id);
+      const nextFeedbackAttachments = await listAttachments('SubmissionFeedback', updated.id);
       const normalizedFeedback = normalizeFeedbackText(refreshed.feedback);
 
       setSubmission(refreshed);
       setMarks(refreshed.marks?.toString() ?? '');
       setFeedback(normalizedFeedback);
       setStatus(refreshed.status);
-      setSelectedFiles([]);
-      setOriginalAttachmentIds((refreshed.attachments ?? []).map((attachment) => attachment.id));
+      setFeedbackSelectedFiles([]);
+      setFeedbackAttachments(nextFeedbackAttachments.map((attachment) => ({
+        id: attachment.id,
+        originalFileName: attachment.originalFileName,
+        downloadUrl: attachment.downloadUrl,
+        sizeBytes: attachment.sizeBytes,
+      })));
+      
+      // Show success toast
+      emitToast('Feedback submitted successfully', 'success');
     } catch (err) {
+      if (uploadedAttachmentIds.length > 0) {
+        await Promise.allSettled(uploadedAttachmentIds.map((id) => deleteAttachment(id)));
+      }
       setSaveError(err instanceof Error ? err.message : 'Unable to save changes.');
     } finally {
       setSaving(false);
@@ -233,6 +292,21 @@ export default function TeacherSubmissionDetailPage() {
   return (
     <AppShell role="Teacher" breadcrumb="Teacher / Grade Submission">
       <div className="space-y-5">
+        <AmsPermissionConfirmationModal
+          open={confirmModal.open}
+          title={confirmModal.mode === 'resubmission' ? 'Confirm resubmission request?' : 'Update feedback?'}
+          description={
+            confirmModal.mode === 'resubmission'
+              ? 'This will clear the current feedback and marks for this submission and notify the student to resubmit their work.'
+              : 'Are you sure you want to update the feedback for this submission?'
+          }
+          cancelLabel="Cancel"
+          confirmLabel="Yes"
+          confirmVariant={confirmModal.mode === 'resubmission' ? 'danger' : 'primary'}
+          onClose={() => setConfirmModal({ open: false, mode: 'update' })}
+          onConfirm={() => void performSaveGrade()}
+        />
+
         {error ? (
           <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>
         ) : null}
@@ -271,14 +345,18 @@ export default function TeacherSubmissionDetailPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-[1fr_380px] gap-4 items-start">
+            <div className="grid grid-cols-[1fr_520px] gap-5 items-start">
               <div className="space-y-5">
+                <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                  <p className="text-[11px] font-bold tracking-[0.06em] text-slate-400">SUBMISSION DESCRIPTION</p>
+                  <p className="mt-3 text-sm leading-relaxed text-slate-600">&ldquo;{submission.contentText || 'No description provided.'}&rdquo;</p>
+                </div>
                 <div className="rounded-2xl border border-slate-200 bg-white p-5">
                   <div className="mb-3 flex items-center justify-between">
                     <p className="text-[11px] font-bold tracking-[0.06em] text-slate-400">SUBMITTED WORK</p>
                     <p className="text-xs text-slate-400">{submittedText}</p>
                   </div>
-
+                    
                   {submission.attachments?.length ? (
                     <div className="space-y-2.5">
                       {submission.attachments.map((attachment) => (
@@ -314,10 +392,7 @@ export default function TeacherSubmissionDetailPage() {
                   )}
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-5">
-                  <p className="text-[11px] font-bold tracking-[0.06em] text-slate-400">SUBMISSION DESCRIPTION</p>
-                  <p className="mt-3 text-sm leading-relaxed text-slate-600">&ldquo;{submission.contentText || 'No description provided.'}&rdquo;</p>
-                </div>
+              
 
                 <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-5">
                   <svg className="h-5 w-5 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -360,30 +435,24 @@ export default function TeacherSubmissionDetailPage() {
 
                   <div>
                     <label className="mb-2 block text-[13px] font-semibold text-slate-800">Feedback for student</label>
-                    <textarea value={feedback} onChange={(event) => setFeedback(event.target.value)} rows={5} placeholder="Add comments on their work…" className="min-h-[160px] w-full resize-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100" />
+                    <textarea value={feedback} onChange={(event) => setFeedback(event.target.value)} rows={6} placeholder="Add comments on their work…" className="min-h-[160px] w-full resize-y rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100" />
                   </div>
 
                   <div>
                     <label className="mb-2 block text-[13px] font-semibold text-slate-800">Feedback attachment(s)</label>
                     <FileUpload
                       multiple
-                      selectedFiles={selectedFiles}
-                      existingAttachments={(submission.attachments ?? []).map((attachment) => ({
-                        id: attachment.id,
-                        originalFileName: attachment.originalFileName,
-                        downloadUrl: attachment.downloadUrl,
-                        sizeBytes: attachment.sizeBytes,
-                      }))}
-                      onFilesSelected={setSelectedFiles}
-                      onRemoveExistingAttachment={(id) => void handleRemoveExistingAttachment(id)}
-                      onRenameExistingAttachment={(id, name) => void handleRenameExistingAttachment(id, name)}
+                      selectedFiles={feedbackSelectedFiles}
+                      existingAttachments={feedbackAttachments}
+                      onFilesSelected={setFeedbackSelectedFiles}
+                      onRemoveExistingAttachment={(id) => void handleRemoveFeedbackAttachment(id)}
+                      onRenameExistingAttachment={(id, name) => void handleRenameFeedbackAttachment(id, name)}
                     />
                   </div>
 
                   <div>
-                    <label className="mb-2 block text-[13px] font-semibold text-slate-800">Submission status</label>
+                    <label className="mb-2 block text-[13px] font-semibold text-slate-800">Feedback status</label>
                     <select value={status} onChange={(event) => setStatus(event.target.value)} className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100">
-                      <option value="Submitted">Submitted</option>
                       <option value="Graded">Graded</option>
                       <option value="ResubmissionRequested">Resubmission Requested</option>
                     </select>
@@ -395,9 +464,9 @@ export default function TeacherSubmissionDetailPage() {
                   ) : null}
 
                   <div className="flex items-center justify-end gap-3 pt-2">
-                    <button type="button" disabled={saving} onClick={() => void saveGrade()} className="cursor-pointer rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70">
-                      {saving ? 'Saving...' : 'Save & notify student'}
-                    </button>
+                    <Button variant="primary" disabled={saving} onClick={() => void saveGrade()}>
+                      {saving ? 'Saving...' : submission?.status === 'Graded' ? 'Update Feedback' : 'Save & notify student'}
+                    </Button>
                   </div>
                 </div>
               </div>

@@ -28,14 +28,7 @@ public static class ClassCourseSeeder
 
         foreach (var def in classDefs.OrderBy(d => d.SortOrder))
         {
-            Guid? groupId = null;
-            if (def.Name == "Eleven")
-            {
-                var groups = await groupRepo.GetByClassDefinitionAsync(def.Id, ct);
-                groupId = groups.FirstOrDefault(g => g.Name == "Science")?.Id;
-            }
-
-            var course = new ClassCourse(Guid.NewGuid(), def.Name, "A", activeYear.Id, def.Id, groupId);
+            var course = new ClassCourse(Guid.NewGuid(), def.Name, "A", activeYear.Id, def.Id, null);
             await classRepo.AddAsync(course, ct);
         }
     }

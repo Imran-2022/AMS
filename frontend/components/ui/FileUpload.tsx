@@ -24,6 +24,14 @@ interface FileUploadProps {
   onRenameExistingAttachment?: (id: string, name: string) => void;
 }
 
+function formatFileSize(sizeBytes: number) {
+  if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) return '0 KB';
+  const kb = sizeBytes / 1024;
+  if (kb < 1024) return `${kb.toFixed(1)} KB`;
+  const mb = kb / 1024;
+  return `${mb.toFixed(2)} MB`;
+}
+
 export function FileUpload({
   onFileUploaded,
   onFileSelected,
@@ -248,7 +256,7 @@ export function FileUpload({
                     ) : (
                       <>
                         <p className="text-sm font-medium text-slate-900 truncate">{attachment.originalFileName}</p>
-                        <p className="text-xs text-slate-500">Existing attachment</p>
+                        <p className="text-xs text-slate-500">{formatFileSize(attachment.sizeBytes)} · Existing attachment</p>
                       </>
                     )}
                   </div>
@@ -307,7 +315,7 @@ export function FileUpload({
                     ) : (
                       <>
                         <p className="text-sm font-medium text-slate-900 truncate">{file.name}</p>
-                        <p className="text-xs text-slate-500">{(file.size / 1024).toFixed(1)} KB</p>
+                        <p className="text-xs text-slate-500">{formatFileSize(file.size)}</p>
                       </>
                     )}
                   </div>

@@ -4,12 +4,9 @@ export { Button } from './Button';
 export { FileUpload } from './FileUpload';
 export { UserFormModal } from './UserFormModal';
 export { TeacherAssignmentModal } from './TeacherAssignmentModal';
-export { AddStudentModal } from './AddStudentModal';
-export { AddTeacherModal } from './AddTeacherModal';
 export { Modal } from './Modal';
 export { AmsDeleteComfiramtionModal } from './AmsDeleteComfiramtionModal';
-export type { AddStudentFormData } from './AddStudentModal';
-export type { AddTeacherFormData } from './AddTeacherModal';
+export { AmsPermissionConfirmationModal } from './AmsPermissionConfirmationModal';
 
 export function Pill({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (

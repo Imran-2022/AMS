@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AmsDeleteComfiramtionModal, AmsPagination, AddTeacherModal, Button, type AddTeacherFormData } from '@/shared/ui';
+import { AmsDeleteComfiramtionModal, AmsPagination, Button } from '@/shared/ui';
+import { AddTeacherModal, type AddTeacherFormData } from '@/components/roles/admin/shared';
 import { AppShell } from '@/shared/layout';
 import { API_BASE_URL, createUser, deleteUser, getUsers, updateUser } from '@/lib/api';
 import { getTeacherAssignments, type TeacherSubjectAssignmentDto } from '@/lib/api/teacherAssignments';
@@ -22,6 +23,7 @@ type TeacherRow = {
   qualification?: string;
   joiningDate?: string;
   subjectSpecialization?: string;
+  employeeId?: string;
   avatarUrl?: string;
 };
 
@@ -30,6 +32,23 @@ function formatDate(value?: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toISOString().slice(0, 10);
+}
+
+function normalizeSubjectValues(raw?: string | string[]) {
+  const values = Array.isArray(raw)
+    ? raw
+    : raw
+      ? String(raw).split(',')
+      : [];
+
+  return Array.from(
+    new Set(
+      values
+        .map((value) => value.trim())
+        .map((value) => value.replace(/\s*[-–—]\s*.*$/, '').trim())
+        .filter(Boolean)
+    )
+  );
 }
 
 function mapUserToTeacherRow(user: {
@@ -53,9 +72,7 @@ function mapUserToTeacherRow(user: {
     .slice(0, 2)
     .toUpperCase();
 
-  const subjectSpecializations = user.subjectSpecialization
-    ? user.subjectSpecialization.split(',').map((value) => value.trim()).filter(Boolean)
-    : [];
+  const subjectSpecializations = normalizeSubjectValues(user.subjectSpecialization);
 
   return {
     id: user.id,
@@ -70,7 +87,8 @@ function mapUserToTeacherRow(user: {
     gender: user.gender,
     qualification: user.qualification,
     joiningDate: user.joiningDate,
-    subjectSpecialization: user.subjectSpecialization,
+    subjectSpecialization: subjectSpecializations.join(', '),
+    employeeId: user.employeeId,
     avatarUrl: user.avatarUrl,
   } as TeacherRow;
 }
@@ -100,7 +118,13 @@ export function AdminTeachersPage() {
   async function loadTeachers() {
     try {
       const [apiUsers, apiAssignments] = await Promise.all([getUsers(), getTeacherAssignments()]);
-      const teacherUsers = apiUsers.filter((user) => user.role === 'Teacher');
+      const teacherUsers = apiUsers
+        .filter((user) => user.role === 'Teacher')
+        .sort((a, b) => {
+          const aTime = new Date((a.updatedAt ?? a.createdAt ?? a.joiningDate ?? '1970-01-01') as string).getTime();
+          const bTime = new Date((b.updatedAt ?? b.createdAt ?? b.joiningDate ?? '1970-01-01') as string).getTime();
+          return bTime - aTime;
+        });
       setTeacherAssignments(apiAssignments);
       const teacherRows = teacherUsers.map((user) => {
         const classesForTeacher = new Set(
@@ -141,6 +165,22 @@ export function AdminTeachersPage() {
     return () => document.removeEventListener('click', handleDocumentClick);
   }, [actionMenuFor]);
 
+  useEffect(() => {
+    if (!actionMenuFor) return;
+
+    function handleScrollOrResize() {
+      setActionMenuFor(null);
+    }
+
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
+  }, [actionMenuFor]);
+
   function setState(s: 'data' | 'empty' | 'error') {
     setMode(s);
     if (s !== 'data') setActionMenuFor(null);
@@ -166,6 +206,24 @@ export function AdminTeachersPage() {
     setEditingTeacher(t);
     setIsTeacherModalOpen(true);
     setActionMenuFor(null);
+  }
+
+  function openActionMenuForTeacher(t: TeacherRow, button: HTMLButtonElement) {
+    const rect = button.getBoundingClientRect();
+    const menuWidth = 176;
+    const menuHeight = 180;
+    const padding = 8;
+    const left = Math.min(
+      Math.max(padding, rect.right - menuWidth),
+      window.innerWidth - menuWidth - padding
+    );
+    const top = Math.min(
+      Math.max(padding, rect.bottom + 8),
+      window.innerHeight - menuHeight - padding
+    );
+
+    setMenuPosition({ top, left });
+    setActionMenuFor(actionMenuFor === t.id ? null : t.id);
   }
 
   async function confirmDeleteTeacher() {
@@ -201,7 +259,7 @@ export function AdminTeachersPage() {
 
     setTeacherModalSubmitting(true);
     try {
-      const specializationValue = (values.subjectSpecializations ?? []).join(', ');
+      const specializationValue = normalizeSubjectValues(values.subjectSpecializations).join(', ');
       if (editingTeacher) {
         await updateUser(editingTeacher.id, {
           fullName: values.fullName,
@@ -353,6 +411,7 @@ export function AdminTeachersPage() {
                     <tr className="border-b border-slate-100 text-left">
                       <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">NAME</th>
                       <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">EMAIL</th>
+                      <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">SPECIALIZATION</th>
                       <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">SUBJECTS ASSIGNED</th>
                       <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">CLASSES</th>
                       <th className="px-2 py-3.5 text-[11px] font-bold text-slate-400">STATUS</th>
@@ -363,23 +422,25 @@ export function AdminTeachersPage() {
                     {pagedRows.map((t) => (
                       <tr key={t.id} className="hover:bg-slate-50 transition-colors duration-150 cursor-pointer" onClick={() => setSelectedTeacher(t)}>
                         <td className="px-2 py-3.5">
-                          <div className="flex items-center gap-3">
-                            {t.avatarUrl ? (
-                              <div className="relative h-8 w-8 overflow-hidden rounded-full bg-indigo-100">
-                                <img src={t.avatarUrl.startsWith('http') ? t.avatarUrl : `${API_BASE_URL}${t.avatarUrl}`} alt={t.name} className="h-full w-full object-cover" />
-                              </div>
-                            ) : (
-                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-semibold">
-                                {t.initials}
-                              </div>
-                            )}
-                            <span className="font-semibold text-slate-700">{t.name}</span>
-                          </div>
+                          <span className="font-semibold text-slate-700">{t.name}</span>
                         </td>
                         <td className="px-2 py-3.5 text-slate-500">{t.email}</td>
-                        <td className="px-2 py-3.5">
+                        <td className="px-2 py-3.5 align-top">
+                          {t.subjectSpecialization ? (
+                            <div className="flex max-w-[220px] flex-col gap-1">
+                              {t.subjectSpecialization.split(',').map((s) => s.trim()).filter(Boolean).map((s) => (
+                                <span key={s} className="chip w-fit">{s}</span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-slate-500">Not assigned</span>
+                          )}
+                        </td>
+                        <td className="px-2 py-3.5 align-top">
                           {t.subjects.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">{t.subjects.map((s) => <span key={s} className="chip">{s}</span>)}</div>
+                            <div className="flex max-w-[220px] flex-col gap-1">
+                              {t.subjects.map((s) => <span key={s} className="chip w-fit">{s}</span>)}
+                            </div>
                           ) : (
                             <span className="text-slate-500">Not assigned</span>
                           )}
@@ -399,9 +460,7 @@ export function AdminTeachersPage() {
                               type="button" data-action-button={t.id}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const target = e.currentTarget.getBoundingClientRect();
-                                setMenuPosition({ top: target.bottom + 8, left: target.right - 176 });
-                                setActionMenuFor(actionMenuFor === t.id ? null : t.id);
+                                openActionMenuForTeacher(t, e.currentTarget);
                               }}
                               className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 cursor-pointer"
                             >
@@ -486,16 +545,7 @@ export function AdminTeachersPage() {
           gender: editingTeacher.gender ?? '',
           qualification: editingTeacher.qualification ?? '',
           joiningDate: editingTeacher.joiningDate ?? '',
-          subjectSpecializations: editingTeacher.subjectSpecialization
-            ? editingTeacher.subjectSpecialization
-                .split(',')
-                .map((v) => v.trim())
-                .map((val) => {
-                  const parts = val.split('—');
-                  return parts[0].trim();
-                })
-                .filter(Boolean)
-            : editingTeacher.subjects,
+          subjectSpecializations: normalizeSubjectValues(editingTeacher.subjectSpecialization ?? editingTeacher.subjects),
           avatarUrl: editingTeacher.avatarUrl ?? '',
         } : undefined}
         isSubmitting={teacherModalSubmitting}
@@ -545,8 +595,14 @@ export function AdminTeachersPage() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Subjects assigned</p>
-                    <p className="text-sm text-slate-700">{selectedTeacher.subjects.length ? selectedTeacher.subjects.join(', ') : 'Not assigned'}</p>
+                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Subject specialization</p>
+                    <p className="text-sm text-slate-700">{selectedTeacher.subjectSpecialization || '—'}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">As entered when this teacher was created.</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Currently teaching</p>
+                    <p className="text-sm text-slate-700">{selectedTeacher.subjects.length ? selectedTeacher.subjects.join(', ') : 'Not assigned yet'}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">From Teacher Allocation.</p>
                   </div>
                   <div>
                     <p className="text-xs font-bold uppercase text-slate-400 mb-2">Classes</p>
@@ -559,6 +615,10 @@ export function AdminTeachersPage() {
                   <div>
                     <p className="text-xs font-bold uppercase text-slate-400 mb-2">Qualification</p>
                     <p className="text-sm text-slate-700">{selectedTeacher.qualification || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Employee ID</p>
+                    <p className="text-sm text-slate-700">{selectedTeacher.employeeId || '—'}</p>
                   </div>
                 </div>
               </div>

@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AppShell } from '@/shared/layout';
-import { AmsDeleteComfiramtionModal, AmsPagination, Button, Card, Pill, Th, Td, AddStudentModal, type AddStudentFormData } from '@/shared/ui';
+import { AmsDeleteComfiramtionModal, AmsPagination, Button, Card, Pill, Th, Td } from '@/shared/ui';
+import { AddStudentModal, type AddStudentFormData } from '@/components/roles/admin/shared';
 import { API_BASE_URL } from '@/lib/api';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
 import { createUser, deleteUser, getClassCourses, getGroupsForClass, getUsers, updateUser } from '@/lib/api';
@@ -14,6 +15,26 @@ import type { ClassCourseRecord, StudentFormData, StudentUserRecord } from './ty
 const STATUS_OPTIONS = ['All', 'Active', 'Inactive'] as const;
 const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 const CLASSES_WITH_GROUPS = ['Nine', 'Ten', 'Eleven', 'Twelve'];
+const CLASS_NAME_ORDER = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'];
+
+function sortClassName(a: string, b: string) {
+  const aIndex = CLASS_NAME_ORDER.indexOf(a);
+  const bIndex = CLASS_NAME_ORDER.indexOf(b);
+
+  const normalizedA = aIndex >= 0 ? aIndex : Number.MAX_SAFE_INTEGER;
+  const normalizedB = bIndex >= 0 ? bIndex : Number.MAX_SAFE_INTEGER;
+  return normalizedA - normalizedB;
+}
+
+function sortSectionValue(section: string) {
+  const raw = (section ?? '').trim();
+  if (!raw) return Number.MAX_SAFE_INTEGER;
+
+  const alpha = raw.match(/[A-Za-z]+/)?.[0] ?? '';
+  const numeric = Number.parseInt(raw.match(/\d+/)?.[0] ?? '0', 10);
+  const alphaScore = alpha ? alpha.toUpperCase().charCodeAt(0) - 64 : 0;
+  return alphaScore * 100 + numeric;
+}
 
 function formatDate(value?: string) {
   if (!value) return '—';
@@ -42,7 +63,6 @@ export function AdminStudentsPage() {
   const [editingStudent, setEditingStudent] = useState<StudentUserRecord | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<StudentUserRecord | null>(null);
   const [pendingDeleteStudent, setPendingDeleteStudent] = useState<StudentUserRecord | null>(null);
-  const [groupNameMap, setGroupNameMap] = useState<Record<string, string>>({});
   const [studentModalSubmitting, setStudentModalSubmitting] = useState(false);
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
   const [pageIndex, setPageIndex] = useState(0);
@@ -73,18 +93,15 @@ export function AdminStudentsPage() {
         getAdminDashboardStats(),
       ]);
 
-      const classDefinitionIds = Array.from(new Set(classes.filter((cls) => cls.classDefinitionId).map((cls) => cls.classDefinitionId!)));
-      const groupsByDefinition = await Promise.all(classDefinitionIds.map((classDefinitionId) => getGroupsForClass(classDefinitionId)));
-      const groupMap = groupsByDefinition.flat().reduce<Record<string, string>>((map, group) => {
-        map[group.id] = group.name;
-        return map;
-      }, {});
-
       const classMap = Object.fromEntries(classes.map((cls) => [cls.id, cls]));
       const enrollmentMap = Object.fromEntries(enrollments.map((enrollment) => [enrollment.studentId, enrollment.classCourseId]));
 
-      setClassCourses(classes);
-      setGroupNameMap(groupMap);
+      // Classes already have groupName from backend
+      setClassCourses(classes.map((cls) => ({
+        ...cls,
+        groupId: cls.groupId ?? undefined,
+        groupName: cls.groupName ?? undefined,
+      })) as ClassCourseRecord[]);
       setStats(dashboardStats);
 
       const studentRecords = users
@@ -92,7 +109,7 @@ export function AdminStudentsPage() {
         .map((user) => {
           const classCourseId = enrollmentMap[user.id];
           const classCourse = classMap[classCourseId];
-          const groupName = classCourse?.groupId ? groupMap[classCourse.groupId] ?? classCourse.groupId : undefined;
+          const groupName = classCourse?.groupName;
           return {
             id: user.id,
             fullName: user.fullName,
@@ -150,15 +167,6 @@ export function AdminStudentsPage() {
     if (!id) return 0;
     const match = id.match(/(\d+)$/);
     return match ? Number(match[1]) : 0;
-  }
-
-  function generateNextStudentId(existing: StudentUserRecord[]) {
-    const maxValue = existing.reduce((max, student) => {
-      const numeric = parseStudentId(student.studentId);
-      return numeric > max ? numeric : max;
-    }, 0);
-
-    return `STU-${String(maxValue + 1).padStart(4, '0')}`;
   }
 
   async function handleSaveStudent(values: AddStudentFormData) {
@@ -255,10 +263,16 @@ export function AdminStudentsPage() {
   }
 
 
-  const classNames = useMemo(() => Array.from(new Set(classCourses.map((cls) => cls.name))), [classCourses]);
+  const classNames = useMemo(
+    () => Array.from(new Set(classCourses.map((cls) => cls.name))).sort(sortClassName),
+    [classCourses]
+  );
   const sectionNames = useMemo(() => {
-    const sections = classFilter === 'All classes' ? classCourses.map((cls) => cls.section) : classCourses.filter((cls) => cls.name === classFilter).map((cls) => cls.section);
-    return Array.from(new Set(sections));
+    const sections = classFilter === 'All classes'
+      ? classCourses.map((cls) => cls.section)
+      : classCourses.filter((cls) => cls.name === classFilter).map((cls) => cls.section);
+
+    return Array.from(new Set(sections)).sort((a, b) => sortSectionValue(a) - sortSectionValue(b));
   }, [classCourses, classFilter]);
 
   const filteredStudents = useMemo(() => {
@@ -458,6 +472,7 @@ export function AdminStudentsPage() {
                 <table className="w-full min-w-[960px] text-sm">
                   <thead>
                     <tr className="border-b border-slate-100 text-left text-xs uppercase text-slate-400">
+                      <Th>Roll / Student ID</Th>
                       <Th>Name</Th>
                       <Th>Email</Th>
                       <Th>Class</Th>
@@ -470,32 +485,13 @@ export function AdminStudentsPage() {
                   <tbody className="divide-y divide-slate-100">
                     {paginatedStudents.map((student) => (
                       <tr key={student.id} className="hover:bg-slate-50 transition-colors duration-150 cursor-pointer" onClick={() => setSelectedStudent(student)}>
+                        <Td className="px-2 py-3.5 font-semibold text-slate-700">{student.studentId || '—'}</Td>
                         <Td className="px-2 py-3.5">
-                          <div className="flex items-center gap-3">
-                            {student.avatarUrl ? (
-                              <div className="relative h-8 w-8 overflow-hidden rounded-full bg-indigo-100">
-                                <img
-                                  src={student.avatarUrl.startsWith('http') ? student.avatarUrl : `${API_BASE_URL}${student.avatarUrl}`}
-                                  alt={student.fullName}
-                                  className="h-full w-full object-cover"
-                                />
-                              </div>
-                            ) : (
-                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-semibold">
-                                {student.fullName
-                                  .split(' ')
-                                  .map((part) => part[0])
-                                  .join('')
-                                  .slice(0, 2)
-                                  .toUpperCase()}
-                              </div>
-                            )}
-                            <span className="font-semibold text-slate-700">{student.fullName}</span>
-                          </div>
+                          <span className="font-semibold text-slate-700">{student.fullName}</span>
                         </Td>
                         <Td className="px-2 py-3.5 text-slate-500">{student.email}</Td>
                         <Td className="px-2 py-3.5 text-slate-500">{student.classCourseName || 'Unassigned'}</Td>
-                        <Td className="px-2 py-3.5 text-slate-500">{student.section || '—'}</Td>
+                        <Td className="px-2 py-3.5 text-slate-500">{student.section ? (student.groupName ? `${student.section} (${student.groupName})` : student.section) : '—'}</Td>
                         <Td className="px-2 py-3.5 text-slate-500">{student.parentMobile || '—'}</Td>
                         <Td className="px-2 py-3.5">
                           <Pill className={student.status === 'Active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}>
@@ -619,7 +615,7 @@ export function AdminStudentsPage() {
           email: '',
           password: '',
           status: 'Active',
-          studentId: generateNextStudentId(students),
+          studentId: '',
           className: classCourses[0]?.name ?? '',
           section: classCourses[0]?.section ?? '',
           guardianName: '',
@@ -706,8 +702,14 @@ export function AdminStudentsPage() {
                   </div>
                   <div>
                     <p className="text-xs font-bold uppercase text-slate-400 mb-2">Section</p>
-                    <p className="text-sm text-slate-700">{selectedStudent.section || '—'}</p>
+                    <p className="text-sm text-slate-700">{selectedStudent.section ? (selectedStudent.groupName ? `${selectedStudent.section} (${selectedStudent.groupName})` : selectedStudent.section) : '—'}</p>
                   </div>
+                  {selectedStudent.groupName && (
+                    <div>
+                      <p className="text-xs font-bold uppercase text-slate-400 mb-2">Group</p>
+                      <p className="text-sm text-slate-700">{selectedStudent.groupName}</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
