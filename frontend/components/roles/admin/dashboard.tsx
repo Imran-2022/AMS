@@ -65,10 +65,10 @@ export function AdminDashboardPage() {
         id: cls.id,
         name: cls.name,
         section: cls.section,
-        academicYear: cls.academicYear,
-        groupId: cls.groupId,
-        groupName: cls.groupName,
-      })));
+        academicYear: cls.academicYear ?? '',
+        groupId: cls.groupId ?? undefined,
+        groupName: cls.groupName ?? undefined,
+      })) as ClassCourseRecord[]);
       setDashboardTeachers(users.filter((user: any) => user.role === 'Teacher').map((teacher: any) => ({
         id: teacher.id,
         fullName: teacher.fullName,

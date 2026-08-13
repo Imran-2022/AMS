@@ -397,8 +397,11 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
     const user = getStoredUser();
     const base = API_BASE_URL;
     const avatar = user?.avatarUrl ? (user.avatarUrl.startsWith('http') ? user.avatarUrl : `${base}${user.avatarUrl}`) : undefined;
+    // Add simple cache-busting with version counter
+    const cacheVersion = window.localStorage.getItem('ams-avatar-cache-v') || '0';
+    const avatarWithCacheBust = avatar ? `${avatar}?v=${cacheVersion}` : undefined;
     setUserName(user?.fullName ?? user?.email ?? undefined);
-    setAvatarUrl(avatar);
+    setAvatarUrl(avatarWithCacheBust);
 
     const handleResize = () => {
       const small = window.innerWidth < 1024;
@@ -420,17 +423,25 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
   }, [isCollapsed]);
 
   useEffect(() => {
-    const handleUserChanged = () => {
-      const user = getStoredUser();
-      const base = API_BASE_URL;
-      const avatar = user?.avatarUrl ? (user.avatarUrl.startsWith('http') ? user.avatarUrl : `${base}${user.avatarUrl}`) : undefined;
-      setUserName(user?.fullName ?? user?.email ?? undefined);
-      setAvatarUrl(avatar);
-    };
+    const handleUserChanged = (event: Event) => {
+      const customEvent = event as CustomEvent
+      const cacheBuster = customEvent.detail?.avatarCacheBuster
+      
+      const user = getStoredUser()
+      const base = API_BASE_URL
+      const avatar = user?.avatarUrl ? (user.avatarUrl.startsWith('http') ? user.avatarUrl : `${base}${user.avatarUrl}`) : undefined
+      
+      // Use the cache buster from the event (incremented by account page)
+      const version = cacheBuster || parseInt(window.localStorage.getItem('ams-avatar-cache-v') || '0', 10)
+      const avatarWithCacheBust = avatar ? `${avatar}?v=${version}` : undefined
+      
+      setUserName(user?.fullName ?? user?.email ?? undefined)
+      setAvatarUrl(avatarWithCacheBust)
+    }
 
-    window.addEventListener('ams-user-changed', handleUserChanged);
-    return () => window.removeEventListener('ams-user-changed', handleUserChanged);
-  }, []);
+    window.addEventListener('ams-user-changed', handleUserChanged)
+    return () => window.removeEventListener('ams-user-changed', handleUserChanged)
+  }, [])
 
   useEffect(() => {
     // Mirror legacy layout CSS which relies on `body.sidebar-collapsed`

@@ -42,7 +42,6 @@ export function AdminStudentsPage() {
   const [editingStudent, setEditingStudent] = useState<StudentUserRecord | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<StudentUserRecord | null>(null);
   const [pendingDeleteStudent, setPendingDeleteStudent] = useState<StudentUserRecord | null>(null);
-  const [groupNameMap, setGroupNameMap] = useState<Record<string, string>>({});
   const [studentModalSubmitting, setStudentModalSubmitting] = useState(false);
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
   const [pageIndex, setPageIndex] = useState(0);
@@ -73,24 +72,15 @@ export function AdminStudentsPage() {
         getAdminDashboardStats(),
       ]);
 
-      const classDefinitionIds = Array.from(new Set(classes.filter((cls) => cls.classDefinitionId).map((cls) => cls.classDefinitionId!)));
-      const groupsByDefinition = await Promise.all(classDefinitionIds.map((classDefinitionId) => getGroupsForClass(classDefinitionId)));
-      const groupMap = groupsByDefinition.flat().reduce<Record<string, string>>((map, group) => {
-        map[group.id] = group.name;
-        return map;
-      }, {});
-
       const classMap = Object.fromEntries(classes.map((cls) => [cls.id, cls]));
       const enrollmentMap = Object.fromEntries(enrollments.map((enrollment) => [enrollment.studentId, enrollment.classCourseId]));
 
-      // Enrich classes with groupName data
-      const enrichedClasses = classes.map((cls) => ({
+      // Classes already have groupName from backend
+      setClassCourses(classes.map((cls) => ({
         ...cls,
-        groupName: cls.groupId ? groupMap[cls.groupId] : undefined,
-      }));
-
-      setClassCourses(enrichedClasses);
-      setGroupNameMap(groupMap);
+        groupId: cls.groupId ?? undefined,
+        groupName: cls.groupName ?? undefined,
+      })) as ClassCourseRecord[]);
       setStats(dashboardStats);
 
       const studentRecords = users
@@ -98,7 +88,7 @@ export function AdminStudentsPage() {
         .map((user) => {
           const classCourseId = enrollmentMap[user.id];
           const classCourse = classMap[classCourseId];
-          const groupName = classCourse?.groupId ? groupMap[classCourse.groupId] ?? classCourse.groupId : undefined;
+          const groupName = classCourse?.groupName;
           return {
             id: user.id,
             fullName: user.fullName,
@@ -492,7 +482,7 @@ export function AdminStudentsPage() {
                         </Td>
                         <Td className="px-2 py-3.5 text-slate-500">{student.email}</Td>
                         <Td className="px-2 py-3.5 text-slate-500">{student.classCourseName || 'Unassigned'}</Td>
-                        <Td className="px-2 py-3.5 text-slate-500">{student.section || '—'}</Td>
+                        <Td className="px-2 py-3.5 text-slate-500">{student.section ? (student.groupName ? `${student.section} (${student.groupName})` : student.section) : '—'}</Td>
                         <Td className="px-2 py-3.5 text-slate-500">{student.parentMobile || '—'}</Td>
                         <Td className="px-2 py-3.5">
                           <Pill className={student.status === 'Active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}>
@@ -703,8 +693,14 @@ export function AdminStudentsPage() {
                   </div>
                   <div>
                     <p className="text-xs font-bold uppercase text-slate-400 mb-2">Section</p>
-                    <p className="text-sm text-slate-700">{selectedStudent.section || '—'}</p>
+                    <p className="text-sm text-slate-700">{selectedStudent.section ? (selectedStudent.groupName ? `${selectedStudent.section} (${selectedStudent.groupName})` : selectedStudent.section) : '—'}</p>
                   </div>
+                  {selectedStudent.groupName && (
+                    <div>
+                      <p className="text-xs font-bold uppercase text-slate-400 mb-2">Group</p>
+                      <p className="text-sm text-slate-700">{selectedStudent.groupName}</p>
+                    </div>
+                  )}
                 </div>
               </div>
 

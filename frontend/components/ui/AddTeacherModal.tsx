@@ -121,6 +121,11 @@ export function AddTeacherModal({
       return;
     }
 
+    if (!values.subjectSpecializations || values.subjectSpecializations.length === 0) {
+      alert('Please select at least one subject specialization.');
+      return;
+    }
+
     try {
       await onSubmit(values);
     } catch (err) {

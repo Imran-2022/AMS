@@ -22,6 +22,7 @@ type TeacherRow = {
   qualification?: string;
   joiningDate?: string;
   subjectSpecialization?: string;
+  employeeId?: string;
   avatarUrl?: string;
 };
 
@@ -71,6 +72,7 @@ function mapUserToTeacherRow(user: {
     qualification: user.qualification,
     joiningDate: user.joiningDate,
     subjectSpecialization: user.subjectSpecialization,
+    employeeId: user.employeeId,
     avatarUrl: user.avatarUrl,
   } as TeacherRow;
 }
@@ -545,8 +547,14 @@ export function AdminTeachersPage() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Subjects assigned</p>
-                    <p className="text-sm text-slate-700">{selectedTeacher.subjects.length ? selectedTeacher.subjects.join(', ') : 'Not assigned'}</p>
+                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Subject specialization</p>
+                    <p className="text-sm text-slate-700">{selectedTeacher.subjectSpecialization || '—'}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">As entered when this teacher was created.</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Currently teaching</p>
+                    <p className="text-sm text-slate-700">{selectedTeacher.subjects.length ? selectedTeacher.subjects.join(', ') : 'Not assigned yet'}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">From Teacher Allocation.</p>
                   </div>
                   <div>
                     <p className="text-xs font-bold uppercase text-slate-400 mb-2">Classes</p>
@@ -559,6 +567,10 @@ export function AdminTeachersPage() {
                   <div>
                     <p className="text-xs font-bold uppercase text-slate-400 mb-2">Qualification</p>
                     <p className="text-sm text-slate-700">{selectedTeacher.qualification || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Employee ID</p>
+                    <p className="text-sm text-slate-700">{selectedTeacher.employeeId || '—'}</p>
                   </div>
                 </div>
               </div>

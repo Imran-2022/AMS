@@ -12,17 +12,20 @@ public class UserAppService : IUserAppService
     private readonly IFileAppService _fileAppService;
     private readonly IStudentEnrollmentRepository _enrollmentRepository;
     private readonly IClassCourseRepository _classCourseRepository;
+    private readonly IGroupRepository _groupRepository;
 
     public UserAppService(
         IUserRepository userRepository,
         IFileAppService fileAppService,
         IStudentEnrollmentRepository enrollmentRepository,
-        IClassCourseRepository classCourseRepository)
+        IClassCourseRepository classCourseRepository,
+        IGroupRepository groupRepository)
     {
         _userRepository = userRepository;
         _fileAppService = fileAppService;
         _enrollmentRepository = enrollmentRepository;
         _classCourseRepository = classCourseRepository;
+        _groupRepository = groupRepository;
     }
 
     private static DateTime? NormalizeDateTimeUtc(DateTime? value)
@@ -83,9 +86,11 @@ public class UserAppService : IUserAppService
         StudentProfile? studentProfile = null;
         if (role == UserRole.Student)
         {
+            if (string.IsNullOrWhiteSpace(input.Email)) throw new ValidationException("Email is required for student (needed for login).");
             if (string.IsNullOrWhiteSpace(input.StudentId)) throw new ValidationException("StudentId is required for student.");
             if (string.IsNullOrWhiteSpace(input.GuardianName)) throw new ValidationException("Guardian name is required for student.");
             if (string.IsNullOrWhiteSpace(input.ParentMobile)) throw new ValidationException("Parent mobile is required for student.");
+            if (input.AdmissionDate == null) throw new ValidationException("Admission date is required for student.");
             var admission = NormalizeDateTimeUtc(input.AdmissionDate) ?? DateTime.UtcNow;
             studentProfile = new StudentProfile(userId, input.StudentId, input.GuardianName, input.GuardianEmail ?? string.Empty, input.ParentMobile, admission);
         }
@@ -240,94 +245,40 @@ public class UserAppService : IUserAppService
     public async Task<string> GetNextStudentIdAsync(Guid classCourseId, Guid? groupId, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
     {
         if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can manage users.");
-        
-        // Get the class course to determine if it needs groups
-        var classCourse = await _classCourseRepository.GetByIdAsync(classCourseId, cancellationToken) 
+
+        var classCourse = await _classCourseRepository.GetByIdAsync(classCourseId, cancellationToken)
             ?? throw new NotFoundException("Class/course not found.");
 
-        // Get all enrollments for this class
+        // A ClassCourse already represents one specific class + section + group
+        // combination (see ClassCourse.GroupId), so every enrollment scoped to this
+        // classCourseId already belongs to exactly the class/group being asked about.
+        // No extra string-based filtering is needed (and the previous implementation's
+        // heuristic of matching student-id string shape was unreliable and ignored
+        // which group was actually selected).
         var enrollments = await _enrollmentRepository.GetByClassCourseAsync(classCourseId, cancellationToken);
+        var nextSerial = enrollments.Count + 1;
 
-        // Filter by group if provided
-        if (groupId.HasValue)
+        var effectiveGroupId = groupId ?? classCourse.GroupId;
+        if (effectiveGroupId.HasValue)
         {
-            // Get only students in this specific group
-            var groupEnrollments = new List<StudentEnrollment>();
-            foreach (var enrollment in enrollments)
-            {
-                var user = await _userRepository.GetByIdAsync(enrollment.StudentId, cancellationToken);
-                if (user?.Role == UserRole.Student && !string.IsNullOrWhiteSpace(user.StudentId))
-                {
-                    // Check if student ID matches group pattern (e.g., "9-S-001")
-                    var parts = user.StudentId.Split('-');
-                    if (parts.Length == 3 && parts[1].Length == 1)
-                    {
-                        groupEnrollments.Add(enrollment);
-                    }
-                }
-            }
-            enrollments = groupEnrollments;
+            var classNumber = ExtractClassNumber(classCourse.Name)
+                ?? throw new ValidationException("Unable to generate a grouped student ID for this class.");
+
+            var group = await _groupRepository.GetByIdAsync(effectiveGroupId.Value, cancellationToken)
+                ?? throw new NotFoundException("Group not found.");
+
+            var trimmedGroupName = group.Name.Trim();
+            var groupInitial = trimmedGroupName.Length > 0
+                ? char.ToUpperInvariant(trimmedGroupName[0]).ToString()
+                : "G";
+
+            // Format: "9-S-001" (class number - group initial - serial), serial is
+            // simply "how many students are already enrolled in this exact class-course + 1".
+            return $"{classNumber}-{groupInitial}-{nextSerial:D3}";
         }
 
-        // Get all student IDs for this class/group
-        var studentIds = new List<string>();
-        foreach (var enrollment in enrollments)
-        {
-            var user = await _userRepository.GetByIdAsync(enrollment.StudentId, cancellationToken);
-            if (user?.Role == UserRole.Student && !string.IsNullOrWhiteSpace(user.StudentId))
-            {
-                studentIds.Add(user.StudentId);
-            }
-        }
-
-        // Parse group if present to determine format
-        if (groupId.HasValue)
-        {
-            // Format: "9-S-001" where 9 is class, S is group initial, 001 is sequence
-            var classNumber = ExtractClassNumber(classCourse.Name);
-            if (!string.IsNullOrWhiteSpace(classNumber))
-            {
-                // Get the group name (assuming it's passed or we fetch it)
-                // For now, we'll generate based on max sequence in existing IDs
-                var maxSequence = 0;
-                foreach (var id in studentIds)
-                {
-                    var parts = id.Split('-');
-                    if (parts.Length == 3 && int.TryParse(parts[2], out var seq))
-                    {
-                        maxSequence = Math.Max(maxSequence, seq);
-                    }
-                }
-                
-                // Extract group initial from first existing ID if available
-                string groupInitial = "A";
-                if (studentIds.Count > 0)
-                {
-                    var firstParts = studentIds[0].Split('-');
-                    if (firstParts.Length == 3)
-                    {
-                        groupInitial = firstParts[1];
-                    }
-                }
-
-                return $"{classNumber}-{groupInitial}-{(maxSequence + 1):D3}";
-            }
-        }
-        else
-        {
-            // Format: "STU-0001"
-            var maxValue = 0;
-            foreach (var id in studentIds)
-            {
-                if (id.StartsWith("STU-") && int.TryParse(id.Substring(4), out var num))
-                {
-                    maxValue = Math.Max(maxValue, num);
-                }
-            }
-            return $"STU-{(maxValue + 1):D4}";
-        }
-
-        throw new ValidationException("Unable to generate student ID for this class.");
+        // No group for this class (classes 1-8): "STU-0001" sequential format.
+        return $"STU-{nextSerial:D4}";
     }
 
     private static string? ExtractClassNumber(string className)

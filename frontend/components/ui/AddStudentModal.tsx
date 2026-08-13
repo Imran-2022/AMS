@@ -17,7 +17,7 @@ export type AddStudentFormData = {
   fullName: string;
   email: string;
   password: string;
-  status: 'Active' | 'Inactive' | 'Pending';
+  status: 'Active' | 'Inactive';
   dateOfBirth?: string;
   gender?: string;
   studentId?: string;
@@ -129,12 +129,11 @@ export function AddStudentModal({
         return {
           fullName: initialValues?.fullName ?? '',
           email: initialValues?.email ?? '',
-          password: initialValues?.password ?? '',
+          password: '',
           status: initialValues?.status ?? 'Active',
           dateOfBirth: normalizeDate(initialValues?.dateOfBirth),
           gender: initialValues?.gender ?? '',
           studentId: initialValues?.studentId ?? '',
-          // For editing: use existing values; For creating new: start empty
           className: initialValues?.className ?? '',
           section: initialValues?.section ?? '',
           admissionDate: normalizeDate(initialValues?.admissionDate),
@@ -165,9 +164,22 @@ export function AddStudentModal({
     [classCourses]
   );
 
+  const needsGroup = classHasGroups(values.className);
+
   const sectionOptions = useMemo(
-    () => Array.from(new Set(classCourses.filter((cls) => cls.name === values.className).map((cls) => cls.section))),
-    [classCourses, values.className]
+    () => {
+      const entries = classCourses
+        .filter((cls) => cls.name === values.className)
+        .map((cls) => ({
+          value: needsGroup ? `${cls.section}::${cls.groupName ?? ''}` : cls.section,
+          label: needsGroup ? `${cls.section}${cls.groupName ? ` (${cls.groupName})` : ''}` : cls.section,
+          section: cls.section,
+          group: cls.groupName ?? '',
+        }));
+
+      return Array.from(new Map(entries.map((entry) => [entry.value, entry])).values());
+    },
+    [classCourses, values.className, needsGroup]
   );
 
   const availableGroups = useMemo(
@@ -179,13 +191,26 @@ export function AddStudentModal({
     [classCourses, values.className]
   );
 
-  const needsGroup = classHasGroups(values.className);
-
   useEffect(() => {
-    if (sectionOptions.length && values.section && !sectionOptions.includes(values.section)) {
-      setValues((current) => ({ ...current, section: sectionOptions[0] }));
+    if (!values.className) return;
+
+    const isValid = sectionOptions.some((option) => {
+      if (needsGroup) {
+        return option.section === values.section && option.group === values.group;
+      }
+
+      return option.section === values.section;
+    });
+
+    if (!isValid && sectionOptions.length) {
+      const first = sectionOptions[0];
+      setValues((current) => ({
+        ...current,
+        section: first.section,
+        group: needsGroup ? first.group : '',
+      }));
     }
-  }, [sectionOptions, values.section]);
+  }, [sectionOptions, values.className, values.section, values.group, needsGroup]);
 
   // Clear group when switching to a class that doesn't need groups
   useEffect(() => {
@@ -246,6 +271,27 @@ export function AddStudentModal({
   }
 
   function handleSubmit() {
+    if (!values.fullName.trim()) {
+      alert('Full name is required.');
+      return;
+    }
+
+    if (!values.email.trim()) {
+      alert('Email is required.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(values.email)) {
+      alert('Please enter a valid email address.');
+      return;
+    }
+
+    if (requirePassword && !values.password.trim()) {
+      alert('Password is required.');
+      return;
+    }
+
     if (!values.gender) {
       alert('Gender is required.');
       return;
@@ -256,8 +302,18 @@ export function AddStudentModal({
       return;
     }
 
+    if (!values.admissionDate) {
+      alert('Admission date is required.');
+      return;
+    }
+
     if (!values.guardianName) {
       alert('Guardian name is required.');
+      return;
+    }
+
+    if (!values.parentMobile) {
+      alert('Guardian mobile is required.');
       return;
     }
 
@@ -268,11 +324,6 @@ export function AddStudentModal({
 
     if (!values.section) {
       alert('Section is required.');
-      return;
-    }
-
-    if (needsGroup && !values.group) {
-      alert('Group is required for classes 9-12.');
       return;
     }
 
@@ -339,7 +390,7 @@ export function AddStudentModal({
             </div>
             <div>
               <label className={labelClass}>
-                Email <span className="text-slate-400 font-normal">(optional)</span>
+                Email <span className="text-rose-500">*</span>
               </label>
               <input
                 value={values.email}
@@ -347,6 +398,7 @@ export function AddStudentModal({
                 placeholder="email@example.com"
                 className={inputClass}
                 type="email"
+                required
               />
             </div>
             <div>
@@ -396,7 +448,6 @@ export function AddStudentModal({
                 className={`${inputClass} text-slate-700`}>
                 <option>Active</option>
                 <option>Inactive</option>
-                <option>Pending</option>
               </select>
             </div>
           </div>
@@ -404,18 +455,7 @@ export function AddStudentModal({
 
         <div>
           <p className={sectionTitleClass}>ACADEMIC DETAILS</p>
-          <div className="mt-3 grid gap-4 lg:grid-cols-3">
-            <div>
-              <label className={labelClass}>Roll no. / Student ID</label>
-              <input
-                value={values.studentId}
-                onChange={(event) => handleChange('studentId', event.target.value)}
-                placeholder="e.g. STU-0142"
-                className={`${inputClass} bg-slate-100 text-slate-500`}
-                readOnly
-              />
-              {needsGroup && <p className={hintClass}>Auto-generated based on class and group</p>}
-            </div>
+          <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
             <div>
               <label className={labelClass}>
                 Class <span className="text-rose-500">*</span>
@@ -437,45 +477,51 @@ export function AddStudentModal({
                 Section <span className="text-rose-500">*</span>
               </label>
               <select
-                value={values.section}
-                onChange={(event) => handleChange('section', event.target.value)}
+                value={needsGroup ? `${values.section ?? ''}::${values.group ?? ''}` : (values.section ?? '')}
+                onChange={(event) => {
+                  const rawValue = event.target.value;
+                  if (needsGroup) {
+                    const [section, group = ''] = rawValue.split('::');
+                    handleChange('section', section);
+                    handleChange('group', group);
+                    return;
+                  }
+
+                  handleChange('section', rawValue);
+                  handleChange('group', '');
+                }}
                 className={`${inputClass} ${!values.className ? 'text-slate-400' : 'text-slate-700'}`}>
                 <option value="">{values.className ? 'Select section' : 'Select class first'}</option>
-                {sectionOptions.map((section) => (
-                  <option key={section} value={section}>
-                    {section}
+                {sectionOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
                   </option>
                 ))}
               </select>
             </div>
           </div>
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
-            {needsGroup && (
-              <div>
-                <label className={labelClass}>
-                  Group <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  value={values.group}
-                  onChange={(event) => handleChange('group', event.target.value)}
-                  className={`${inputClass} text-slate-700`}
-                  required>
-                  <option value="">Select group</option>
-                  {availableGroups.map((groupName) => (
-                    <option key={groupName} value={groupName}>
-                      {groupName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
             <div>
-              <label className={labelClass}>Admission date</label>
+              <label className={labelClass}>Roll no. / Student ID</label>
+              <input
+                value={values.studentId}
+                onChange={(event) => handleChange('studentId', event.target.value)}
+                placeholder="e.g. STU-0142"
+                className={`${inputClass} bg-slate-100 text-slate-500`}
+                readOnly
+              />
+              {needsGroup && <p className={hintClass}>Auto-generated based on class and group</p>}
+            </div>
+            <div>
+              <label className={labelClass}>
+                Admission date <span className="text-rose-500">*</span>
+              </label>
               <input
                 value={values.admissionDate}
                 onChange={(event) => handleChange('admissionDate', event.target.value)}
                 className={`${inputClass} text-slate-500`}
                 type="date"
+                required
               />
             </div>
           </div>

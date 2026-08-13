@@ -23,7 +23,12 @@ public class UserAppServiceTests
         var repo = new Mock<IUserRepository>(MockBehavior.Strict);
         repo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(users);
 
-        var service = new UserAppService(repo.Object, Mock.Of<IFileAppService>());
+        var service = new UserAppService(
+            repo.Object, 
+            Mock.Of<IFileAppService>(),
+            Mock.Of<IStudentEnrollmentRepository>(),
+            Mock.Of<IClassCourseRepository>(),
+            Mock.Of<IGroupRepository>());
 
         var result = await service.GetAllAsync(Guid.NewGuid(), nameof(UserRole.Admin));
 
@@ -35,7 +40,12 @@ public class UserAppServiceTests
     public async Task GetAllAsync_Should_Throw_When_Not_Admin()
     {
         var repo = new Mock<IUserRepository>(MockBehavior.Strict);
-        var service = new UserAppService(repo.Object, Mock.Of<IFileAppService>());
+        var service = new UserAppService(
+            repo.Object, 
+            Mock.Of<IFileAppService>(),
+            Mock.Of<IStudentEnrollmentRepository>(),
+            Mock.Of<IClassCourseRepository>(),
+            Mock.Of<IGroupRepository>());
 
         await Assert.ThrowsAsync<ForbiddenException>(() => service.GetAllAsync(Guid.NewGuid(), nameof(UserRole.Teacher)));
     }
@@ -44,7 +54,12 @@ public class UserAppServiceTests
     public async Task CreateAsync_Should_Throw_When_Role_Is_Invalid()
     {
         var repo = new Mock<IUserRepository>(MockBehavior.Strict);
-        var service = new UserAppService(repo.Object, Mock.Of<IFileAppService>());
+        var service = new UserAppService(
+            repo.Object, 
+            Mock.Of<IFileAppService>(),
+            Mock.Of<IStudentEnrollmentRepository>(),
+            Mock.Of<IClassCourseRepository>(),
+            Mock.Of<IGroupRepository>());
 
         var dto = new CreateUserDto
         {
@@ -64,7 +79,12 @@ public class UserAppServiceTests
         var repo = new Mock<IUserRepository>(MockBehavior.Strict);
         repo.Setup(r => r.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
-        var service = new UserAppService(repo.Object, Mock.Of<IFileAppService>());
+        var service = new UserAppService(
+            repo.Object, 
+            Mock.Of<IFileAppService>(),
+            Mock.Of<IStudentEnrollmentRepository>(),
+            Mock.Of<IClassCourseRepository>(),
+            Mock.Of<IGroupRepository>());
 
         var dto = new CreateUserDto
         {
@@ -75,7 +95,8 @@ public class UserAppServiceTests
             StudentId = "S123",
             GuardianName = "Parent Name",
             GuardianEmail = "parent@example.com",
-            ParentMobile = "1234567890"
+            ParentMobile = "1234567890",
+            AdmissionDate = DateTime.UtcNow
         };
 
         var result = await service.CreateAsync(dto, Guid.NewGuid(), nameof(UserRole.Admin));
@@ -96,7 +117,12 @@ public class UserAppServiceTests
         repo.Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>())).ReturnsAsync(user);
         repo.Setup(r => r.UpdateAsync(user, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
-        var service = new UserAppService(repo.Object, Mock.Of<IFileAppService>());
+        var service = new UserAppService(
+            repo.Object, 
+            Mock.Of<IFileAppService>(),
+            Mock.Of<IStudentEnrollmentRepository>(),
+            Mock.Of<IClassCourseRepository>(),
+            Mock.Of<IGroupRepository>());
 
         var result = await service.ToggleActiveAsync(id, Guid.NewGuid(), nameof(UserRole.Admin));
 

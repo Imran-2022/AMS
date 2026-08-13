@@ -14,13 +14,22 @@ public class UserRepository : IUserRepository
     }
 
     public async Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
-        => await _dbContext.Users.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        => await _dbContext.Users
+            .Include(u => u.StudentProfile)
+            .Include(u => u.TeacherProfile)
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
     public async Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
-        => await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
+        => await _dbContext.Users
+            .Include(u => u.StudentProfile)
+            .Include(u => u.TeacherProfile)
+            .FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
 
     public async Task<IReadOnlyList<User>> GetAllAsync(CancellationToken cancellationToken = default)
-        => await _dbContext.Users.ToListAsync(cancellationToken);
+        => await _dbContext.Users
+            .Include(u => u.StudentProfile)
+            .Include(u => u.TeacherProfile)
+            .ToListAsync(cancellationToken);
 
     public async Task AddAsync(User user, CancellationToken cancellationToken = default)
     {

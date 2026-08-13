@@ -314,9 +314,13 @@ export type ClassCourseDto = {
   id: string;
   name: string;
   section: string;
-  academicYear: string;
+  academicYear?: string;
+  academicYearId?: string;
+  academicYearName?: string;
   classDefinitionId?: string | null;
+  classDefinitionName?: string;
   groupId?: string | null;
+  groupName?: string | null;
 };
 
 export type CreateClassCourseDto = {

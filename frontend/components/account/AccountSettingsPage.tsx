@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { AppShell } from '@/shared/layout'
 import { API_BASE_URL, changePassword, getCurrentUser, updateUser, type UserDto } from '@/lib/api'
 import { getNotificationPreferences, updateNotificationPreference } from '@/lib/api/notifications'
@@ -64,6 +64,7 @@ export function AccountSettingsPage({
   const [uploading, setUploading] = useState(false)
   const [savingPassword, setSavingPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [toggles, setToggles] = useState<Record<string, boolean>>(() =>
     notificationItems.reduce(
       (acc, item) => ({ ...acc, [item.type]: item.checked }),
@@ -119,29 +120,57 @@ export function AccountSettingsPage({
       const uploadResult = await uploadFile(file)
       const updated = await updateUser(user.id, { avatarUrl: uploadResult.fileUrl })
       setUser(updated)
-      const avatar = updated.avatarUrl
+      
+      // Increment cache version for this update
+      const currentVersion = parseInt(typeof window !== 'undefined' ? window.localStorage.getItem('ams-avatar-cache-v') || '0' : '0', 10)
+      const newVersion = currentVersion + 1
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('ams-avatar-cache-v', String(newVersion))
+      }
+      
+      const baseUrl = updated.avatarUrl
         ? updated.avatarUrl.startsWith('http')
           ? updated.avatarUrl
           : `${API_BASE_URL}${updated.avatarUrl}`
         : null
-      setProfileImage(avatar)
-      setStoredUser({
-        id: updated.id,
-        email: updated.email,
-        role: updated.role,
-        fullName: updated.fullName,
-        isActive: updated.isActive,
-        avatarUrl: updated.avatarUrl,
-      })
-      emitToast('Profile photo updated', 'success')
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('ams-user-changed'))
+      
+      if (baseUrl) {
+        // Add cache-busting with version and timestamp
+        const avatarUrl = `${baseUrl}?v=${newVersion}`
+        
+        // Set the image directly without preloading (simpler and more reliable)
+        setProfileImage(avatarUrl)
+        
+        // Update stored user
+        setStoredUser({
+          id: updated.id,
+          email: updated.email,
+          role: updated.role,
+          fullName: updated.fullName,
+          isActive: updated.isActive,
+          avatarUrl: updated.avatarUrl,
+        })
+        
+        emitToast('Profile photo updated', 'success')
+        
+        // Dispatch event to update sidebar with the same URL and version
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('ams-user-changed', {
+            detail: { avatarCacheBuster: newVersion }
+          }))
+        }
+      } else {
+        emitToast('Profile photo updated', 'success')
       }
     } catch (uploadError: any) {
       console.error(uploadError)
       emitToast(uploadError?.message || 'Failed to upload profile photo.', 'error')
     } finally {
       setUploading(false)
+      // Clear the file input so the same file can be selected again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     }
   }
 
@@ -201,7 +230,7 @@ export function AccountSettingsPage({
                 <span>CHANGE PHOTO</span>
               </div>
               <label htmlFor="profile-upload" className={`absolute inset-0 cursor-pointer ${uploading ? 'pointer-events-none' : ''}`} />
-              <input id="profile-upload" type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+              <input ref={fileInputRef} id="profile-upload" type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
               {uploading ? (
                 <div className="absolute inset-0 flex items-center justify-center rounded-full bg-slate-900/40 text-white text-sm font-semibold">Uploading…</div>
               ) : null}
