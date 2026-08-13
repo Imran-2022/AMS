@@ -192,6 +192,7 @@ internal class FallbackUserAppService : IUserAppService
     public Task<UserDto?> GetByIdAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default) => Task.FromResult<UserDto?>(null);
     public Task<UserDto> ToggleActiveAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     public Task<UserDto> UpdateAsync(Guid id, UpdateUserDto input, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+    public Task<string> GetNextStudentIdAsync(Guid classCourseId, Guid? groupId, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 }
 
 public class UpdateProfileRequest

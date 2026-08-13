@@ -1,11 +1,11 @@
 "use client"
 
-import { useEffect, useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { AppShell } from '@/shared/layout'
 import { API_BASE_URL, changePassword, getCurrentUser, updateUser, type UserDto } from '@/lib/api'
 import { getNotificationPreferences, updateNotificationPreference } from '@/lib/api/notifications'
 import { uploadFile } from '@/lib/api/files'
-import { setStoredUser } from '@/lib/auth'
+import { notifyAvatarUpdated, setStoredUser, withAvatarCacheBust } from '@/lib/auth'
 import { emitToast } from '@/components/ui'
 import { getNotificationDefinitionsForRole } from '@/shared/constants/notifications'
 
@@ -57,6 +57,7 @@ export function AccountSettingsPage({
 }: AccountSettingsPageProps) {
   const [activeTab, setActiveTab] = useState<AccountTab>('security')
   const [profileImage, setProfileImage] = useState<string | null>(null)
+  const [imageLoadError, setImageLoadError] = useState(false)
   const [user, setUser] = useState<UserDto | null>(null)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -64,6 +65,7 @@ export function AccountSettingsPage({
   const [uploading, setUploading] = useState(false)
   const [savingPassword, setSavingPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [toggles, setToggles] = useState<Record<string, boolean>>(() =>
     notificationItems.reduce(
       (acc, item) => ({ ...acc, [item.type]: item.checked }),
@@ -119,29 +121,47 @@ export function AccountSettingsPage({
       const uploadResult = await uploadFile(file)
       const updated = await updateUser(user.id, { avatarUrl: uploadResult.fileUrl })
       setUser(updated)
-      const avatar = updated.avatarUrl
+      
+      const avatarUrl = updated.avatarUrl
         ? updated.avatarUrl.startsWith('http')
           ? updated.avatarUrl
           : `${API_BASE_URL}${updated.avatarUrl}`
         : null
-      setProfileImage(avatar)
-      setStoredUser({
-        id: updated.id,
-        email: updated.email,
-        role: updated.role,
-        fullName: updated.fullName,
-        isActive: updated.isActive,
-        avatarUrl: updated.avatarUrl,
-      })
-      emitToast('Profile photo updated', 'success')
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('ams-user-changed'))
+      
+      if (avatarUrl) {
+        const avatarUrlWithTimestamp = withAvatarCacheBust(avatarUrl)
+
+        if (!avatarUrlWithTimestamp) {
+          emitToast('Profile photo updated', 'success')
+          return
+        }
+
+        setProfileImage(avatarUrlWithTimestamp)
+        setImageLoadError(false)
+
+        setStoredUser({
+          id: updated.id,
+          email: updated.email,
+          role: updated.role,
+          fullName: updated.fullName,
+          isActive: updated.isActive,
+          avatarUrl: updated.avatarUrl,
+        })
+
+        notifyAvatarUpdated()
+        emitToast('Profile photo updated', 'success')
+      } else {
+        emitToast('Profile photo updated', 'success')
       }
     } catch (uploadError: any) {
       console.error(uploadError)
       emitToast(uploadError?.message || 'Failed to upload profile photo.', 'error')
     } finally {
       setUploading(false)
+      // Clear the file input so the same file can be selected again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     }
   }
 
@@ -184,7 +204,12 @@ export function AccountSettingsPage({
           <aside className="w-full xl:w-72 bg-white rounded-2xl border border-slate-200 p-6 shrink-0 space-y-3">
             <div className="avatar-wrap">
               {profileImage ? (
-                <img src={profileImage} alt="Profile photo" className="base object-cover" />
+                <img 
+                  src={profileImage} 
+                  alt="Profile photo" 
+                  className="base object-cover" 
+                  onError={() => setImageLoadError(true)}
+                />
               ) : (
                 <div className="base">
                   <svg className="w-10 h-10 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -201,7 +226,7 @@ export function AccountSettingsPage({
                 <span>CHANGE PHOTO</span>
               </div>
               <label htmlFor="profile-upload" className={`absolute inset-0 cursor-pointer ${uploading ? 'pointer-events-none' : ''}`} />
-              <input id="profile-upload" type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+              <input ref={fileInputRef} id="profile-upload" type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
               {uploading ? (
                 <div className="absolute inset-0 flex items-center justify-center rounded-full bg-slate-900/40 text-white text-sm font-semibold">Uploading…</div>
               ) : null}

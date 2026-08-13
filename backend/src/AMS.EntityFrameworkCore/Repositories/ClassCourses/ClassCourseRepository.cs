@@ -16,6 +16,8 @@ public class ClassCourseRepository : IClassCourseRepository
     public async Task<ClassCourse?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         => await _dbContext.ClassCourses
             .Include(x => x.AcademicYear)
+            .Include(x => x.Group)
+            .Include(x => x.ClassDefinition)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
     public async Task<IReadOnlyList<ClassCourse>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -24,6 +26,8 @@ public class ClassCourseRepository : IClassCourseRepository
         {
             return await _dbContext.ClassCourses
                 .Include(x => x.AcademicYear)
+                .Include(x => x.Group)
+                .Include(x => x.ClassDefinition)
                 .ToListAsync(cancellationToken);
         }
         catch (Exception ex)

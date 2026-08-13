@@ -18,14 +18,13 @@ public class StudentProfile
         if (userId == Guid.Empty) throw new ArgumentException("UserId is required.");
         if (string.IsNullOrWhiteSpace(studentId)) throw new ArgumentException("StudentId is required.");
         if (string.IsNullOrWhiteSpace(guardianName)) throw new ArgumentException("Guardian name is required.");
-        if (string.IsNullOrWhiteSpace(guardianEmail)) throw new ArgumentException("Guardian email is required.");
         if (string.IsNullOrWhiteSpace(parentMobile)) throw new ArgumentException("Parent mobile is required.");
         if (admissionDate == default) throw new ArgumentException("Admission date is required.");
 
         UserId = userId;
         StudentId = studentId;
         GuardianName = guardianName;
-        GuardianEmail = guardianEmail;
+        GuardianEmail = guardianEmail ?? string.Empty;
         ParentMobile = parentMobile;
         AdmissionDate = admissionDate.Kind switch
         {

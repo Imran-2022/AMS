@@ -50,4 +50,26 @@ export function clearStoredAuth() {
   window.localStorage.removeItem('ams-user');
   window.localStorage.removeItem('ams-token');
   window.localStorage.removeItem('ams-refresh-token');
+  window.localStorage.removeItem('ams-avatar-url');
+}
+
+export function getStoredAvatarUrl() {
+  if (typeof window === 'undefined') return null;
+  return window.localStorage.getItem('ams-avatar-url');
+}
+
+export function setStoredAvatarUrl(url: string) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem('ams-avatar-url', url);
+}
+
+export function withAvatarCacheBust(url?: string) {
+  if (!url) return url;
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}t=${Date.now()}`;
+}
+
+export function notifyAvatarUpdated() {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event('ams-avatar-updated'));
 }

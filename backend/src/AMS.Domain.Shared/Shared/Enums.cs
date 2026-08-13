@@ -28,5 +28,7 @@ public enum NotificationType
     AssignmentPublished = 1,
     SubmissionReceived = 2,
     SubmissionGraded = 3,
-    ResubmissionRequested = 4
+    ResubmissionRequested = 4,
+    SubmissionResubmitted = 5,
+    SubmissionResubmissionGraded = 6
 }

@@ -10,7 +10,7 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 
 export function AdminAssignmentsPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'All' | 'Published' | 'Drafts'>('All');
+  const [activeTab, setActiveTab] = useState<'All' | 'Published'>('All');
   const [selectedClass, setSelectedClass] = useState('All classes');
   const [selectedTeacher, setSelectedTeacher] = useState('All teachers');
   const [search, setSearch] = useState('');
@@ -30,7 +30,10 @@ export function AdminAssignmentsPage() {
 
   const filteredAssignments = useMemo(() => {
     return assignments.filter((assignment) => {
-      if (activeTab !== 'All' && assignment.status !== activeTab) {
+      if (activeTab !== 'All' && assignment.status !== 'Published') {
+        return false;
+      }
+      if (assignment.status !== 'Published') {
         return false;
       }
       const assignmentClass = `${assignment.classCourseName} - ${assignment.classCourseSection}`;
@@ -67,7 +70,7 @@ export function AdminAssignmentsPage() {
   const totals = useMemo(() => {
     const total = assignments.length;
     const published = assignments.filter((item) => item.status === 'Published').length;
-    const drafts = assignments.filter((item) => item.status === 'Draft').length;
+    const drafts = 0;
     const dueSoon = assignments.filter((item) => {
       const due = Date.parse(item.deadline);
       return !Number.isNaN(due) && due >= Date.now() && due <= Date.now() + 7 * 24 * 60 * 60 * 1000;
@@ -80,7 +83,7 @@ export function AdminAssignmentsPage() {
       setIsLoading(true);
       try {
         const items = await getAssignments();
-        setAssignments(items);
+        setAssignments(items.filter((assignment) => assignment.status === 'Published'));
       } catch (error) {
         console.error('Failed to load assignments', error);
       } finally {
@@ -180,12 +183,12 @@ export function AdminAssignmentsPage() {
         {assignments.length > 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
-            {(['All', 'Published', 'Drafts'] as const).map((tab) => (
+            {(['All', 'Published'] as const).map((tab) => (
               <button
                 key={tab}
                 type="button" onClick={() => setActiveTab(tab)}
                 className={`tab cursor-pointer px-4 py-2 rounded px-3 py-2.5 text-sm font-semibold ${activeTab === tab ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
-                {tab} <span className="opacity-70 font-normal">{tab === 'All' ? totals.total : tab === 'Published' ? totals.published : totals.drafts}</span>
+                {tab} <span className="opacity-70 font-normal">{tab === 'All' ? totals.total : totals.published}</span>
               </button>
             ))}
           </div>

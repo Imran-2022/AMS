@@ -21,6 +21,8 @@ public class UserDto
     public DateTime? AdmissionDate { get; set; }
     public DateTime? JoiningDate { get; set; }
     public string ParentMobile { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
 }
 
 public class CreateUserDto

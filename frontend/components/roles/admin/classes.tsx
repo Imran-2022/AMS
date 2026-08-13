@@ -30,6 +30,10 @@ function isHigherSecondaryClassName(className?: string) {
   return numericValue >= 9 && numericValue <= 12 || ['nine', 'ten', 'eleven', 'twelve', 'class 9', 'class 10', 'class 11', 'class 12'].includes(normalized);
 }
 
+function formatClassCourseLabel(name?: string, section?: string, groupName?: string | null) {
+  return [name, section, groupName].filter(Boolean).join(' - ');
+}
+
 export function AdminClassesPage() {
   const [classes, setClasses] = useState<ClassCourseDto[]>([]);
   const [subjects, setSubjects] = useState<SubjectDto[]>([]);
@@ -677,7 +681,7 @@ export function AdminClassesPage() {
                 <div key={cls.id} className="bg-white rounded border border-slate-200 p-5">
                   <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-base font-bold text-slate-800">{cls.name} — {cls.section}{cls.groupId ? `(${groupNameMap[cls.groupId] ?? ''})` : ''}</p>
+                    <p className="text-base font-bold text-slate-800">{formatClassCourseLabel(cls.name, cls.section, cls.groupId ? (groupNameMap[cls.groupId] ?? cls.groupName ?? '') : cls.groupName ?? undefined)}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-[11.5px] font-bold text-emerald-600">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -956,7 +960,11 @@ export function AdminClassesPage() {
 
 {/* Subject creation/editing moved to Teacher allocation page */}
 
-      <Modal open={activeModal === 'view-subjects'} onClose={closeModal} title={classes.find((cls) => cls.id === viewSubjectsForClass)?.name ?? 'Class subjects'} description="View all subjects that belong to this class.">
+      <Modal open={activeModal === 'view-subjects'} onClose={closeModal} title={(() => {
+        const selectedClass = classes.find((cls) => cls.id === viewSubjectsForClass);
+        if (!selectedClass) return 'Class subjects';
+        return formatClassCourseLabel(selectedClass.name, selectedClass.section, selectedClass.groupId ? (groupNameMap[selectedClass.groupId] ?? selectedClass.groupName ?? '') : selectedClass.groupName ?? undefined);
+      })()} description="View all subjects that belong to this class.">
         <div className="space-y-4">
           {subjects.filter((subject) => subject.classCourseId === viewSubjectsForClass).map((subject) => {
             const teacherName = assignmentMap[subject.id]?.teacherName ?? 'Unassigned';
@@ -969,7 +977,7 @@ export function AdminClassesPage() {
             );
           })}
           {subjects.filter((subject) => subject.classCourseId === viewSubjectsForClass).length === 0 ? (
-            <p className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500">No subjects have been added to this class yet.</p>
+            <p className="rounded border border-slate-200 bg-white p-4 text-sm text-slate-500">No subjects have been added to this class yet.</p>
           ) : null}
         </div>
       </Modal>

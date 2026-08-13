@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/shared/layout';
-import { Button, Card, Metric, PageHeader, Pill, RoleBadge, Th, Td, AddStudentModal, AddTeacherModal, TeacherAssignmentModal } from '../../ui';
+import { Button, Card, Metric, PageHeader, Pill, RoleBadge, Th, Td } from '@/shared/ui';
+import { AddStudentModal, AddTeacherModal, TeacherAssignmentModal } from '@/components/roles/admin/shared';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
 import { getAssignments, getSubmissions, getUsers as apiGetUsers, getSubjects } from '@/lib/api';
 import { MoreVertical, UserPlus, UserCheck, BookOpen, ClipboardList } from 'lucide-react';
@@ -40,6 +41,12 @@ export function AdminDashboardPage() {
   const goToAssignmentDetail = (assignmentId: string) => router.push(`/roles/admin/assignments/${assignmentId}`);
   const goToSubmissionDetail = (submissionId: string) => router.push(`/roles/admin/submissions/${submissionId}`);
 
+  const CLASSES_WITH_GROUPS = ['Nine', 'Ten', 'Eleven', 'Twelve'];
+
+  function classHasGroups(className?: string): boolean {
+    return className ? CLASSES_WITH_GROUPS.includes(className) : false;
+  }
+
   async function loadDashboard() {
     try {
       setIsLoading(true);
@@ -53,14 +60,16 @@ export function AdminDashboardPage() {
         getSubjects(),
       ]);
       setStats(s);
-      setRecentAssignments(assignments.slice(0, 8));
+      setRecentAssignments(assignments.filter((assignment) => assignment.status === 'Published').slice(0, 8));
       setRecentSubmissions(submissions.slice(0, 8));
       setDashboardClassCourses(classes.map((cls) => ({
         id: cls.id,
         name: cls.name,
         section: cls.section,
-        academicYear: cls.academicYear,
-      })));
+        academicYear: cls.academicYear ?? '',
+        groupId: cls.groupId ?? undefined,
+        groupName: cls.groupName ?? undefined,
+      })) as ClassCourseRecord[]);
       setDashboardTeachers(users.filter((user: any) => user.role === 'Teacher').map((teacher: any) => ({
         id: teacher.id,
         fullName: teacher.fullName,
@@ -260,8 +269,23 @@ export function AdminDashboardPage() {
                 role: 'Student',
                 isActive: values.status === 'Active',
                 parentMobile: values.parentMobile ?? '',
+                studentId: values.studentId,
+                gender: values.gender || undefined,
+                guardianName: values.guardianName || undefined,
+                guardianEmail: values.guardianEmail || undefined,
+                dateOfBirth: values.dateOfBirth || undefined,
+                admissionDate: values.admissionDate || undefined,
               });
-              const selectedClass = dashboardClassCourses.find((cls) => cls.name === values.className && cls.section === values.section);
+
+              // For classes 9-12, also filter by group
+              let selectedClass = dashboardClassCourses.find((cls) => cls.name === values.className && cls.section === values.section);
+              
+              if (classHasGroups(values.className) && values.group) {
+                selectedClass = dashboardClassCourses.find(
+                  (cls) => cls.name === values.className && cls.section === values.section && cls.groupName === values.group
+                );
+              }
+
               if (selectedClass) {
                 await createEnrollment({ studentId: created.id, classCourseId: selectedClass.id });
               }

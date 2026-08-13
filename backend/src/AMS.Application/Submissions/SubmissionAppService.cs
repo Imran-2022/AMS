@@ -124,17 +124,10 @@ public class SubmissionAppService : ISubmissionAppService
         var submission = new Submission(Guid.NewGuid(), assignment.Id, _currentUser.UserId, input.ContentText, DateTime.UtcNow, false, SubmissionStatus.Submitted);
         submission.Submit(DateTime.UtcNow, assignment.Deadline, assignment.AllowLateSubmission, assignment);
         await _submissionRepository.AddAsync(submission, cancellationToken);
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await _notificationService.NotifySubmissionReceivedAsync(submission, assignment, cancellationToken);
-            }
-            catch
-            {
-                // Notifications must never block a submitted assignment.
-            }
-        }, cancellationToken);
+
+        // Ensure the teacher notification is persisted before the request returns.
+        await _notificationService.NotifySubmissionReceivedAsync(submission, assignment, cancellationToken);
+
         return await ToDtoAsync(submission, cancellationToken).ConfigureAwait(false);
     }
 
@@ -155,14 +148,26 @@ public class SubmissionAppService : ISubmissionAppService
         if (submission.Status == SubmissionStatus.ResubmissionRequested)
         {
             submission.Resubmit(input.ContentText ?? submission.ContentText, DateTime.UtcNow, assignment.Deadline, assignment.AllowLateSubmission);
+            
+            // Delete feedback attachments when student resubmits
+            var feedbackAttachments = await _attachmentAppService.ListAsync("SubmissionFeedback", submission.Id);
+            foreach (var attachment in feedbackAttachments)
+            {
+                await _attachmentAppService.DeleteAsync(attachment.Id);
+            }
+            
+            await _submissionRepository.UpdateAsync(submission, cancellationToken);
+            
+            // Notify teacher of student resubmission
+            await _notificationService.NotifySubmissionResubmittedAsync(submission, assignment, cancellationToken);
         }
         else
         {
             // Allow editing before deadline (or if late submissions allowed). Disallow edits to graded submissions.
             submission.EditBeforeDeadline(input.ContentText ?? submission.ContentText, DateTime.UtcNow, assignment.Deadline, assignment.AllowLateSubmission);
+            await _submissionRepository.UpdateAsync(submission, cancellationToken);
         }
 
-        await _submissionRepository.UpdateAsync(submission, cancellationToken);
         return await ToDtoAsync(submission, cancellationToken).ConfigureAwait(false);
     }
 
@@ -183,19 +188,21 @@ public class SubmissionAppService : ISubmissionAppService
         var auth = await _authorizationService.AuthorizeAsync(principal, id, "TeachersOrAdmins");
         if (!auth.Succeeded) throw new ForbiddenException("Only teachers and admins can grade submissions.");
 
+        var wasResubmitted = submission.Status == SubmissionStatus.Resubmitted;
+        
         submission.MarkGraded(input.Marks, input.Feedback, _currentUser.UserId, assignment);
         await _submissionRepository.UpdateAsync(submission, cancellationToken);
-        _ = Task.Run(async () =>
+
+        // Send appropriate notification based on whether this is grading a resubmission
+        if (wasResubmitted)
         {
-            try
-            {
-                await _notificationService.NotifySubmissionGradedAsync(submission, assignment, cancellationToken);
-            }
-            catch
-            {
-                // Notifications must never block grading.
-            }
-        }, cancellationToken);
+            await _notificationService.NotifySubmissionResubmissionGradedAsync(submission, assignment, cancellationToken);
+        }
+        else
+        {
+            await _notificationService.NotifySubmissionGradedAsync(submission, assignment, cancellationToken);
+        }
+
         return await ToDtoAsync(submission, cancellationToken).ConfigureAwait(false);
     }
 
@@ -220,17 +227,8 @@ public class SubmissionAppService : ISubmissionAppService
             await _submissionRepository.UpdateAsync(submission, cancellationToken);
             if (parsed == SubmissionStatus.ResubmissionRequested)
             {
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        await _notificationService.NotifyResubmissionRequestedAsync(submission, assignment, cancellationToken);
-                    }
-                    catch
-                    {
-                        // Notifications must never block status updates.
-                    }
-                }, cancellationToken);
+                // Await to guarantee the resubmission notification record is created.
+                await _notificationService.NotifyResubmissionRequestedAsync(submission, assignment, cancellationToken);
             }
             return await ToDtoAsync(submission, cancellationToken).ConfigureAwait(false);
         }
@@ -262,6 +260,7 @@ public class SubmissionAppService : ISubmissionAppService
         var classCourse = await _classCourseRepository.GetByIdAsync(subject.ClassCourseId, cancellationToken) ?? throw new NotFoundException("Class/course not found.");
         var group = classCourse.GroupId.HasValue ? await _groupRepository.GetByIdAsync(classCourse.GroupId.Value, cancellationToken) : null;
         var attachments = await _attachmentAppService.ListAsync("Submission", submission.Id);
+        var feedbackAttachments = await _attachmentAppService.ListAsync("SubmissionFeedback", submission.Id);
 
         var initials = string.Concat(student.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => x[0])).ToUpperInvariant();
 
@@ -288,7 +287,8 @@ public class SubmissionAppService : ISubmissionAppService
             ClassCourseName = classCourse.Name,
             ClassCourseSection = classCourse.Section,
             GroupName = group?.Name,
-            Attachments = attachments
+            Attachments = attachments,
+            FeedbackAttachments = feedbackAttachments
         };
     }
 }

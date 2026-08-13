@@ -36,6 +36,22 @@ export default function SubjectsAssignments() {
     void loadData();
   }, []);
 
+  useEffect(() => {
+    if (!actionMenuFor) return;
+
+    function handleDocumentClick(event: MouseEvent) {
+      const target = event.target as Node;
+      const menuEl = document.querySelector(`[data-action-menu="${actionMenuFor}"]`);
+      const btnEl = document.querySelector(`[data-action-button="${actionMenuFor}"]`);
+      if (menuEl && menuEl.contains(target)) return;
+      if (btnEl && btnEl.contains(target)) return;
+      setActionMenuFor(null);
+    }
+
+    document.addEventListener('click', handleDocumentClick);
+    return () => document.removeEventListener('click', handleDocumentClick);
+  }, [actionMenuFor]);
+
   async function loadData() {
     try {
       setError(null);
@@ -58,7 +74,12 @@ export default function SubjectsAssignments() {
   const classCourseMap = useMemo(() => Object.fromEntries(classes.map((c) => [c.id, c])) as Record<string, ClassCourseDto>, [classes]);
   const assignmentMap = useMemo(() => Object.fromEntries(assignments.map((a) => [a.subjectId, a])) as Record<string, TeacherSubjectAssignmentDto>, [assignments]);
 
-  const classOptions = useMemo(() => classes.map((cls) => ({ id: cls.id, label: `${cls.name} — ${cls.section}` })), [classes]);
+  const formatClassCourseLabel = (course?: ClassCourseDto | null) => {
+    if (!course) return 'Class subjects';
+    return [course.name, course.section, course.groupName].filter(Boolean).join(' - ');
+  };
+
+  const classOptions = useMemo(() => classes.map((cls) => ({ id: cls.id, label: formatClassCourseLabel(cls) })), [classes]);
 
   const summaryMetrics = useMemo(() => {
     const totalTeachers = teachers.length;
@@ -89,7 +110,7 @@ export default function SubjectsAssignments() {
     const term = search.trim().toLowerCase();
     return subjects.filter((subject) => {
       const course = classCourseMap[subject.classCourseId];
-      const clsLabel = course ? `${course.name} — ${course.section}` : 'Unassigned';
+      const clsLabel = course ? formatClassCourseLabel(course) : 'Unassigned';
       const teacherName = assignmentMap[subject.id]?.teacherName ?? 'Unassigned';
       const matchesClass = selectedClass === 'All classes' || clsLabel === selectedClass;
       const matchesSearch =
@@ -122,6 +143,9 @@ export default function SubjectsAssignments() {
     }
     if (modal === 'view-subjects') {
       setViewSubjectsForClass(classCourseId ?? null);
+    }
+    if (modal === 'assign') {
+      setAssignForm({ classDefinitionId: '', classCourseId: '', subjectId: '', teacherId: '' });
     }
     setActiveModal(modal);
   }
@@ -168,6 +192,18 @@ export default function SubjectsAssignments() {
     setActiveModal('delete');
   }
 
+  function handleReassignTeacher(subject: SubjectDto) {
+    const existingAssignment = assignmentMap[subject.id];
+    setAssignForm({
+      classDefinitionId: '',
+      classCourseId: subject.classCourseId,
+      subjectId: subject.id,
+      teacherId: existingAssignment?.teacherId ?? '',
+    });
+    setActionMenuFor(null);
+    setActiveModal('assign');
+  }
+
   async function confirmDelete() {
     if (!deleteTarget) return;
     try {
@@ -179,6 +215,34 @@ export default function SubjectsAssignments() {
     } catch (err) {
       console.error(err);
       alert('Delete failed.');
+    }
+  }
+
+  async function handleAssignTeacher(values: { teacherId: string; classCourseId: string; subjectId: string }) {
+    try {
+      // Check if this subject already has a teacher assigned
+      const existingAssignment = assignmentMap[values.subjectId];
+      
+      // If there's an existing assignment and it's different from the new one, delete it first
+      if (existingAssignment && existingAssignment.teacherId !== values.teacherId) {
+        await deleteTeacherAssignment(existingAssignment.teacherId, values.subjectId);
+      }
+      
+      // Create the new assignment (or skip if same teacher)
+      if (!existingAssignment || existingAssignment.teacherId !== values.teacherId) {
+        await createTeacherAssignment({
+          teacherId: values.teacherId,
+          classCourseId: values.classCourseId,
+          subjectId: values.subjectId,
+        });
+      }
+      
+      await loadData();
+      closeModal();
+    } catch (err) {
+      console.error('Teacher assignment failed:', err);
+      const message = err instanceof Error ? err.message : String(err);
+      alert(`Unable to assign the teacher. ${message}`);
     }
   }
 
@@ -304,19 +368,24 @@ export default function SubjectsAssignments() {
                     <tr key={subject.id}>
                       <td className="px-5 py-3.5 font-semibold text-slate-700">{subject.name}</td>
                       <td className="px-2 py-3.5 text-slate-500 font-mono text-xs">{subject.code}</td>
-                      <td className="px-2 py-3.5 text-slate-500">{course ? `${course.name} — ${course.section}` : 'Unassigned'}</td>
+                      <td className="px-2 py-3.5 text-slate-500">{course ? formatClassCourseLabel(course) : 'Unassigned'}</td>
                       <td className="px-2 py-3.5">
                         {teacherName === 'Unassigned' ? (
                           <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-[11.5px] font-bold text-amber-600"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"/>Unassigned</span>
                         ) : (
-                          <div className="flex items-center gap-2"><div className="w-6 h-6 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-[10px] font-bold">{teacherName.split(' ').map((p) => p[0]).join('')}</div><span className="text-slate-600">{teacherName}</span></div>
+                          <span className="text-slate-600">{teacherName}</span>
                         )}
                       </td>
                       <td className="px-5 py-3.5 text-right">
                         <div className="relative inline-flex">
                           <button type="button" data-action-button={`subject-${subject.id}`} onClick={(ev) => { ev.stopPropagation(); setActionMenuFor(actionMenuFor === `subject-${subject.id}` ? null : `subject-${subject.id}`); }} className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md p-0 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
                           {actionMenuFor === `subject-${subject.id}` ? (
-                            <div data-action-menu={`subject-${subject.id}`} onClick={(ev) => ev.stopPropagation()} className="absolute right-0 top-full z-20 mt-2 w-40 overflow-hidden rounded border border-slate-200 bg-white shadow-xl">
+                            <div data-action-menu={`subject-${subject.id}`} onClick={(ev) => ev.stopPropagation()} className="absolute right-0 top-full z-20 mt-2 w-44 overflow-hidden rounded border border-slate-200 bg-white shadow-xl">
+                              {teacherName === 'Unassigned' ? (
+                                <Button type="button" variant="ghost" onClick={() => handleReassignTeacher(subject)} className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">Assign teacher</Button>
+                              ) : (
+                                <Button type="button" variant="ghost" onClick={() => handleReassignTeacher(subject)} className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">Reassign teacher</Button>
+                              )}
                               <Button type="button" variant="ghost" onClick={() => openEditSubject(subject)} className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">Edit subject</Button>
                               <Button type="button" variant="ghost" onClick={() => handleDelete('subject', subject.id, subject.name)} className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50">Delete subject</Button>
                             </div>
@@ -368,7 +437,7 @@ export default function SubjectsAssignments() {
         </div>
       </div>
 
-      <Modal open={activeModal === 'view-subjects'} onClose={closeModal} title={classes.find((cls) => cls.id === viewSubjectsForClass)?.name ?? 'Class subjects'} description="View all subjects that belong to this class.">
+      <Modal open={activeModal === 'view-subjects'} onClose={closeModal} title={formatClassCourseLabel(classes.find((cls) => cls.id === viewSubjectsForClass) ?? null)} description="View all subjects that belong to this class.">
         <div className="space-y-4">
           {subjects.filter((subject) => subject.classCourseId === viewSubjectsForClass).map((subject) => {
             const teacherName = assignmentMap[subject.id]?.teacherName ?? 'Unassigned';
@@ -381,12 +450,12 @@ export default function SubjectsAssignments() {
             );
           })}
           {subjects.filter((subject) => subject.classCourseId === viewSubjectsForClass).length === 0 ? (
-            <p className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500">No subjects have been added to this class yet.</p>
+            <p className="rounded border border-slate-200 bg-white p-4 text-sm text-slate-500">No subjects have been added to this class yet.</p>
           ) : null}
         </div>
       </Modal>
 
-      <TeacherAssignmentModal open={activeModal === 'assign'} onClose={closeModal} title="Assign teacher" submitLabel="Save assignment" teachers={teachers.map((teacher) => ({ id: teacher.id, fullName: teacher.fullName, subjectSpecialization: teacher.subjectSpecialization }))} classCourses={classes.map((cls) => ({ id: cls.id, name: cls.name, section: cls.section }))} subjects={subjects.map((subject) => ({ id: subject.id, name: subject.name, code: subject.code, classCourseId: subject.classCourseId }))} assignments={assignments.map((assignment) => ({ subjectId: assignment.subjectId, teacherId: assignment.teacherId }))} initialValues={{ teacherId: assignForm.teacherId, classCourseId: assignForm.classCourseId, subjectId: assignForm.subjectId }} isSubmitting={false} onSubmit={async (values) => { try { await createTeacherAssignment({ teacherId: values.teacherId, classCourseId: values.classCourseId, subjectId: values.subjectId }); await loadData(); closeModal(); } catch (err) { console.error('Teacher assignment failed:', err); const message = err instanceof Error ? err.message : String(err); alert(`Unable to assign the teacher. ${message}`); } }} />
+      <TeacherAssignmentModal open={activeModal === 'assign'} onClose={closeModal} title={assignForm.teacherId ? 'Reassign teacher' : 'Assign teacher'} submitLabel={assignForm.teacherId ? 'Save reassignment' : 'Save assignment'} teachers={teachers.map((teacher) => ({ id: teacher.id, fullName: teacher.fullName, subjectSpecialization: teacher.subjectSpecialization }))} classCourses={classes.map((cls) => ({ id: cls.id, name: cls.name, section: cls.section }))} subjects={subjects.map((subject) => ({ id: subject.id, name: subject.name, code: subject.code, classCourseId: subject.classCourseId }))} assignments={assignments.map((assignment) => ({ subjectId: assignment.subjectId, teacherId: assignment.teacherId }))} initialValues={{ teacherId: assignForm.teacherId, classCourseId: assignForm.classCourseId, subjectId: assignForm.subjectId }} isSubmitting={false} onSubmit={handleAssignTeacher} />
 
       <AmsDeleteComfiramtionModal open={activeModal === 'delete' && Boolean(deleteTarget)} onClose={closeModal} title={deleteTarget?.type === 'subject' ? 'Remove subject?' : 'Remove'} description={`${deleteTarget?.label ?? 'This item'} will be removed.`} confirmLabel="Remove" onConfirm={confirmDelete} />
     </div>

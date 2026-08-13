@@ -21,7 +21,7 @@ import {
   Files,
   Users,
 } from 'lucide-react';
-import { clearStoredAuth, getStoredUser } from '@/lib/auth';
+import { clearStoredAuth, getStoredAvatarUrl, getStoredUser, withAvatarCacheBust } from '@/lib/auth';
 import { API_BASE_URL } from '@/lib/api';
 import { getNotifications, getUnreadNotificationCount, markAllNotificationsRead, markNotificationRead } from '@/lib/api/notifications';
 import { ToastContainer } from '../ui';
@@ -159,7 +159,7 @@ function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, 
 
       <div className="border-t border-[#ECECEF] p-3">
           <div className="relative group">
-          <button type="button" onClick={() => router.push(settingsHref)} className="w-full nav-item relative flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-[#F5F5F7] text-left cursor-pointer">
+          <button type="button" className="w-full nav-item relative flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-[#F5F5F7] text-left cursor-pointer">
             <div className="w-9 h-9 rounded-full bg-brand-600 text-white flex items-center justify-center shrink-0 overflow-hidden">
             {avatarUrl ? (
               <img src={avatarUrl} alt="Profile" className="h-full w-full object-cover" />
@@ -322,7 +322,7 @@ function Topbar({ breadcrumb, role }: { breadcrumb: string; role: RoleType }) {
           <button
             type="button"
             onClick={() => setDropdownOpen((open) => !open)}
-            className="relative w-9 h-9 rounded-lg flex items-center justify-center hover:bg-[#F5F5F7]"
+            className="relative w-9 h-9 rounded-lg flex items-center justify-center hover:bg-[#F5F5F7] cursor-pointer"
             aria-label="Notifications"
             aria-expanded={dropdownOpen}>
             <Bell className="h-5 w-5 text-[#1F2430]" />
@@ -340,7 +340,7 @@ function Topbar({ breadcrumb, role }: { breadcrumb: string; role: RoleType }) {
                 <button
                   type="button"
                   onClick={handleMarkAllAsRead}
-                  className="text-[11px] font-medium text-[#7C3AED] hover:text-[#6D28D9]"
+                  className="cursor-pointer text-[11px] font-medium text-[#7C3AED] hover:text-[#6D28D9]"
                 >
                   Mark all as read
                 </button>
@@ -355,7 +355,7 @@ function Topbar({ breadcrumb, role }: { breadcrumb: string; role: RoleType }) {
                       key={notification.id}
                       type="button"
                       onClick={() => void handleNotificationClick(notification)}
-                      className={`flex w-full items-start gap-3 border-b border-[#F3F4F6] px-4 py-3 text-left transition-colors hover:bg-[#F7F7F9] ${notification.isRead ? 'bg-white' : 'bg-[#F5F3FF]'}`}>
+                      className={`flex w-full cursor-pointer items-start gap-3 border-b border-[#F3F4F6] px-4 py-3 text-left transition-colors hover:bg-[#F7F7F9] ${notification.isRead ? 'bg-white' : 'bg-[#F5F3FF]'}`}>
                       <span className={`mt-1 h-2.5 w-2.5 rounded-full ${notification.isRead ? 'bg-transparent' : 'bg-[#7C3AED]'}`} />
                       <div className="min-w-0 flex-1">
                         <p className={`text-sm font-semibold ${notification.isRead ? 'text-[#1F2430]' : 'text-[#1F2430]'}`}>
@@ -394,11 +394,16 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
     const isSmall = window.innerWidth < 1024;
     setIsMobile(isSmall);
     setIsCollapsed(stored === 'true' || (!stored && isSmall));
+    
     const user = getStoredUser();
-    const base = API_BASE_URL;
-    const avatar = user?.avatarUrl ? (user.avatarUrl.startsWith('http') ? user.avatarUrl : `${base}${user.avatarUrl}`) : undefined;
     setUserName(user?.fullName ?? user?.email ?? undefined);
-    setAvatarUrl(avatar);
+    
+    // Use avatar from user object, not separate localStorage key
+    if (user?.avatarUrl) {
+      const base = API_BASE_URL;
+      const avatar = user.avatarUrl.startsWith('http') ? user.avatarUrl : `${base}${user.avatarUrl}`;
+      setAvatarUrl(withAvatarCacheBust(avatar));
+    }
 
     const handleResize = () => {
       const small = window.innerWidth < 1024;
@@ -420,16 +425,21 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
   }, [isCollapsed]);
 
   useEffect(() => {
-    const handleUserChanged = () => {
+    const handleAvatarUpdate = () => {
+      // Reload user data to get the updated avatar
       const user = getStoredUser();
-      const base = API_BASE_URL;
-      const avatar = user?.avatarUrl ? (user.avatarUrl.startsWith('http') ? user.avatarUrl : `${base}${user.avatarUrl}`) : undefined;
-      setUserName(user?.fullName ?? user?.email ?? undefined);
-      setAvatarUrl(avatar);
+      if (user?.avatarUrl) {
+        const base = API_BASE_URL;
+        const avatar = user.avatarUrl.startsWith('http') ? user.avatarUrl : `${base}${user.avatarUrl}`;
+        setAvatarUrl(withAvatarCacheBust(avatar));
+      }
     };
 
-    window.addEventListener('ams-user-changed', handleUserChanged);
-    return () => window.removeEventListener('ams-user-changed', handleUserChanged);
+    window.addEventListener('ams-avatar-updated', handleAvatarUpdate);
+
+    return () => {
+      window.removeEventListener('ams-avatar-updated', handleAvatarUpdate);
+    };
   }, []);
 
   useEffect(() => {

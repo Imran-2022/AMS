@@ -95,6 +95,17 @@ function normalizeApiPayload<T>(payload: T): T {
     });
   }
 
+  if (Array.isArray(clone.feedbackAttachments)) {
+    clone.feedbackAttachments = clone.feedbackAttachments.map((item: unknown) => {
+      if (!item || typeof item !== 'object') return item;
+      const normalized = { ...(item as any) };
+      if (typeof normalized.downloadUrl === 'string') {
+        normalized.downloadUrl = normalizeDownloadUrl(normalized.downloadUrl);
+      }
+      return normalized;
+    });
+  }
+
   return clone;
 }
 
@@ -162,6 +173,7 @@ export type AssignmentDto = {
   allowLateSubmission: boolean;
   allowResubmission: boolean;
   createdAt: string;
+  updatedAt?: string;
   submittedCount?: number;
   totalStudents?: number;
   attachments?: AttachmentDto[];
@@ -201,6 +213,7 @@ export type SubmissionDto = {
   classCourseSection: string;
   groupName?: string;
   attachments?: AttachmentDto[];
+  feedbackAttachments?: AttachmentDto[];
 };
 
 export type UserDto = {
@@ -223,6 +236,8 @@ export type UserDto = {
   admissionDate?: string;
   joiningDate?: string;
   parentMobile: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type CreateUserDto = {
@@ -314,9 +329,13 @@ export type ClassCourseDto = {
   id: string;
   name: string;
   section: string;
-  academicYear: string;
+  academicYear?: string;
+  academicYearId?: string;
+  academicYearName?: string;
   classDefinitionId?: string | null;
+  classDefinitionName?: string;
   groupId?: string | null;
+  groupName?: string | null;
 };
 
 export type CreateClassCourseDto = {
@@ -480,6 +499,12 @@ export async function toggleUserStatus(id: string) {
   return request<UserDto>(`/api/users/${id}/toggle-status`, {
     method: 'PATCH'
   });
+}
+
+export async function getNextStudentId(classCourseId: string, groupId?: string) {
+  const params = new URLSearchParams({ classCourseId });
+  if (groupId) params.append('groupId', groupId);
+  return request<{ studentId: string }>(`/api/users/next-student-id?${params}`);
 }
 
 export async function getClassCourses() {
