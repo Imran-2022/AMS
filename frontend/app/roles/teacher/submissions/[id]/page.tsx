@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { AppShell } from '@/shared/layout';
 import { Button } from '@/components/ui/Button';
-import { FileUpload } from '@/components/ui';
+import { AmsPermissionConfirmationModal, FileUpload } from '@/components/ui';
 import { FileText, X } from 'lucide-react';
 import {
   getSubmission,
@@ -46,6 +46,10 @@ export default function TeacherSubmissionDetailPage() {
   const [feedbackAttachments, setFeedbackAttachments] = useState<Array<{ id: string; originalFileName: string; downloadUrl: string; sizeBytes: number }>>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{ open: boolean; mode: 'update' | 'resubmission' }>({
+    open: false,
+    mode: 'update',
+  });
 
   useEffect(() => {
     if (!submissionId) {
@@ -189,9 +193,20 @@ export default function TeacherSubmissionDetailPage() {
     }
   }
 
-  const saveGrade = async () => {
+  const saveGrade = () => {
     if (!submission) return;
 
+    const isResubmissionRequest = status === 'ResubmissionRequested';
+    setConfirmModal({
+      open: true,
+      mode: isResubmissionRequest ? 'resubmission' : 'update',
+    });
+  };
+
+  const performSaveGrade = async () => {
+    if (!submission) return;
+
+    setConfirmModal({ open: false, mode: 'update' });
     setSaveError(null);
     setSaving(true);
 
@@ -268,6 +283,21 @@ export default function TeacherSubmissionDetailPage() {
   return (
     <AppShell role="Teacher" breadcrumb="Teacher / Grade Submission">
       <div className="space-y-5">
+        <AmsPermissionConfirmationModal
+          open={confirmModal.open}
+          title={confirmModal.mode === 'resubmission' ? 'Confirm resubmission request?' : 'Update feedback?'}
+          description={
+            confirmModal.mode === 'resubmission'
+              ? 'This will clear the current feedback and marks for this submission and notify the student to resubmit their work.'
+              : 'Are you sure you want to update the feedback for this submission?'
+          }
+          cancelLabel="Cancel"
+          confirmLabel="Yes"
+          confirmVariant={confirmModal.mode === 'resubmission' ? 'danger' : 'primary'}
+          onClose={() => setConfirmModal({ open: false, mode: 'update' })}
+          onConfirm={() => void performSaveGrade()}
+        />
+
         {error ? (
           <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>
         ) : null}
@@ -396,7 +426,7 @@ export default function TeacherSubmissionDetailPage() {
 
                   <div>
                     <label className="mb-2 block text-[13px] font-semibold text-slate-800">Feedback for student</label>
-                    <textarea value={feedback} onChange={(event) => setFeedback(event.target.value)} rows={8} placeholder="Add comments on their work…" className="min-h-[240px] w-full resize-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100" />
+                    <textarea value={feedback} onChange={(event) => setFeedback(event.target.value)} rows={6} placeholder="Add comments on their work…" className="min-h-[160px] w-full resize-y rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100" />
                   </div>
 
                   <div>

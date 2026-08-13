@@ -6,6 +6,7 @@ export { UserFormModal } from './UserFormModal';
 export { TeacherAssignmentModal } from './TeacherAssignmentModal';
 export { Modal } from './Modal';
 export { AmsDeleteComfiramtionModal } from './AmsDeleteComfiramtionModal';
+export { AmsPermissionConfirmationModal } from './AmsPermissionConfirmationModal';
 
 export function Pill({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
