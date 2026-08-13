@@ -322,7 +322,7 @@ function Topbar({ breadcrumb, role }: { breadcrumb: string; role: RoleType }) {
           <button
             type="button"
             onClick={() => setDropdownOpen((open) => !open)}
-            className="relative w-9 h-9 rounded-lg flex items-center justify-center hover:bg-[#F5F5F7]"
+            className="relative w-9 h-9 rounded-lg flex items-center justify-center hover:bg-[#F5F5F7] cursor-pointer"
             aria-label="Notifications"
             aria-expanded={dropdownOpen}>
             <Bell className="h-5 w-5 text-[#1F2430]" />

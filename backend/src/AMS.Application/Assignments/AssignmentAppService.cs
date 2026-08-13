@@ -215,17 +215,12 @@ public class AssignmentAppService : IAssignmentAppService
         EnsureCanManage(assignment, currentUserId, currentUserRole);
         assignment.Publish();
         await _assignmentRepository.UpdateAsync(assignment, cancellationToken);
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await _notificationService.NotifyAssignmentPublishedAsync(assignment, cancellationToken);
-            }
-            catch
-            {
-                // Notifications must never block assignment publishing.
-            }
-        }, cancellationToken);
+
+        // Notifications must be created before the request completes.
+        // Fire-and-forget background tasks were being discarded when the request scope ended,
+        // which left the notification tables empty even though the action succeeded.
+        await _notificationService.NotifyAssignmentPublishedAsync(assignment, cancellationToken);
+
         return await ToDtoAsync(assignment, cancellationToken).ConfigureAwait(false);
     }
 

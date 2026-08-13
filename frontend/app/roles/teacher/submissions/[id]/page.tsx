@@ -196,9 +196,11 @@ export default function TeacherSubmissionDetailPage() {
     setSaving(true);
 
     try {
+      const wantsGrade = status === 'Graded' || Boolean(marks.trim()) || Boolean(feedback.trim()) || feedbackSelectedFiles.length > 0;
+      const nextStatus = wantsGrade ? 'Graded' : status;
       let updated: SubmissionDto;
 
-      if (status === 'Graded') {
+      if (wantsGrade) {
         if (!marks.trim()) {
           setSaveError('Please enter marks before grading this submission.');
           return;
@@ -219,9 +221,10 @@ export default function TeacherSubmissionDetailPage() {
           marks: numericMarks,
           feedback: feedback.trim() || undefined,
         });
+        setStatus('Graded');
       } else {
         updated = await updateSubmissionStatus(submission.id, {
-          status,
+          status: nextStatus,
         });
       }
 
@@ -295,11 +298,15 @@ export default function TeacherSubmissionDetailPage() {
             <div className="grid grid-cols-[1fr_520px] gap-5 items-start">
               <div className="space-y-5">
                 <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                  <p className="text-[11px] font-bold tracking-[0.06em] text-slate-400">SUBMISSION DESCRIPTION</p>
+                  <p className="mt-3 text-sm leading-relaxed text-slate-600">&ldquo;{submission.contentText || 'No description provided.'}&rdquo;</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white p-5">
                   <div className="mb-3 flex items-center justify-between">
                     <p className="text-[11px] font-bold tracking-[0.06em] text-slate-400">SUBMITTED WORK</p>
                     <p className="text-xs text-slate-400">{submittedText}</p>
                   </div>
-
+                    
                   {submission.attachments?.length ? (
                     <div className="space-y-2.5">
                       {submission.attachments.map((attachment) => (
@@ -335,10 +342,7 @@ export default function TeacherSubmissionDetailPage() {
                   )}
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-5">
-                  <p className="text-[11px] font-bold tracking-[0.06em] text-slate-400">SUBMISSION DESCRIPTION</p>
-                  <p className="mt-3 text-sm leading-relaxed text-slate-600">&ldquo;{submission.contentText || 'No description provided.'}&rdquo;</p>
-                </div>
+              
 
                 <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-5">
                   <svg className="h-5 w-5 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

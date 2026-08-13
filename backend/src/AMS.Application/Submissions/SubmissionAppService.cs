@@ -124,17 +124,10 @@ public class SubmissionAppService : ISubmissionAppService
         var submission = new Submission(Guid.NewGuid(), assignment.Id, _currentUser.UserId, input.ContentText, DateTime.UtcNow, false, SubmissionStatus.Submitted);
         submission.Submit(DateTime.UtcNow, assignment.Deadline, assignment.AllowLateSubmission, assignment);
         await _submissionRepository.AddAsync(submission, cancellationToken);
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await _notificationService.NotifySubmissionReceivedAsync(submission, assignment, cancellationToken);
-            }
-            catch
-            {
-                // Notifications must never block a submitted assignment.
-            }
-        }, cancellationToken);
+
+        // Ensure the teacher notification is persisted before the request returns.
+        await _notificationService.NotifySubmissionReceivedAsync(submission, assignment, cancellationToken);
+
         return await ToDtoAsync(submission, cancellationToken).ConfigureAwait(false);
     }
 
@@ -185,17 +178,10 @@ public class SubmissionAppService : ISubmissionAppService
 
         submission.MarkGraded(input.Marks, input.Feedback, _currentUser.UserId, assignment);
         await _submissionRepository.UpdateAsync(submission, cancellationToken);
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await _notificationService.NotifySubmissionGradedAsync(submission, assignment, cancellationToken);
-            }
-            catch
-            {
-                // Notifications must never block grading.
-            }
-        }, cancellationToken);
+
+        // Await the student notification before returning so it is definitely saved.
+        await _notificationService.NotifySubmissionGradedAsync(submission, assignment, cancellationToken);
+
         return await ToDtoAsync(submission, cancellationToken).ConfigureAwait(false);
     }
 
@@ -220,17 +206,8 @@ public class SubmissionAppService : ISubmissionAppService
             await _submissionRepository.UpdateAsync(submission, cancellationToken);
             if (parsed == SubmissionStatus.ResubmissionRequested)
             {
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        await _notificationService.NotifyResubmissionRequestedAsync(submission, assignment, cancellationToken);
-                    }
-                    catch
-                    {
-                        // Notifications must never block status updates.
-                    }
-                }, cancellationToken);
+                // Await to guarantee the resubmission notification record is created.
+                await _notificationService.NotifyResubmissionRequestedAsync(submission, assignment, cancellationToken);
             }
             return await ToDtoAsync(submission, cancellationToken).ConfigureAwait(false);
         }

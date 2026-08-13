@@ -13,19 +13,32 @@ public class UserAppService : IUserAppService
     private readonly IStudentEnrollmentRepository _enrollmentRepository;
     private readonly IClassCourseRepository _classCourseRepository;
     private readonly IGroupRepository _groupRepository;
+    private readonly INotificationPreferenceRepository _notificationPreferenceRepository;
 
     public UserAppService(
         IUserRepository userRepository,
         IFileAppService fileAppService,
         IStudentEnrollmentRepository enrollmentRepository,
         IClassCourseRepository classCourseRepository,
-        IGroupRepository groupRepository)
+        IGroupRepository groupRepository,
+        INotificationPreferenceRepository notificationPreferenceRepository)
     {
         _userRepository = userRepository;
         _fileAppService = fileAppService;
         _enrollmentRepository = enrollmentRepository;
         _classCourseRepository = classCourseRepository;
         _groupRepository = groupRepository;
+        _notificationPreferenceRepository = notificationPreferenceRepository;
+    }
+
+    private async Task InitializeNotificationPreferencesAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        // Create default notification preferences for all notification types
+        foreach (NotificationType type in Enum.GetValues<NotificationType>())
+        {
+            var preference = new NotificationPreference(userId, type, isEnabled: true);
+            await _notificationPreferenceRepository.AddAsync(preference, cancellationToken);
+        }
     }
 
     private static DateTime? NormalizeDateTimeUtc(DateTime? value)
@@ -113,6 +126,10 @@ public class UserAppService : IUserAppService
             studentProfile: studentProfile);
 
         await _userRepository.AddAsync(user, cancellationToken);
+        
+        // Initialize notification preferences for the new user with all types enabled by default
+        await InitializeNotificationPreferencesAsync(userId, cancellationToken);
+        
         return ToDto(user);
     }
 
