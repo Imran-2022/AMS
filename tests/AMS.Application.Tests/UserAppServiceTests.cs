@@ -28,7 +28,8 @@ public class UserAppServiceTests
             Mock.Of<IFileAppService>(),
             Mock.Of<IStudentEnrollmentRepository>(),
             Mock.Of<IClassCourseRepository>(),
-            Mock.Of<IGroupRepository>());
+            Mock.Of<IGroupRepository>(),
+            Mock.Of<INotificationPreferenceRepository>());
 
         var result = await service.GetAllAsync(Guid.NewGuid(), nameof(UserRole.Admin));
 
@@ -45,7 +46,8 @@ public class UserAppServiceTests
             Mock.Of<IFileAppService>(),
             Mock.Of<IStudentEnrollmentRepository>(),
             Mock.Of<IClassCourseRepository>(),
-            Mock.Of<IGroupRepository>());
+            Mock.Of<IGroupRepository>(),
+            Mock.Of<INotificationPreferenceRepository>());
 
         await Assert.ThrowsAsync<ForbiddenException>(() => service.GetAllAsync(Guid.NewGuid(), nameof(UserRole.Teacher)));
     }
@@ -59,7 +61,8 @@ public class UserAppServiceTests
             Mock.Of<IFileAppService>(),
             Mock.Of<IStudentEnrollmentRepository>(),
             Mock.Of<IClassCourseRepository>(),
-            Mock.Of<IGroupRepository>());
+            Mock.Of<IGroupRepository>(),
+            Mock.Of<INotificationPreferenceRepository>());
 
         var dto = new CreateUserDto
         {
@@ -84,7 +87,8 @@ public class UserAppServiceTests
             Mock.Of<IFileAppService>(),
             Mock.Of<IStudentEnrollmentRepository>(),
             Mock.Of<IClassCourseRepository>(),
-            Mock.Of<IGroupRepository>());
+            Mock.Of<IGroupRepository>(),
+            Mock.Of<INotificationPreferenceRepository>());
 
         var dto = new CreateUserDto
         {
@@ -135,7 +139,8 @@ public class UserAppServiceTests
             Mock.Of<IFileAppService>(),
             Mock.Of<IStudentEnrollmentRepository>(),
             Mock.Of<IClassCourseRepository>(),
-            Mock.Of<IGroupRepository>());
+            Mock.Of<IGroupRepository>(),
+            Mock.Of<INotificationPreferenceRepository>());
 
         var result = await service.UpdateAsync(id, new UpdateUserDto { AvatarUrl = "/new-avatar.jpg" }, id, nameof(UserRole.Student));
 
@@ -158,7 +163,8 @@ public class UserAppServiceTests
             Mock.Of<IFileAppService>(),
             Mock.Of<IStudentEnrollmentRepository>(),
             Mock.Of<IClassCourseRepository>(),
-            Mock.Of<IGroupRepository>());
+            Mock.Of<IGroupRepository>(),
+            Mock.Of<INotificationPreferenceRepository>());
 
         var result = await service.ToggleActiveAsync(id, Guid.NewGuid(), nameof(UserRole.Admin));
 
