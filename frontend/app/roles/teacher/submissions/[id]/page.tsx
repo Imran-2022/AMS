@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { AppShell } from '@/shared/layout';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/shared/ui/Button';
 import { AmsPermissionConfirmationModal, FileUpload } from '@/components/ui';
 import { FileText, X } from 'lucide-react';
 import {
@@ -455,9 +455,9 @@ export default function TeacherSubmissionDetailPage() {
                   ) : null}
 
                   <div className="flex items-center justify-end gap-3 pt-2">
-                    <button type="button" disabled={saving} onClick={() => void saveGrade()} className="cursor-pointer rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70">
+                    <Button variant="primary" disabled={saving} onClick={() => void saveGrade()}>
                       {saving ? 'Saving...' : submission?.status === 'Graded' ? 'Update Feedback' : 'Save & notify student'}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
