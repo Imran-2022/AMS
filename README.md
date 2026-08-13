@@ -2,13 +2,11 @@
 
 **Stack:** ASP.NET Core 10 · Next.js 16 · React 19 · PostgreSQL 17 · Architecture: Layered + DDD
 
-A role-based school/college web application built for the **Assistant Software Engineer Recruitment Project — "Assignment & Submission Management System"** (OnnoRokom Projukti Limited). It lets teachers create and grade assignments, students submit and track their work, and admins manage the underlying users, classes, and subjects — with everything guarded by JWT authentication and role-based authorization. Built with ASP.NET Core 10, Next.js 16, React 19, and PostgreSQL.
+A role-based full-stack web application for schools and colleges. Teachers create and grade assignments, students submit and track their work, and admins manage users, classes, and subjects — with everything guarded by JWT authentication and role-based authorization. Built with ASP.NET Core 10, Next.js 16, React 19, and PostgreSQL, following Clean Architecture and Domain-Driven Design principles.
 
 | | |
 | :--- | :--- |
 | **Project Type** | Full-stack web application |
-| **Assignment Brief** | Assistant Software Engineer Recruitment Project — Assignment & Submission Management System |
-| **Submission Deadline** | 14 August, 2026 |
 
 ---
 
@@ -25,7 +23,6 @@ A role-based school/college web application built for the **Assistant Software E
 9. [Running Tests](#running-tests)
 10. [Assumptions & Design Decisions](#assumptions--design-decisions)
 11. [Known Limitations](#known-limitations)
-12. [Assignment Requirements Checklist](#assignment-requirements-checklist)
 
 ---
 
