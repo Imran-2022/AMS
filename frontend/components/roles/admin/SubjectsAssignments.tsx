@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { Button, PageHeader, AmsPagination, Modal, TeacherAssignmentModal, AmsDeleteComfiramtionModal } from '../../ui';
+import { Button, PageHeader, AmsPagination, Modal, AmsDeleteComfiramtionModal } from '../../ui';
+import { TeacherAssignmentModal } from './shared/TeacherAssignmentModal';
 import {
   getClassCourses,
   getSubjects,
