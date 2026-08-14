@@ -3,7 +3,7 @@ import { ROLE } from '@/shared/constants/roles';
 export { Button } from './Button';
 export { FileUpload } from './FileUpload';
 export { UserFormModal } from './UserFormModal';
-export { TeacherAssignmentModal } from './TeacherAssignmentModal';
+export { TeacherAssignmentModal } from '../roles/admin/shared/TeacherAssignmentModal';
 export { Modal } from './Modal';
 export { AmsDeleteComfiramtionModal } from './AmsDeleteComfiramtionModal';
 export { AmsPermissionConfirmationModal } from './AmsPermissionConfirmationModal';
