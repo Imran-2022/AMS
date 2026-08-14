@@ -92,13 +92,23 @@ export function TeacherAssignmentModal({
     [assignments, selectedSubject]
   );
 
-  const filteredTeachers = useMemo(() => {
-    if (!selectedSubject) return teachers;
+  // Specialization is a hint for sorting, not a gate for who can be assigned.
+  // A hard filter here is fragile (exact string match against subject.name,
+  // split on commas/em-dashes) -- a teacher whose specialization text
+  // doesn't line up perfectly shouldn't become impossible to select. Every
+  // teacher stays in the list; matching ones are just surfaced first.
+  const isSpecializedFor = (teacher: TeacherOption, subject: SubjectOption | null) => {
+    if (!subject) return false;
+    const want = subject.name.toLowerCase();
+    return normalizeSubjectSpecializations(teacher.subjectSpecialization).some((spec) => spec.toLowerCase() === want);
+  };
 
-    const want = selectedSubject.name.toLowerCase();
-    return teachers.filter((teacher) => {
-      if (assignedTeacherIds.has(teacher.id)) return true;
-      return normalizeSubjectSpecializations(teacher.subjectSpecialization).some((spec) => spec.toLowerCase() === want);
+  const sortedTeachers = useMemo(() => {
+    return [...teachers].sort((a, b) => {
+      const aMatch = isSpecializedFor(a, selectedSubject) || assignedTeacherIds.has(a.id);
+      const bMatch = isSpecializedFor(b, selectedSubject) || assignedTeacherIds.has(b.id);
+      if (aMatch === bMatch) return a.fullName.localeCompare(b.fullName);
+      return aMatch ? -1 : 1;
     });
   }, [teachers, selectedSubject, assignedTeacherIds]);
 
@@ -111,10 +121,10 @@ export function TeacherAssignmentModal({
   }, [initialValues, classCourses, open]);
 
   useEffect(() => {
-    if (teacherId && !filteredTeachers.some((teacher) => teacher.id === teacherId)) {
+    if (teacherId && !sortedTeachers.some((teacher) => teacher.id === teacherId)) {
       setTeacherId('');
     }
-  }, [filteredTeachers, teacherId]);
+  }, [sortedTeachers, teacherId]);
 
   const availableSubjects = useMemo(
     () => subjects.filter((subject) => subject.classCourseId === selectedClass?.id),
@@ -170,9 +180,9 @@ export function TeacherAssignmentModal({
               <option value="" disabled>
                 Select teacher
               </option>
-              {filteredTeachers.map((teacher) => (
+              {sortedTeachers.map((teacher) => (
                 <option key={teacher.id} value={teacher.id}>
-                  {teacher.fullName}
+                  {isSpecializedFor(teacher, selectedSubject) ? `${teacher.fullName} — Recommended` : teacher.fullName}
                 </option>
               ))}
             </select>

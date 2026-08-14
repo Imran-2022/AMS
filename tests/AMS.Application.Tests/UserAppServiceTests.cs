@@ -99,7 +99,7 @@ public class UserAppServiceTests
             StudentId = "S123",
             GuardianName = "Parent Name",
             GuardianEmail = "parent@example.com",
-            ParentMobile = "1234567890",
+            ParentMobile = "01712345678",
             AdmissionDate = DateTime.UtcNow
         };
 
