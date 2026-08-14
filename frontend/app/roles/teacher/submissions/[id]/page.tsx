@@ -225,7 +225,7 @@ export default function TeacherSubmissionDetailPage() {
         updated = await updateSubmissionStatus(submission.id, {
           status: 'ResubmissionRequested',
         });
-      } else if (status === 'Graded' || status === 'Resubmitted') {
+      } else {
         if (!marks.trim()) {
           setSaveError('Please enter marks before grading this submission.');
           return;
@@ -247,10 +247,6 @@ export default function TeacherSubmissionDetailPage() {
           feedback: feedback.trim() || undefined,
         });
         setStatus('Graded');
-      } else {
-        updated = await updateSubmissionStatus(submission.id, {
-          status,
-        });
       }
 
       if (feedbackSelectedFiles.length > 0) {
