@@ -140,34 +140,6 @@ export function TeacherClassesPage() {
     return visibleClasses.slice(start, start + pageSize);
   }, [pageIndex, pageSize, visibleClasses]);
 
-  if (loading) {
-    return (
-      <AppShell role="Teacher" breadcrumb="Teacher / My Classes">
-        <div className="space-y-6">
-          <div>
-            <p className="text-xs font-bold text-brand-600">TEACHER PORTAL</p>
-            <h1 className="mt-0.5 text-3xl font-extrabold text-slate-800">My Classes</h1>
-          </div>
-          <PageLoader title="Loading classes" subtitle="Loading your classes and class data…" />
-        </div>
-      </AppShell>
-    );
-  }
-
-  if (error) {
-    return (
-      <AppShell role="Teacher" breadcrumb="Teacher / My Classes">
-        <div className="space-y-6">
-          <div>
-            <p className="text-xs font-bold  text-brand-600">TEACHER PORTAL</p>
-            <h1 className="mt-0.5 text-3xl font-extrabold text-slate-800">My Classes</h1>
-          </div>
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-rose-700">{error}</div>
-        </div>
-      </AppShell>
-    );
-  }
-
   return (
     <AppShell role="Teacher" breadcrumb="Teacher / My Classes">
       <div className="space-y-6">
@@ -176,7 +148,13 @@ export function TeacherClassesPage() {
           <h1 className="mt-0.5 text-3xl font-extrabold text-slate-800">My Classes</h1>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {loading ? (
+          <PageLoader title="Loading classes" subtitle="Loading your classes and class data…" />
+        ) : error ? (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-rose-700">{error}</div>
+        ) : (
+          <>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-5">
             <div className="mb-4 flex items-center justify-between">
               <p className="text-[11px] font-bold tracking-[0.12em] text-slate-400">CLASSES</p>
@@ -338,6 +316,8 @@ export function TeacherClassesPage() {
             }}
             itemLabel="classes"
           />
+        )}
+          </>
         )}
       </div>
     </AppShell>

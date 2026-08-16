@@ -174,20 +174,6 @@ export function StudentAssignmentsPage() {
     return 'bg-rose-50 text-rose-600';
   };
 
-  if (loading) {
-    return (
-      <AppShell role="Student" breadcrumb="Student / Assignments">
-        <div className="space-y-6">
-          <div>
-            <p className="text-xs font-bold tracking-[0.2em] text-brand-600">STUDENT PORTAL</p>
-            <h1 className="mt-1 text-3xl font-extrabold text-slate-800">My Assignments</h1>
-          </div>
-          <PageLoader title="Loading assignments" subtitle="Loading your upcoming and submitted work…" />
-        </div>
-      </AppShell>
-    );
-  }
-
   return (
     <AppShell role="Student" breadcrumb="Student / Assignments">
       <div className="space-y-5">
@@ -196,7 +182,11 @@ export function StudentAssignmentsPage() {
           <h1 className="mt-1 text-3xl font-extrabold text-slate-800">My Assignments</h1>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {loading ? (
+          <PageLoader title="Loading assignments" subtitle="Loading your upcoming and submitted work…" />
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-5">
             <div className="mb-4 flex items-center justify-between">
               <p className="text-[11px] font-bold tracking-[0.18em] text-slate-400">TOTAL</p>
@@ -344,6 +334,8 @@ export function StudentAssignmentsPage() {
             />
           )}
         </div>
+          </>
+        )}
 
         {modalType && selectedAssignment ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4">

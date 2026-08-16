@@ -114,38 +114,30 @@ export function AdminAssignmentsPage() {
 
   const pageCount = Math.max(1, Math.ceil(filteredAssignments.length / pageSize));
 
-  if (isLoading) {
-    return (
-      <AppShell role="Admin" breadcrumb="Admin / Assignments">
-        <div className="space-y-6">
-          <p className="text-xs font-bold text-brand-600">ADMINISTRATION</p>
-          <h1 className="text-3xl font-extrabold text-slate-800 mt-0.5">Assignments</h1>
-          <PageLoader title="Loading assignments" subtitle="Loading assignment records for the selected academic year…" />
-        </div>
-      </AppShell>
-    );
-  }
-
   return (
     <AppShell role="Admin" breadcrumb="Admin / Assignments">
       <div ref={rootRef} className="space-y-5">
-          <div>
+        <div>
           <p className="text-xs font-bold text-brand-600">ADMINISTRATION</p>
           <h1 className="text-3xl font-extrabold text-slate-800 mt-0.5">Assignments</h1>
         </div>
 
-        <div className="bg-brand-50 border border-brand-100 rounded-2xl px-5 py-3.5 flex items-center gap-3">
-          <svg className="w-5 h-5 text-brand-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="16" x2="12" y2="12" />
-            <line x1="12" y1="8" x2="12.01" y2="8" />
-          </svg>
-          <p className="text-xs text-brand-700">
-            Assignments are created by teachers for their own subjects. As admin, you can view everything here — but content is owned by the teacher.
-          </p>
-        </div>
+        {isLoading ? (
+          <PageLoader title="Loading assignments" subtitle="Loading assignment records for the selected academic year…" />
+        ) : (
+          <>
+            <div className="bg-brand-50 border border-brand-100 rounded-2xl px-5 py-3.5 flex items-center gap-3">
+              <svg className="w-5 h-5 text-brand-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="16" x2="12" y2="12" />
+                <line x1="12" y1="8" x2="12.01" y2="8" />
+              </svg>
+              <p className="text-xs text-brand-700">
+                Assignments are created by teachers for their own subjects. As admin, you can view everything here — but content is owned by the teacher.
+              </p>
+            </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="text-[11px] font-bold text-slate-400">TOTAL ASSIGNMENTS</p>
@@ -335,6 +327,8 @@ export function AdminAssignmentsPage() {
               itemLabel="assignments"
             />
           </div>
+        )}
+          </>
         )}
       </div>
 

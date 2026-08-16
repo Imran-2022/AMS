@@ -89,18 +89,6 @@ export function AdminSubmissionsPage() {
     return visibleSubmissions.slice(start, start + pageSize);
   }, [visibleSubmissions, pageIndex, pageSize]);
 
-  if (isLoading) {
-    return (
-      <AppShell role="Admin" breadcrumb="Admin / Submissions">
-        <div className="space-y-6">
-          <p className="text-xs font-bold text-brand-600">ADMINISTRATION</p>
-          <h1 className="text-3xl font-extrabold text-slate-800 mt-0.5">Submissions</h1>
-          <PageLoader title="Loading submissions" subtitle="Loading recent submissions and grading data…" />
-        </div>
-      </AppShell>
-    );
-  }
-
   return (
     <AppShell role="Admin" breadcrumb="Admin / Submissions">
       <div className="space-y-5">
@@ -109,8 +97,11 @@ export function AdminSubmissionsPage() {
           <h1 className="text-3xl font-extrabold text-slate-800 mt-0.5">Submissions</h1>
         </div>
 
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {isLoading ? (
+          <PageLoader title="Loading submissions" subtitle="Loading recent submissions and grading data…" />
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="text-[11px] font-bold text-slate-400">TOTAL SUBMISSIONS</p>
@@ -301,6 +292,8 @@ export function AdminSubmissionsPage() {
               itemLabel="submissions"
             />
           </div>
+        )}
+          </>
         )}
       </div>
     </AppShell>

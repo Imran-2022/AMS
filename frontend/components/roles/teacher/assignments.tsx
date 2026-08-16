@@ -231,20 +231,6 @@ export function TeacherAssignmentsPage() {
     };
   }, [assignments]);
 
-  if (loading) {
-    return (
-      <AppShell role="Teacher" breadcrumb="Teacher / Assignments">
-        <div className="space-y-6">
-          <div>
-            <p className="text-xs font-bold tracking-[0.2em] text-brand-600">TEACHER PORTAL</p>
-            <h1 className="mt-1 text-3xl font-extrabold text-slate-800">My Assignments</h1>
-          </div>
-          <PageLoader title="Loading assignments" subtitle="Loading your assignment library…" />
-        </div>
-      </AppShell>
-    );
-  }
-
   const availableClasses = useMemo(() => {
     const classNames = assignments.map((assignment) => `${assignment.classCourseName} — ${assignment.classCourseSection}`);
     if (selectedClassLabel) classNames.push(selectedClassLabel);
@@ -563,12 +549,16 @@ export function TeacherAssignmentsPage() {
           </Button>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Total" value={stats.total} sub="Created by you" icon={<ClipboardList className="h-4 w-4" />} />
-          <StatCard label="Published" value={stats.published} sub="Visible to students" icon={<BookOpen className="h-4 w-4" />} />
-          <StatCard label="Drafts" value={stats.drafts} sub="Still being prepared" icon={<FileText className="h-4 w-4" />} />
-          <StatCard label="Needs grading" value={stats.pendingReviews} sub="Submissions awaiting marks" icon={<Layers className="h-4 w-4" />} />
-        </div>
+        {loading ? (
+          <PageLoader title="Loading assignments" subtitle="Loading your assignment library…" />
+        ) : (
+          <>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <StatCard label="Total" value={stats.total} sub="Created by you" icon={<ClipboardList className="h-4 w-4" />} />
+              <StatCard label="Published" value={stats.published} sub="Visible to students" icon={<BookOpen className="h-4 w-4" />} />
+              <StatCard label="Drafts" value={stats.drafts} sub="Still being prepared" icon={<FileText className="h-4 w-4" />} />
+              <StatCard label="Needs grading" value={stats.pendingReviews} sub="Submissions awaiting marks" icon={<Layers className="h-4 w-4" />} />
+            </div>
 
         {assignments.length > 0 && (
           <div className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -889,6 +879,8 @@ export function TeacherAssignmentsPage() {
           confirmVariant="danger"
         >
         </AmsDeleteComfiramtionModal>
+          </>
+        )}
       </div>
     </AppShell>
   );

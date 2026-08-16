@@ -349,20 +349,6 @@ export function AdminTeachersPage() {
     return rows.slice(start, start + pageSize);
   }, [rows, pageIndex, pageSize]);
 
-  if (isLoading) {
-    return (
-      <AppShell role="Admin" breadcrumb="Admin / Teachers">
-        <div className="space-y-6">
-          <div>
-            <p className="text-xs font-bold uppercase text-indigo-600">Administration</p>
-            <h1 className="text-3xl font-extrabold text-slate-900 mt-1">Teachers</h1>
-          </div>
-          <PageLoader title="Loading teachers" subtitle="Loading teacher records and class allocations…" />
-        </div>
-      </AppShell>
-    );
-  }
-
   return (
     <AppShell role="Admin" breadcrumb="Admin / Teachers">
       <div className="space-y-5">

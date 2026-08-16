@@ -92,20 +92,6 @@ export function StudentSubmissionsPage() {
     return filteredSubmissions.slice(start, start + pageSize);
   }, [filteredSubmissions, pageIndex, pageSize]);
 
-  if (loading) {
-    return (
-      <AppShell role="Student" breadcrumb="Student / Submissions">
-        <div className="space-y-6">
-          <div>
-            <p className="text-xs font-bold text-brand-600">STUDENT PORTAL</p>
-            <h1 className="text-3xl font-extrabold text-slate-800 mt-1">My Submissions</h1>
-          </div>
-          <PageLoader title="Loading submissions" subtitle="Loading your latest submission history…" />
-        </div>
-      </AppShell>
-    );
-  }
-
   return (
     <AppShell role="Student" breadcrumb="Student / Submissions">
       <div className="space-y-6">
@@ -114,7 +100,11 @@ export function StudentSubmissionsPage() {
           <h1 className="text-3xl font-extrabold text-slate-800 mt-1">My Submissions</h1>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {loading ? (
+          <PageLoader title="Loading submissions" subtitle="Loading your latest submission history…" />
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="text-[11px] font-bold text-slate-400">TOTAL SUBMISSIONS</p>
@@ -257,6 +247,8 @@ export function StudentSubmissionsPage() {
             />
           )}
         </div>
+          </>
+        )}
 
       </div>
     </AppShell>

@@ -36,23 +36,6 @@ export function AdminAmsSettingsPage() {
   const [newYearIsActive, setNewYearIsActive] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [gradingEnabled, setGradingEnabled] = useState(true);
-  const [settingsSaved, setSettingsSaved] = useState(false);
-  const [termStart, setTermStart] = useState('2026-08-01');
-  const [termEnd, setTermEnd] = useState('2027-05-31');
-
-  useEffect(() => {
-    const stored = window.localStorage.getItem('ams-grading-workflow-enabled');
-    if (stored !== null) {
-      setGradingEnabled(stored === 'true');
-    }
-  }, []);
-
-  const handleSaveSettings = () => {
-    window.localStorage.setItem('ams-grading-workflow-enabled', String(gradingEnabled));
-    setSettingsSaved(true);
-    window.setTimeout(() => setSettingsSaved(false), 1800);
-  };
   
   // Promotion state
   const [promoteFromClassId, setPromoteFromClassId] = useState('');
@@ -352,30 +335,13 @@ export function AdminAmsSettingsPage() {
   const tabButton = (label: string, value: SettingsTab) => (
     <button
       type="button" onClick={() => setActiveTab(value)}
-      className={`flex w-full items-center justify-start rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition-all ${
+      className={`flex w-full items-center justify-start rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition-all cursor-pointer ${
         activeTab === value
           ? 'bg-brand-50 text-brand-700 shadow-sm ring-1 ring-brand-100'
           : 'text-slate-500 hover:bg-slate-50'
       }`}
     >
       {label}
-    </button>
-  );
-
-  const toggleButton = (enabled: boolean, onToggle: () => void) => (
-    <button
-      type="button"
-      onClick={onToggle}
-      className={`relative inline-flex h-10 w-16 shrink-0 rounded-full cursor-pointer transition-colors ${
-        enabled ? 'bg-brand-600' : 'bg-slate-200'
-      }`}
-      aria-pressed={enabled}
-    >
-      <span
-        className={`absolute left-1 top-1 h-8 w-8 rounded-full bg-white shadow transition-transform ${
-          enabled ? 'translate-x-6' : 'translate-x-0'
-        }`}
-      />
     </button>
   );
 
@@ -553,29 +519,6 @@ export function AdminAmsSettingsPage() {
                   </table>
                 </div>
               )}
-
-              <div className="pt-2 border-t border-slate-100">
-                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-700">Enable grading workflow for new assignments</p>
-                    <p className="text-xs text-slate-400 mt-0.5">New assignments require marks entry before being marked "graded."</p>
-                  </div>
-                  {toggleButton(gradingEnabled, () => setGradingEnabled((value) => !value))}
-                </div>
-              </div>
-
-              <div className="pt-2 flex flex-col items-end gap-2">
-                {settingsSaved && (
-                  <span className="text-xs font-medium text-emerald-600">Settings saved</span>
-                )}
-                <button
-                  type="button"
-                  onClick={handleSaveSettings}
-                  className="px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700"
-                >
-                  Save changes
-                </button>
-              </div>
             </div>
 
             <div
