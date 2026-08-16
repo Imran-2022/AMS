@@ -168,13 +168,23 @@ export function AdminSubmissionsPage() {
         </div>
       </div>
 
-        {submissions.length > 0 ? (
+        {submissions.length > 0 && (
           <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
+              {(['All', 'Graded', 'Pending'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button" onClick={() => setActiveTab(tab)}
+                  className={`tab cursor-pointer px-4 py-2 rounded text-sm font-semibold ${activeTab === tab ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+                  {tab} <span className="opacity-70 font-normal">{tab === 'All' ? totals.total : tab === 'Graded' ? totals.graded : totals.pending}</span>
+                </button>
+              ))}
+            </div>
             <div className="flex items-center gap-2.5 flex-1 justify-end min-w-[320px] flex-wrap">
               <select
                 value={selectedClass}
                 onChange={(event) => setSelectedClass(event.target.value)}
-                className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white">
+                className="text-sm border border-slate-200 rounded px-3 py-2.5 text-slate-600 bg-white">
                 {CLASS_OPTIONS.map((option) => (
                   <option key={option}>{option}</option>
                 ))}
@@ -182,27 +192,29 @@ export function AdminSubmissionsPage() {
               <select
                 value={selectedAssignment}
                 onChange={(event) => setSelectedAssignment(event.target.value)}
-                className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white">
+                className="text-sm border border-slate-200 rounded px-3 py-2.5 text-slate-600 bg-white">
                 {ASSIGNMENT_OPTIONS.map((option) => (
                   <option key={option}>{option}</option>
                 ))}
               </select>
-              <div className="relative flex-1 max-w-xs">
+              <div className="relative w-56">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="m21 21-4.3-4.3" />
+                  </svg>
+                </span>
                 <input
                   type="text"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search by student…"
-                  className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-brand-500"
+                  className="w-full rounded border border-slate-200 px-8 py-2 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                 />
-                <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="m21 21-4.3-4.3" />
-                </svg>
               </div>
             </div>
           </div>
-        ) : null}
+        )}
 
         {visibleSubmissions.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-8 py-20 text-center">

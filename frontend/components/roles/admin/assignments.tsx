@@ -200,53 +200,53 @@ export function AdminAssignmentsPage() {
           </div>
         </div>
 
-        {assignments.length > 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2 flex-wrap">
-            {(['All', 'Published'] as const).map((tab) => (
-              <button
-                key={tab}
-                type="button" onClick={() => setActiveTab(tab)}
-                className={`tab cursor-pointer px-4 py-2 rounded px-3 py-2.5 text-sm font-semibold ${activeTab === tab ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
-                {tab} <span className="opacity-70 font-normal">{tab === 'All' ? totals.total : totals.published}</span>
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-2.5 flex-1 justify-end min-w-[320px] flex-wrap">
-            <select
-              value={selectedClass}
-              onChange={(event) => setSelectedClass(event.target.value)}
-              className="text-sm border border-slate-200 rounded px-3 py-2.5 text-slate-600 bg-white">
-              {ALL_CLASSES.map((option) => (
-                <option key={option}>{option}</option>
+        {assignments.length > 0 && (
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
+              {(['All', 'Published'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button" onClick={() => setActiveTab(tab)}
+                  className={`tab cursor-pointer px-4 py-2 rounded px-3 py-2.5 text-sm font-semibold ${activeTab === tab ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+                  {tab} <span className="opacity-70 font-normal">{tab === 'All' ? totals.total : totals.published}</span>
+                </button>
               ))}
-            </select>
-            <select
-              value={selectedTeacher}
-              onChange={(event) => setSelectedTeacher(event.target.value)}
-              className="text-sm border border-slate-200 rounded px-3 py-2.5 text-slate-600 bg-white">
-              {ALL_TEACHERS.map((option) => (
-                <option key={option}>{option}</option>
-              ))}
-            </select>
-            <div className="relative w-56">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="m21 21-4.3-4.3" />
-                </svg>
-              </span>
-              <input
-                type="text"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search assignments…"
-                className="w-full rounded border border-slate-200 px-8 py-2 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-              />
+            </div>
+            <div className="flex items-center gap-2.5 flex-1 justify-end min-w-[320px] flex-wrap">
+              <select
+                value={selectedClass}
+                onChange={(event) => setSelectedClass(event.target.value)}
+                className="text-sm border border-slate-200 rounded px-3 py-2.5 text-slate-600 bg-white">
+                {ALL_CLASSES.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
+              </select>
+              <select
+                value={selectedTeacher}
+                onChange={(event) => setSelectedTeacher(event.target.value)}
+                className="text-sm border border-slate-200 rounded px-3 py-2.5 text-slate-600 bg-white">
+                {ALL_TEACHERS.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
+              </select>
+              <div className="relative w-56">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="m21 21-4.3-4.3" />
+                  </svg>
+                </span>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search assignments…"
+                  className="w-full rounded border border-slate-200 px-8 py-2 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                />
+              </div>
             </div>
           </div>
-        </div>
-        ) : null}
+        )}
 
         {filteredAssignments.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-8 py-20 text-center">

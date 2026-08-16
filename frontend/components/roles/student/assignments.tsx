@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/shared/layout';
 import { AmsPagination, Button, FileUpload, PageLoader } from '../../ui';
@@ -241,43 +242,45 @@ export function StudentAssignmentsPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex flex-wrap items-center gap-2">
-              {(['all', 'pending', 'submitted', 'graded', 'missing'] as const).map((status) => (
-                <Button
-                  key={status}
-                  type="button"
-                  variant={currentTab === status ? 'primary' : 'ghost'}
-                  onClick={() => setCurrentTab(status)}
-                  className={`tab cursor-pointer px-4 py-2 text-sm font-semibold ${currentTab === status ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}
-                >
-                  {status === 'all' ? 'All' : status === 'pending' ? 'To do' : status === 'submitted' ? 'Submitted' : status === 'graded' ? 'Graded' : 'Missing'}
-                  <span className="opacity-70 font-normal"> {tabCounts[status]}</span>
-                </Button>
-              ))}
-            </div>
-
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <select value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500">
-                <option value="">All subjects</option>
-                {subjectOptions.map((subject) => (
-                  <option key={subject} value={subject}>{subject}</option>
+        {assignments.length > 0 && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
+              <div className="flex flex-wrap items-center gap-2">
+                {(['all', 'pending', 'submitted', 'graded', 'missing'] as const).map((status) => (
+                  <Button
+                    key={status}
+                    type="button"
+                    variant={currentTab === status ? 'primary' : 'ghost'}
+                    onClick={() => setCurrentTab(status)}
+                    className={`tab cursor-pointer px-4 py-2 text-sm font-semibold ${currentTab === status ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}
+                  >
+                    {status === 'all' ? 'All' : status === 'pending' ? 'To do' : status === 'submitted' ? 'Submitted' : status === 'graded' ? 'Graded' : 'Missing'}
+                    <span className="opacity-70 font-normal"> {tabCounts[status]}</span>
+                  </Button>
                 ))}
-              </select>
-              <div className="relative min-w-[240px]">
-                <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search assignments…"
-                  className="w-full rounded border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-600 outline-none focus:border-brand-500"
-                />
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <select value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500">
+                  <option value="">All subjects</option>
+                  {subjectOptions.map((subject) => (
+                    <option key={subject} value={subject}>{subject}</option>
+                  ))}
+                </select>
+                <div className="relative min-w-[240px]">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search assignments…"
+                    className="w-full rounded border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-600 outline-none focus:border-brand-500"
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div className="space-y-4">
           {filteredAssignments.length ? (

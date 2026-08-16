@@ -465,57 +465,59 @@ export function AdminStudentsPage() {
 
         {(isLoading || students.length > 0) && (
           <>
-            <div className="bg-white rounded-2xl border border-slate-200 p-4">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex flex-wrap gap-1">
-                  {STATUS_OPTIONS.map((status) => (
-                    <button
-                      key={status}
-                      type="button" onClick={() => setStatusFilter(status)}
-                      className={`rounded px-4 py-2 text-sm font-semibold cursor-pointer transition ${statusFilter === status ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>
-                      {status} <span className="opacity-70 font-normal">{status === 'All' ? students.length : students.filter((student) => student.status === status).length}</span>
-                    </button>
-                  ))}
-                </div>
-                <div className="flex flex-wrap gap-2 items-center justify-end min-w-[280px]">
-                  <select
-                    value={classFilter}
-                    onChange={(event) => setClassFilter(event.target.value)}
-                    className="rounded border cursor-pointer border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                  >
-                    <option>All classes</option>
-                    {classNames.map((name) => (
-                      <option key={name} value={name}>
-                        {name}
-                      </option>
+            {students.length > 0 && (
+              <div className="bg-white rounded-2xl border border-slate-200 p-4">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex flex-wrap gap-1">
+                    {STATUS_OPTIONS.map((status) => (
+                      <button
+                        key={status}
+                        type="button" onClick={() => setStatusFilter(status)}
+                        className={`rounded px-4 py-2 text-sm font-semibold cursor-pointer transition ${statusFilter === status ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>
+                        {status} <span className="opacity-70 font-normal">{status === 'All' ? students.length : students.filter((student) => student.status === status).length}</span>
+                      </button>
                     ))}
-                  </select>
-                  <select
-                    value={sectionFilter}
-                    onChange={(event) => setSectionFilter(event.target.value)}
-                    className="rounded border cursor-pointer border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                  >
-                    <option>All sections</option>
-                    {sectionNames.map((section) => (
-                      <option key={section} value={section}>
-                        Section {section}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="relative flex-1 max-w-xs">
-                    <input
-                      value={search}
-                      onChange={(event) => setSearch(event.target.value)}
-                      placeholder="Search students…"
-                      className="w-full rounded border border-slate-200 px-8 py-2 text-sm text-slate-700 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                    />
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2 items-center justify-end min-w-[280px]">
+                    <select
+                      value={classFilter}
+                      onChange={(event) => setClassFilter(event.target.value)}
+                      className="rounded border cursor-pointer border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    >
+                      <option>All classes</option>
+                      {classNames.map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={sectionFilter}
+                      onChange={(event) => setSectionFilter(event.target.value)}
+                      className="rounded border cursor-pointer border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    >
+                      <option>All sections</option>
+                      {sectionNames.map((section) => (
+                        <option key={section} value={section}>
+                          Section {section}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="relative flex-1 max-w-xs">
+                      <input
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        placeholder="Search students…"
+                        className="w-full rounded border border-slate-200 px-8 py-2 text-sm text-slate-700 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                      />
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
 
             <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">

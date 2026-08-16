@@ -205,52 +205,54 @@ export function TeacherSubmissionsPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex flex-wrap items-center gap-2">
-              {(['all', 'pending', 'graded'] as const).map((status) => (
-                <Button
-                  key={status}
-                  type="button"
-                  variant={activeTab === status ? 'primary' : 'ghost'}
-                  onClick={() => setActiveTab(status)}
-                  className={`tab cursor-pointer px-4 py-2 text-sm font-semibold ${activeTab === status ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}
-                >
-                  {status === 'all' ? 'All' : status === 'pending' ? 'Pending' : 'Graded'}
-                  <span className="opacity-70 font-normal"> {status === 'all' ? stats.total : status === 'pending' ? stats.pendingWithRevision : stats.graded}</span>
-                </Button>
-              ))}
-            </div>
+        {submissions.length > 0 && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
+              <div className="flex flex-wrap items-center gap-2">
+                {(['all', 'pending', 'graded'] as const).map((status) => (
+                  <Button
+                    key={status}
+                    type="button"
+                    variant={activeTab === status ? 'primary' : 'ghost'}
+                    onClick={() => setActiveTab(status)}
+                    className={`tab cursor-pointer px-4 py-2 text-sm font-semibold ${activeTab === status ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}
+                  >
+                    {status === 'all' ? 'All' : status === 'pending' ? 'Pending' : 'Graded'}
+                    <span className="opacity-70 font-normal"> {status === 'all' ? stats.total : status === 'pending' ? stats.pendingWithRevision : stats.graded}</span>
+                  </Button>
+                ))}
+              </div>
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <select value={classFilter} onChange={handleClassChange} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500">
-                {availableClasses.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-              <select value={sectionFilter} onChange={(event) => setSectionFilter(event.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500">
-                {availableSections.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-              <select value={assignmentFilter} onChange={(event) => setAssignmentFilter(event.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500">
-                {availableAssignments.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-              <div className="relative min-w-[240px]">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} type="text" placeholder="Search by student…" className="w-full rounded border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-600 outline-none focus:border-brand-500" />
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <select value={classFilter} onChange={handleClassChange} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500">
+                  {availableClasses.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <select value={sectionFilter} onChange={(event) => setSectionFilter(event.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500">
+                  {availableSections.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <select value={assignmentFilter} onChange={(event) => setAssignmentFilter(event.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500">
+                  {availableAssignments.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <div className="relative min-w-[240px]">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} type="text" placeholder="Search by student…" className="w-full rounded border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-600 outline-none focus:border-brand-500" />
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
           {visibleSubmissions.length === 0 ? (

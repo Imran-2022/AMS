@@ -219,37 +219,39 @@ export function TeacherClassesPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex flex-wrap items-center gap-2">
-              <button type="button" className="rounded px-4 py-2 text-sm font-semibold bg-brand-600 text-white shadow-sm">
-                All classes <span className="ml-1 font-normal opacity-70">{classes.length}</span>
-              </button>
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <select value={classFilter} onChange={(event) => {
-                setClassFilter(event.target.value);
-                setSubjectFilter('All subjects');
-              }} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500  cursor-pointer">
-                {availableClasses.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-              <select value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500 cursor-pointer">
-                {availableSubjects.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-              <div className="relative min-w-[240px]">
-                <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="m21 21-4.3-4.3" />
-                </svg>
-                <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} type="text" placeholder="Search classes, subjects…" className="w-full rounded border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-600 outline-none focus:border-brand-500" />
+        {classes.length > 0 && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" className="rounded px-4 py-2 text-sm font-semibold bg-brand-600 text-white shadow-sm">
+                  All classes <span className="ml-1 font-normal opacity-70">{classes.length}</span>
+                </button>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <select value={classFilter} onChange={(event) => {
+                  setClassFilter(event.target.value);
+                  setSubjectFilter('All subjects');
+                }} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500  cursor-pointer">
+                  {availableClasses.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+                <select value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500 cursor-pointer">
+                  {availableSubjects.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+                <div className="relative min-w-[240px]">
+                  <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="m21 21-4.3-4.3" />
+                  </svg>
+                  <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} type="text" placeholder="Search classes, subjects…" className="w-full rounded border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-600 outline-none focus:border-brand-500" />
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {visibleClasses.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-8 py-20 text-center">
