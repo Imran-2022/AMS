@@ -18,6 +18,7 @@ public class AssignmentAppService : IAssignmentAppService
     private readonly ISubjectRepository _subjectRepository;
     private readonly IAttachmentAppService _attachmentAppService;
     private readonly INotificationService _notificationService;
+    private readonly IAcademicYearRepository _academicYearRepository;
 
     public AssignmentAppService(
         IAssignmentRepository assignmentRepository,
@@ -29,7 +30,8 @@ public class AssignmentAppService : IAssignmentAppService
         IGroupRepository groupRepository,
         ISubjectRepository subjectRepository,
         IAttachmentAppService attachmentAppService,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        IAcademicYearRepository academicYearRepository)
     {
         _assignmentRepository = assignmentRepository;
         _teacherSubjectAssignmentRepository = teacherSubjectAssignmentRepository;
@@ -41,15 +43,33 @@ public class AssignmentAppService : IAssignmentAppService
         _subjectRepository = subjectRepository;
         _attachmentAppService = attachmentAppService;
         _notificationService = notificationService;
+        _academicYearRepository = academicYearRepository;
     }
 
     public async Task<IReadOnlyList<AssignmentDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
     {
-        var assignments = await _assignmentRepository.GetAllAsync(cancellationToken);
+        var allAssignments = await _assignmentRepository.GetAllAsync(cancellationToken);
+        var activeYear = await _academicYearRepository.GetActiveAsync(cancellationToken);
+
+        var visibleAssignments = new List<Assignment>();
+        foreach (var assignment in allAssignments)
+        {
+            var subject = await _subjectRepository.GetByIdAsync(assignment.SubjectId, cancellationToken);
+            if (subject is null) continue;
+
+            var classCourse = await _classCourseRepository.GetByIdAsync(subject.ClassCourseId, cancellationToken);
+            if (classCourse is null) continue;
+
+            if (activeYear is null || classCourse.AcademicYearId == activeYear.Id)
+            {
+                visibleAssignments.Add(assignment);
+            }
+        }
+
         if (currentUserRole == nameof(UserRole.Admin))
         {
-            var results = new List<AssignmentDto>(assignments.Count);
-            foreach (var assignment in assignments)
+            var results = new List<AssignmentDto>(visibleAssignments.Count);
+            foreach (var assignment in visibleAssignments)
             {
                 results.Add(await ToDtoAsync(assignment, cancellationToken).ConfigureAwait(false));
             }
@@ -58,9 +78,9 @@ public class AssignmentAppService : IAssignmentAppService
 
         if (currentUserRole == nameof(UserRole.Teacher))
         {
-            assignments = assignments.Where(x => x.TeacherId == currentUserId).ToList();
-            var results = new List<AssignmentDto>(assignments.Count);
-            foreach (var assignment in assignments)
+            visibleAssignments = visibleAssignments.Where(x => x.TeacherId == currentUserId).ToList();
+            var results = new List<AssignmentDto>(visibleAssignments.Count);
+            foreach (var assignment in visibleAssignments)
             {
                 results.Add(await ToDtoAsync(assignment, cancellationToken).ConfigureAwait(false));
             }
@@ -69,17 +89,18 @@ public class AssignmentAppService : IAssignmentAppService
 
         var enrolledClassIds = await _studentEnrollmentRepository.GetByStudentAsync(currentUserId, cancellationToken);
         var enrolledIds = enrolledClassIds.Select(x => x.ClassCourseId).ToHashSet();
+
         var studentAssignments = new List<Assignment>();
-        foreach (var assignment in assignments)
+        foreach (var assignment in visibleAssignments)
         {
             if (assignment.Status != AssignmentStatus.Published) continue;
             var subject = await _subjectRepository.GetByIdAsync(assignment.SubjectId, cancellationToken);
             if (subject is null) continue;
             if (enrolledIds.Contains(subject.ClassCourseId)) studentAssignments.Add(assignment);
         }
-        assignments = studentAssignments;
-        var studentResults = new List<AssignmentDto>(assignments.Count);
-        foreach (var assignment in assignments)
+
+        var studentResults = new List<AssignmentDto>(studentAssignments.Count);
+        foreach (var assignment in studentAssignments)
         {
             studentResults.Add(await ToDtoAsync(assignment, cancellationToken).ConfigureAwait(false));
         }

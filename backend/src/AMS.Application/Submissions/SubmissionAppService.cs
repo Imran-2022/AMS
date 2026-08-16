@@ -19,6 +19,7 @@ public class SubmissionAppService : ISubmissionAppService
     private readonly AMS.Application.Contracts.ICurrentUserService _currentUser;
     private readonly IAttachmentAppService _attachmentAppService;
     private readonly INotificationService _notificationService;
+    private readonly IAcademicYearRepository _academicYearRepository;
 
     public SubmissionAppService(
         ISubmissionRepository submissionRepository,
@@ -31,7 +32,8 @@ public class SubmissionAppService : ISubmissionAppService
         Microsoft.AspNetCore.Authorization.IAuthorizationService authorizationService,
         AMS.Application.Contracts.ICurrentUserService currentUser,
         IAttachmentAppService attachmentAppService,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        IAcademicYearRepository academicYearRepository)
     {
         _submissionRepository = submissionRepository;
         _assignmentRepository = assignmentRepository;
@@ -44,17 +46,43 @@ public class SubmissionAppService : ISubmissionAppService
         _currentUser = currentUser;
         _attachmentAppService = attachmentAppService;
         _notificationService = notificationService;
+        _academicYearRepository = academicYearRepository;
     }
 
     public async Task<IReadOnlyList<SubmissionDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
     {
-        // Use current user from ICurrentUserService to determine visible submissions
         var principal = BuildPrincipal();
         IReadOnlyList<Submission> submissions;
 
         if (_currentUser.Role == nameof(UserRole.Admin))
         {
-            submissions = await _submissionRepository.GetAllAsync(cancellationToken);
+            var allSubmissions = await _submissionRepository.GetAllAsync(cancellationToken);
+            var activeYear = await _academicYearRepository.GetActiveAsync(cancellationToken);
+
+            if (activeYear is null)
+            {
+                submissions = allSubmissions;
+            }
+            else
+            {
+                var filtered = new List<Submission>();
+                foreach (var submission in allSubmissions)
+                {
+                    var assignment = await _assignmentRepository.GetByIdAsync(submission.AssignmentId, cancellationToken);
+                    if (assignment is null) continue;
+
+                    var subject = await _subjectRepository.GetByIdAsync(assignment.SubjectId, cancellationToken);
+                    if (subject is null) continue;
+
+                    var classCourse = await _classCourseRepository.GetByIdAsync(subject.ClassCourseId, cancellationToken);
+                    if (classCourse is not null && classCourse.AcademicYearId == activeYear.Id)
+                    {
+                        filtered.Add(submission);
+                    }
+                }
+
+                submissions = filtered;
+            }
         }
         else if (_currentUser.Role == nameof(UserRole.Teacher))
         {

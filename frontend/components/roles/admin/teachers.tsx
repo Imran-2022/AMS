@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { AmsDeleteComfiramtionModal, AmsPagination, Button } from '@/shared/ui';
 import { AddTeacherModal, type AddTeacherFormData } from '@/components/roles/admin/shared';
 import { AppShell } from '@/shared/layout';
-import { API_BASE_URL, createUser, deleteUser, getUsers, updateUser } from '@/lib/api';
+import { API_BASE_URL, createUser, deleteUser, getAcademicYears, getClassCourses, getUsers, updateUser } from '@/lib/api';
 import { getTeacherAssignments, type TeacherSubjectAssignmentDto } from '@/lib/api/teacherAssignments';
 import { X } from 'lucide-react';
 
@@ -117,7 +117,24 @@ export function AdminTeachersPage() {
 
   async function loadTeachers() {
     try {
-      const [apiUsers, apiAssignments] = await Promise.all([getUsers(), getTeacherAssignments()]);
+      const [apiUsers, apiAssignments, apiClasses, academicYears] = await Promise.all([
+        getUsers(),
+        getTeacherAssignments(),
+        getClassCourses(),
+        getAcademicYears(),
+      ]);
+
+      const activeYearId = academicYears.find((year) => year.isActive)?.id;
+      const activeClassIds = new Set(
+        activeYearId
+          ? apiClasses.filter((classCourse) => classCourse.academicYearId === activeYearId).map((classCourse) => classCourse.id)
+          : apiClasses.map((classCourse) => classCourse.id)
+      );
+
+      const visibleAssignments = activeYearId
+        ? apiAssignments.filter((assignment) => activeClassIds.has(assignment.classCourseId))
+        : apiAssignments;
+
       const teacherUsers = apiUsers
         .filter((user) => user.role === 'Teacher')
         .sort((a, b) => {
@@ -125,10 +142,10 @@ export function AdminTeachersPage() {
           const bTime = new Date((b.updatedAt ?? b.createdAt ?? b.joiningDate ?? '1970-01-01') as string).getTime();
           return bTime - aTime;
         });
-      setTeacherAssignments(apiAssignments);
+      setTeacherAssignments(visibleAssignments);
       const teacherRows = teacherUsers.map((user) => {
         const classesForTeacher = new Set(
-          apiAssignments
+          visibleAssignments
             .filter((assignment) => assignment.teacherId === user.id)
             .map((assignment) => assignment.classCourseId)
         );
@@ -137,7 +154,7 @@ export function AdminTeachersPage() {
           ...mapUserToTeacherRow(user),
           classesCount: classesForTeacher.size,
           subjects: Array.from(new Set(
-            apiAssignments
+            visibleAssignments
               .filter((assignment) => assignment.teacherId === user.id)
               .map((assignment) => assignment.subjectName)
           )),

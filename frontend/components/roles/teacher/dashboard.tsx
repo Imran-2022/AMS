@@ -66,6 +66,22 @@ export function TeacherDashboardPage() {
     }
   }
 
+  useEffect(() => {
+    void loadDashboard();
+  }, []);
+
+  // Listen for academic year changes and reload data
+  useEffect(() => {
+    const handleAcademicYearChanged = () => {
+      void loadDashboard();
+    };
+
+    window.addEventListener('ams-academic-year-updated', handleAcademicYearChanged);
+    return () => {
+      window.removeEventListener('ams-academic-year-updated', handleAcademicYearChanged);
+    };
+  }, []);
+
   const handleSaveDraft = async (payload: {
     title: string;
     description: string;
@@ -180,6 +196,7 @@ export function TeacherDashboardPage() {
           <div>
             <p className="text-lg font-bold text-brand-600 mb-1 uppercase">{greeting}, {teacherName}</p>
             <p className="text-sm text-slate-700 mt-1">Review performance and keep your classes on track.</p>
+            <p className="text-sm text-slate-400 mt-2">Academic year: {stats?.academicYear || 'Not available'}</p>
           </div>
           <div className="flex gap-2">
             <Button type="button" variant="secondary" className="px-2  text-xs" onClick={goToSubmissions}>Review Submissions</Button>

@@ -149,6 +149,31 @@ public class UserAppServiceTests
     }
 
     [Fact]
+    public async Task GetNextStudentIdAsync_Should_Not_Include_Academic_Year()
+    {
+        var classCourseId = Guid.NewGuid();
+        var classCourse = new ClassCourse(classCourseId, "Six", "A", Guid.NewGuid(), Guid.NewGuid(), null);
+
+        var classCourseRepo = new Mock<IClassCourseRepository>(MockBehavior.Strict);
+        classCourseRepo.Setup(r => r.GetByIdAsync(classCourseId, It.IsAny<CancellationToken>())).ReturnsAsync(classCourse);
+
+        var enrollmentRepo = new Mock<IStudentEnrollmentRepository>(MockBehavior.Strict);
+        enrollmentRepo.Setup(r => r.GetByClassCourseAsync(classCourseId, It.IsAny<CancellationToken>())).ReturnsAsync(new List<StudentEnrollment>());
+
+        var service = new UserAppService(
+            Mock.Of<IUserRepository>(),
+            Mock.Of<IFileAppService>(),
+            enrollmentRepo.Object,
+            classCourseRepo.Object,
+            Mock.Of<IGroupRepository>(),
+            Mock.Of<INotificationPreferenceRepository>());
+
+        var result = await service.GetNextStudentIdAsync(classCourseId, null, Guid.NewGuid(), nameof(UserRole.Admin));
+
+        Assert.Equal("STU-0001", result);
+    }
+
+    [Fact]
     public async Task ToggleActiveAsync_Should_Flip_User_Status()
     {
         var id = Guid.NewGuid();

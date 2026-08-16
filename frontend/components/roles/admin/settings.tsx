@@ -40,14 +40,16 @@ export function AdminSettingsPage() {
   ]
 
   return (
-    <AccountSettingsPage
-      role="Admin"
-      breadcrumb="Admin / Account"
-      portalLabel="ADMIN PORTAL"
-      headerTitle="My Account"
-      headerDescription="Manage your profile, notifications, and password settings."
-      infoSections={infoSections}
-      notificationItems={notificationItems}
-    />
+    <>
+      <AccountSettingsPage
+        role="Admin"
+        breadcrumb="Admin / Account"
+        portalLabel="ADMIN PORTAL"
+        headerTitle="My Account"
+        headerDescription="Manage your profile, notifications, and password settings."
+        infoSections={infoSections}
+        notificationItems={notificationItems}
+      />
+    </>
   )
 }

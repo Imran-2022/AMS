@@ -95,7 +95,7 @@ const NAV: Record<RoleType, NavItem[]> = {
     { href: '/roles/admin/teacher-assignments', label: 'Teacher Allocation', Icon: Users },
     { href: '/roles/admin/assignments', label: 'Assignments', Icon: ClipboardList },
     { href: '/roles/admin/submissions', label: 'Submissions', Icon: Inbox },
-    // { href: '/roles/admin/ams-settings', label: 'AMS Settings', Icon: Settings },
+    { href: '/roles/admin/ams-settings', label: 'AMS Settings', Icon: Settings },
   ],
   Teacher: [
     { href: '/roles/teacher/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
@@ -116,11 +116,13 @@ function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, 
   const router = useRouter();
   const settingsHref = role === 'Admin' ? '/roles/admin/settings' : role === 'Teacher' ? '/roles/teacher/settings' : '/roles/student/settings';
   const settingsLabel = 'Account Settings';
+  const currentRole = getStoredUser()?.role ?? role;
+  const roleLabel = currentRole === 'Teacher' ? 'Teacher' : currentRole === 'Student' ? 'Student' : 'Admin';
 
   const widthClass = mobileOpen ? 'w-64' : collapsed ? 'w-[76px]' : 'w-64';
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-50 flex flex-col overflow-hidden border-[#ECECEF] bg-white text-[#1F2430] transition-all duration-300 ease-in-out ${widthClass} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
+      className={`fixed inset-y-0 left-0 z-50 flex h-screen flex-col overflow-hidden border-[#ECECEF] bg-white text-[#1F2430] transition-all duration-300 ease-in-out ${widthClass} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
       <div className="border-[#ECECEF]">
         <div className={`flex items-center gap-3 px-4 py-4 ${collapsed ? 'justify-center' : ''}`}>
           <button
@@ -169,9 +171,9 @@ function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, 
             </div>
             {!collapsed ? (
               <div className="profile-text label min-w-0 transition-all duration-200 opacity-100">
-                <p className="text-[13px] font-semibold leading-tight truncate">{userName ?? `${role} User`}</p>
+                <p className="text-[13px] font-semibold leading-tight truncate">{userName ?? `${roleLabel} User`}</p>
                 <p className="text-[11px] text-[#8A8F98] leading-tight truncate">
-                  {role === 'Teacher' ? 'Teacher Account' : role === 'Student' ? 'Student Account' : 'Admin Account'}
+                  Current role: {roleLabel}
                 </p>
               </div>
             ) : null}
@@ -444,12 +446,24 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
       }
     };
 
+    const handleAcademicYearChange = () => {
+      try {
+        router.refresh();
+      } catch {
+        // ignore router refresh errors; fallback to a full page refresh below
+      }
+
+      window.location.reload();
+    };
+
     window.addEventListener('ams-avatar-updated', handleAvatarUpdate);
+    window.addEventListener('ams-academic-year-updated', handleAcademicYearChange);
 
     return () => {
       window.removeEventListener('ams-avatar-updated', handleAvatarUpdate);
+      window.removeEventListener('ams-academic-year-updated', handleAcademicYearChange);
     };
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     // Mirror legacy layout CSS which relies on `body.sidebar-collapsed`
@@ -473,7 +487,7 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
 
   return (
     <AppShellProvider value={true}>
-      <div className="flex h-screen overflow-hidden bg-[#F7F7F9] text-[#1F2430]">
+      <div className="flex h-screen min-h-screen overflow-hidden bg-[#F7F7F9] text-[#1F2430]">
         {mobileOpen && (
           <div className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden" onClick={() => setMobileOpen(false)} aria-hidden="true" />
         )}

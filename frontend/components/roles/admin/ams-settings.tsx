@@ -3,17 +3,25 @@
 import { useEffect, useState } from 'react';
 import { AppShell } from '@/shared/layout';
 import { Modal } from '../../ui';
-import { getAcademicYears, activateAcademicYear, createAcademicYear } from '@/lib/api';
+import { 
+  getAcademicYears, 
+  activateAcademicYear, 
+  createAcademicYear, 
+  notifyAcademicYearChanged,
+  promoteStudent,
+  bulkPromoteStudents,
+  getClassCourses,
+  getSubjects,
+  getEnrollments,
+  type ClassCourseDto,
+  type SubjectDto,
+  type StudentEnrollmentDto
+} from '@/lib/api';
 
-type SettingsTab = 'general' | 'academic' | 'notifications' | 'security' | 'activity' | 'danger';
+type SettingsTab = 'academic' | 'promote-students' | 'danger';
 
 export function AdminAmsSettingsPage() {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('general');
-  const [schoolName, setSchoolName] = useState('AMS School');
-  const [timeZone, setTimeZone] = useState('(GMT+6:00) Dhaka');
-  const [contactEmail, setContactEmail] = useState('office@ams.edu');
-  const [contactPhone, setContactPhone] = useState('');
-  const [domain, setDomain] = useState('ams.edu');
+  const [activeTab, setActiveTab] = useState<SettingsTab>('promote-students');
   const [academicYears, setAcademicYears] = useState<{ id: string; name: string; startDate: string; endDate: string; isActive: boolean }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,19 +37,75 @@ export function AdminAmsSettingsPage() {
   const [createLoading, setCreateLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [gradingEnabled, setGradingEnabled] = useState(true);
+  const [settingsSaved, setSettingsSaved] = useState(false);
   const [termStart, setTermStart] = useState('2026-08-01');
   const [termEnd, setTermEnd] = useState('2027-05-31');
-  const [notificationDueReminder, setNotificationDueReminder] = useState(true);
-  const [notificationMissingAlerts, setNotificationMissingAlerts] = useState(true);
-  const [notificationWeeklyDigest, setNotificationWeeklyDigest] = useState(false);
-  const [notificationWelcomeEmails, setNotificationWelcomeEmails] = useState(true);
-  const [require2FAAdmins, setRequire2FAAdmins] = useState(true);
-  const [autoSignOut, setAutoSignOut] = useState('30 minutes');
-  const [passwordLength, setPasswordLength] = useState(8);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem('ams-grading-workflow-enabled');
+    if (stored !== null) {
+      setGradingEnabled(stored === 'true');
+    }
+  }, []);
+
+  const handleSaveSettings = () => {
+    window.localStorage.setItem('ams-grading-workflow-enabled', String(gradingEnabled));
+    setSettingsSaved(true);
+    window.setTimeout(() => setSettingsSaved(false), 1800);
+  };
+  
+  // Promotion state
+  const [promoteFromClassId, setPromoteFromClassId] = useState('');
+  const [promoteToClassId, setPromoteToClassId] = useState('');
+  const [promoteFromGroupId, setPromoteFromGroupId] = useState('');
+  const [promoteToGroupId, setPromoteToGroupId] = useState('');
+  const [promoteStudentIds, setPromoteStudentIds] = useState<string[]>([]);
+  const [promoteStudentRollNumbers, setPromoteStudentRollNumbers] = useState<Record<string, string>>({});
+  const [promoteLoading, setPromoteLoading] = useState(false);
+  const [promoteError, setPromoteError] = useState<string | null>(null);
+  const [promoteSuccess, setPromoteSuccess] = useState<string | null>(null);
+  
+  // Data loading state
+  const [classes, setClasses] = useState<ClassCourseDto[]>([]);
+  const [subjects, setSubjects] = useState<SubjectDto[]>([]);
+  const [allEnrollments, setAllEnrollments] = useState<StudentEnrollmentDto[]>([]);
+  const [dataLoading, setDataLoading] = useState(false);
 
   useEffect(() => {
     void loadAcademicYears();
+    void loadData();
   }, []);
+
+  async function loadData() {
+    try {
+      setDataLoading(true);
+      const [classesData, subjectsData, enrollmentsData] = await Promise.all([
+        getClassCourses(true),
+        getSubjects(),
+        getEnrollments(true)
+      ]);
+      setClasses(classesData);
+      setSubjects(subjectsData);
+      setAllEnrollments(enrollmentsData);
+
+      if (classesData.length > 0) {
+        const orderedClasses = [...classesData].sort((a, b) => {
+          const aLevel = extractClassLevel(a.name) ?? 0;
+          const bLevel = extractClassLevel(b.name) ?? 0;
+          return aLevel - bLevel;
+        });
+
+        const sourceClass = orderedClasses[0];
+        const targetClassId = getNextClassForPromotion(sourceClass.id, classesData) || sourceClass.id;
+        setPromoteFromClassId(sourceClass.id);
+        setPromoteToClassId(targetClassId);
+      }
+    } catch (err) {
+      console.error('Failed to load data', err);
+    } finally {
+      setDataLoading(false);
+    }
+  }
 
   async function loadAcademicYears() {
     try {
@@ -62,6 +126,7 @@ export function AdminAmsSettingsPage() {
       setError(null);
       await activateAcademicYear(yearId);
       await loadAcademicYears();
+      notifyAcademicYearChanged();
     } catch (err) {
       console.error('Failed to activate academic year', err);
       setError('Failed to activate academic year');
@@ -97,6 +162,7 @@ export function AdminAmsSettingsPage() {
       setNewYearIsActive(false);
       setShowCreateModal(false);
       await loadAcademicYears();
+      notifyAcademicYearChanged();
     } catch (err) {
       console.error('Failed to create academic year', err);
       setCreateError(err instanceof Error ? err.message : String(err));
@@ -105,12 +171,190 @@ export function AdminAmsSettingsPage() {
     }
   }
 
+  async function handleBulkPromoteStudents() {
+    if (!promoteFromClassId.trim()) {
+      setPromoteError('Please select a source class');
+      return;
+    }
+    if (!promoteToClassId.trim()) {
+      setPromoteError('Please select a target class');
+      return;
+    }
+    if (promoteStudentIds.length === 0) {
+      setPromoteError('Please select at least one student');
+      return;
+    }
+
+    try {
+      setPromoteError(null);
+      setPromoteSuccess(null);
+      setPromoteLoading(true);
+      
+      // Prepare students with roll numbers
+      const studentsWithRolls = promoteStudentIds.map(studentId => ({
+        studentId,
+        newRollNumber: promoteStudentRollNumbers[studentId] || undefined
+      }));
+      
+      await bulkPromoteStudents({
+        fromClassCourseId: promoteFromClassId,
+        toClassCourseId: promoteToClassId,
+        students: studentsWithRolls
+      });
+      setPromoteSuccess(`${promoteStudentIds.length} student(s) promoted successfully`);
+      notifyAcademicYearChanged();
+      await loadData();
+      setPromoteFromClassId('');
+      setPromoteToClassId('');
+      setPromoteFromGroupId('');
+      setPromoteToGroupId('');
+      setPromoteStudentIds([]);
+      setPromoteStudentRollNumbers({});
+    } catch (err) {
+      console.error('Failed to promote students', err);
+      setPromoteError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setPromoteLoading(false);
+    }
+  }
+
+  // Helper functions
+  const getStudentsForClass = (classId: string): StudentEnrollmentDto[] => {
+    if (!classId) return [];
+
+    const sourceClass = classes.find(course => course.id === classId);
+    const sourceYearId = sourceClass?.academicYearId;
+
+    const studentIdsWithLaterYearEnrollment = new Set(
+      allEnrollments
+        .filter(enrollment => {
+          const enrollmentClass = classes.find(course => course.id === enrollment.classCourseId);
+          return !!enrollmentClass && !!sourceYearId && enrollmentClass.academicYearId !== sourceYearId;
+        })
+        .map(enrollment => enrollment.studentId)
+    );
+
+    return allEnrollments.filter(enrollment => {
+      const matchesClass = enrollment.classCourseId === classId;
+      const hasLaterYearEnrollment = studentIdsWithLaterYearEnrollment.has(enrollment.studentId);
+      return matchesClass && !hasLaterYearEnrollment;
+    });
+  };
+
+  const getClassNameById = (id: string): string => {
+    return classes.find(c => c.id === id)?.name || id;
+  };
+
+  const toggleStudentSelection = (studentId: string) => {
+    setPromoteStudentIds(prev =>
+      prev.includes(studentId)
+        ? prev.filter(id => id !== studentId)
+        : [...prev, studentId]
+    );
+  };
+
+  const formatClassCourseLabel = (classCourse?: Pick<ClassCourseDto, 'name' | 'section' | 'groupName'> | null) => {
+    if (!classCourse) return 'Unknown class';
+    return [classCourse.name, classCourse.section, classCourse.groupName].filter(Boolean).join(' - ');
+  };
+
+  const isHigherSecondaryClassName = (className?: string) => {
+    if (!className) return false;
+    const normalized = className.trim().toLowerCase();
+    const numericValue = Number.parseInt(normalized.replace(/[^0-9]/g, ''), 10);
+    return (numericValue >= 9 && numericValue <= 12) || ['nine', 'ten', 'eleven', 'twelve', 'class 9', 'class 10', 'class 11', 'class 12'].includes(normalized);
+  };
+
+  // Extract class level from class name (supports "Class 6", "Six", "Grade 7", etc.)
+  const extractClassLevel = (className: string): number | null => {
+    if (!className) return null;
+
+    const numericMatch = className.match(/\d+/);
+    if (numericMatch) {
+      return parseInt(numericMatch[0], 10);
+    }
+
+    const normalized = className
+      .trim()
+      .toLowerCase()
+      .replace(/^class\s+/, '')
+      .replace(/^grade\s+/, '')
+      .trim();
+
+    const wordLevels: Record<string, number> = {
+      one: 1,
+      two: 2,
+      three: 3,
+      four: 4,
+      five: 5,
+      six: 6,
+      seven: 7,
+      eight: 8,
+      nine: 9,
+      ten: 10,
+      eleven: 11,
+      twelve: 12,
+    };
+
+    return wordLevels[normalized] ?? null;
+  };
+
+  // Get the next sequential class for a given source class
+  const getNextClassForPromotion = (sourceClassId: string, classList: ClassCourseDto[] = classes): string => {
+    const sourceClass = classList.find(c => c.id === sourceClassId);
+    if (!sourceClass) return '';
+
+    const sourceLevel = extractClassLevel(sourceClass.name);
+    if (sourceLevel === null) return '';
+
+    const nextClass = classList.find(c => {
+      const level = extractClassLevel(c.name);
+      return level === sourceLevel + 1;
+    });
+
+    return nextClass?.id || '';
+  };
+
+  const activeAcademicYearId = academicYears.find(year => year.isActive)?.id ?? '';
+
+  const sourceClassOptions = classes.filter(classCourse => {
+    if (!activeAcademicYearId) return true;
+    return classCourse.academicYearId && classCourse.academicYearId !== activeAcademicYearId;
+  });
+
+  const getNextClassForSelectedSource = (sourceClassId: string): string => {
+    const sourceClass = classes.find(p => p.id === sourceClassId);
+    if (!sourceClass) return '';
+
+    const sourceLevel = extractClassLevel(sourceClass.name);
+    if (sourceLevel === null) return '';
+
+    const nextCandidates = classes.filter(candidate => {
+      if (candidate.academicYearId !== activeAcademicYearId) return false;
+      const candidateLevel = extractClassLevel(candidate.name);
+      if (candidateLevel !== sourceLevel + 1) return false;
+      if (!sourceClass.section || !candidate.section) return true;
+      return candidate.section === sourceClass.section;
+    });
+
+    return nextCandidates[0]?.id ?? (getNextClassForPromotion(sourceClassId) || '');
+  };
+
+  const getPromotionTargetOptions = (sourceClassId: string) => {
+    if (!sourceClassId) return [] as { id: string; label: string }[];
+
+    const targetClassId = getNextClassForSelectedSource(sourceClassId);
+    if (!targetClassId) return [] as { id: string; label: string }[];
+
+    return [{ id: targetClassId, label: 'Next class' }];
+  };
+
   const tabButton = (label: string, value: SettingsTab) => (
     <button
       type="button" onClick={() => setActiveTab(value)}
-      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-sm font-semibold transition ${
+      className={`flex w-full items-center justify-start rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition-all ${
         activeTab === value
-          ? 'bg-brand-50 text-brand-700'
+          ? 'bg-brand-50 text-brand-700 shadow-sm ring-1 ring-brand-100'
           : 'text-slate-500 hover:bg-slate-50'
       }`}
     >
@@ -143,100 +387,16 @@ export function AdminAmsSettingsPage() {
           <h1 className="text-3xl font-extrabold text-slate-800 mt-0.5">Settings</h1>
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[0.75fr_1.25fr]">
-          <div className="bg-white rounded-2xl border border-slate-200 p-2 space-y-1.5">
-            {tabButton('General', 'general')}
-            {tabButton('Academic', 'academic')}
-            {tabButton('Notifications', 'notifications')}
-            {tabButton('Security', 'security')}
-            {tabButton('Activity log', 'activity')}
-            {tabButton('Danger zone', 'danger')}
-          </div>
-
-          <div className="space-y-6">
-            <div
-              className={`${
-                activeTab === 'general' ? 'block' : 'hidden'
-              } bg-white rounded-2xl border border-slate-200 p-6 space-y-6`}
-            >
-              <div>
-                <p className="text-sm font-bold text-slate-700">School profile</p>
-                <p className="text-xs text-slate-400 mt-0.5">Basic information shown across the platform.</p>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-2xl bg-brand-600 flex items-center justify-center text-white font-bold text-xl shrink-0">
-                  AM
-                </div>
-                <div>
-                  <button className="px-3.5 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50">
-                    Upload logo
-                  </button>
-                  <p className="text-[11.5px] text-slate-400 mt-1">PNG or SVG, square, up to 1MB</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <label className="block text-[13px] font-semibold text-slate-700 mb-1">School name</label>
-                  <input
-                    type="text"
-                    value={schoolName}
-                    onChange={(event) => setSchoolName(event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[13px] font-semibold text-slate-700 mb-1">Timezone</label>
-                  <select
-                    value={timeZone}
-                    onChange={(event) => setTimeZone(event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                  >
-                    <option>(GMT+6:00) Dhaka</option>
-                    <option>(GMT+0:00) London</option>
-                    <option>(GMT-5:00) New York</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[13px] font-semibold text-slate-700 mb-1">Contact email</label>
-                  <input
-                    type="email"
-                    value={contactEmail}
-                    onChange={(event) => setContactEmail(event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[13px] font-semibold text-slate-700 mb-1">Contact phone</label>
-                  <input
-                    type="tel"
-                    value={contactPhone}
-                    onChange={(event) => setContactPhone(event.target.value)}
-                    placeholder="+880 1XXX-XXXXXX"
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-slate-100">
-                <label className="block text-[13px] font-semibold text-slate-700 mb-1">Allowed sign-in email domain</label>
-                <input
-                  type="text"
-                  value={domain}
-                  onChange={(event) => setDomain(event.target.value)}
-                  className="w-full max-w-xs rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                />
-                <p className="text-[11.5px] text-slate-400 mt-1">Only accounts using this domain can be invited as students, teachers, or admins.</p>
-              </div>
-
-              <div className="pt-2 flex justify-end">
-                <button className="px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700">
-                  Save changes
-                </button>
-              </div>
+        <div className="grid gap-5 xl:grid-cols-[260px_minmax(0,1fr)]">
+          <aside className="bg-white rounded-2xl border border-slate-200 p-2.5 shadow-sm">
+            <div className="space-y-1.5">
+              {tabButton('Academic', 'academic')}
+              {tabButton('Promote Students', 'promote-students')}
+              {tabButton('Danger zone', 'danger')}
             </div>
+          </aside>
 
+          <div className="space-y-5">
             <div
               className={`${
                 activeTab === 'academic' ? 'block' : 'hidden'
@@ -404,8 +564,15 @@ export function AdminAmsSettingsPage() {
                 </div>
               </div>
 
-              <div className="pt-2 flex justify-end">
-                <button className="px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700">
+              <div className="pt-2 flex flex-col items-end gap-2">
+                {settingsSaved && (
+                  <span className="text-xs font-medium text-emerald-600">Settings saved</span>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSaveSettings}
+                  className="px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700"
+                >
                   Save changes
                 </button>
               </div>
@@ -413,171 +580,174 @@ export function AdminAmsSettingsPage() {
 
             <div
               className={`${
-                activeTab === 'notifications' ? 'block' : 'hidden'
-              } bg-white rounded-2xl border border-slate-200 p-6 space-y-1`}
+                activeTab === 'promote-students' ? 'block' : 'hidden'
+              } bg-white rounded-2xl border border-slate-200 p-6 space-y-6`}
             >
-              <div className="pb-4">
-                <p className="text-sm font-bold text-slate-700">Notifications</p>
-                <p className="text-xs text-slate-400 mt-0.5">Choose what triggers an email, and to whom.</p>
+              <div>
+                <p className="text-sm font-bold text-slate-700">Promote students to the next class</p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  A newly activated academic year starts empty until students are promoted from the previous class.
+                  Select the current class and the next class to create the new-year enrollment record without losing the old-year history.
+                </p>
               </div>
 
-              <div className="flex flex-col gap-4 border-t border-slate-100 pt-4">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div className="pr-6">
-                    <p className="text-sm font-semibold text-slate-700">Assignment due-date reminders</p>
-                    <p className="text-xs text-slate-400 mt-0.5">Email teachers before their assignment deadline passes.</p>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <select className="text-xs rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-slate-500">
-                      <option>24 hours before</option>
-                      <option>12 hours before</option>
-                      <option>48 hours before</option>
-                    </select>
-                    {toggleButton(notificationDueReminder, () => setNotificationDueReminder((value) => !value))}
-                  </div>
+              {promoteError ? (
+                <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+                  {promoteError}
                 </div>
-
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-t border-slate-100 pt-4">
-                  <div className="pr-6">
-                    <p className="text-sm font-semibold text-slate-700">Missing submission alerts</p>
-                    <p className="text-xs text-slate-400 mt-0.5">Notify admins when a student misses a deadline entirely.</p>
-                  </div>
-                  {toggleButton(notificationMissingAlerts, () => setNotificationMissingAlerts((value) => !value))}
+              ) : promoteSuccess ? (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
+                  ✓ {promoteSuccess}
                 </div>
+              ) : null}
 
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-t border-slate-100 pt-4">
-                  <div className="pr-6">
-                    <p className="text-sm font-semibold text-slate-700">Weekly summary digest</p>
-                    <p className="text-xs text-slate-400 mt-0.5">A Monday-morning summary of activity sent to all admins.</p>
-                  </div>
-                  {toggleButton(notificationWeeklyDigest, () => setNotificationWeeklyDigest((value) => !value))}
-                </div>
-
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-t border-slate-100 pt-4">
-                  <div className="pr-6">
-                    <p className="text-sm font-semibold text-slate-700">New account welcome emails</p>
-                    <p className="text-xs text-slate-400 mt-0.5">Send onboarding instructions when a student or teacher account is created.</p>
-                  </div>
-                  {toggleButton(notificationWelcomeEmails, () => setNotificationWelcomeEmails((value) => !value))}
-                </div>
-              </div>
-
-              <div className="pt-4 flex justify-end">
-                <button className="px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700">
-                  Save changes
-                </button>
-              </div>
-            </div>
-
-            <div
-              className={`${
-                activeTab === 'security' ? 'block' : 'hidden'
-              } bg-white rounded-2xl border border-slate-200 p-6 space-y-1`}
-            >
-              <div className="pb-4">
-                <p className="text-sm font-bold text-slate-700">Security</p>
-                <p className="text-xs text-slate-400 mt-0.5">Protect access to the admin dashboard.</p>
-              </div>
-
-              <div className="flex flex-col gap-4 border-t border-slate-100 pt-4">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div className="pr-6">
-                    <p className="text-sm font-semibold text-slate-700">Require 2FA for administrators</p>
-                    <p className="text-xs text-slate-400 mt-0.5">All Super Admin and Admin accounts must set up two-factor authentication.</p>
-                  </div>
-                  {toggleButton(require2FAAdmins, () => setRequire2FAAdmins((value) => !value))}
-                </div>
-
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-t border-slate-100 pt-4">
-                  <div className="pr-6">
-                    <p className="text-sm font-semibold text-slate-700">Auto sign-out after inactivity</p>
-                    <p className="text-xs text-slate-400 mt-0.5">Automatically end idle admin sessions.</p>
-                  </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label className="block text-[13px] font-semibold text-slate-700 mb-1">Class before promotion</label>
                   <select
-                    value={autoSignOut}
-                    onChange={(event) => setAutoSignOut(event.target.value)}
-                    className="text-xs rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-slate-500 shrink-0"
+                    value={promoteFromClassId}
+                    onChange={(event) => {
+                      const classId = event.target.value;
+                      setPromoteFromClassId(classId);
+                      setPromoteFromGroupId('');
+
+                      const nextClassId = getNextClassForSelectedSource(classId) || classId;
+                      setPromoteToClassId(nextClassId);
+                      setPromoteToGroupId('');
+                      setPromoteStudentIds([]);
+                      setPromoteStudentRollNumbers({});
+                    }}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                   >
-                    <option>30 minutes</option>
-                    <option>1 hour</option>
-                    <option>4 hours</option>
-                    <option>Never</option>
+                    <option value="">Select the class students are leaving...</option>
+                    {sourceClassOptions.map(c => (
+                      <option key={c.id} value={c.id}>{formatClassCourseLabel(c)}</option>
+                    ))}
                   </select>
                 </div>
-
-                <div className="py-4 border-t border-slate-100">
-                  <p className="text-sm font-semibold text-slate-700 mb-3">Minimum password length</p>
-                  <input
-                    type="range"
-                    min="6"
-                    max="16"
-                    value={passwordLength}
-                    onChange={(event) => setPasswordLength(Number(event.target.value))}
-                    className="w-full max-w-xs accent-brand-600"
-                  />
-                  <p className="text-[11.5px] text-slate-400 mt-1">{passwordLength} characters minimum</p>
-                </div>
-              </div>
-
-              <div className="pt-4 flex justify-end">
-                <button className="px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700">
-                  Save changes
-                </button>
-              </div>
-            </div>
-
-            <div
-              className={`${
-                activeTab === 'activity' ? 'block' : 'hidden'
-              } bg-white rounded-2xl border border-slate-200 overflow-hidden`}
-            >
-              <div className="p-6 pb-4 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-bold text-slate-700">Recent activity</p>
-                  <p className="text-xs text-slate-400 mt-0.5">Sign-ins and changes made by administrators.</p>
+                  <label className="block text-[13px] font-semibold text-slate-700 mb-1">Class after promotion</label>
+                  <div className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 outline-none">
+                    {promoteToClassId && classes.find(c => c.id === promoteToClassId)
+                      ? `Next class - ${formatClassCourseLabel(classes.find(c => c.id === promoteToClassId)!)}`
+                      : 'Select the class before promotion'}
+                  </div>
+                  {!promoteFromClassId && (
+                    <p className="text-[11px] text-slate-400 mt-1">Choose the class before promotion to set the target class</p>
+                  )}
+                  {promoteFromClassId && !promoteToClassId && (
+                    <p className="text-[11px] text-rose-500 mt-1">No valid target class available for this level</p>
+                  )}
                 </div>
-                <button className="px-3.5 py-2 rounded-lg border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50">
-                  Export CSV
-                </button>
               </div>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 text-left">
-                    <th className="px-6 py-3 text-[11px] font-bold text-slate-400">ADMIN</th>
-                    <th className="px-2 py-3 text-[11px] font-bold text-slate-400">ACTION</th>
-                    <th className="px-2 py-3 text-[11px] font-bold text-slate-400">TIME</th>
-                    <th className="px-6 py-3 text-[11px] font-bold text-slate-400">IP ADDRESS</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  <tr>
-                    <td className="px-6 py-3 font-semibold text-slate-700">Nusrat Jahan</td>
-                    <td className="px-2 py-3 text-slate-500">Signed in</td>
-                    <td className="px-2 py-3 text-slate-500">Today, 1:14 PM</td>
-                    <td className="px-6 py-3 text-slate-400 font-mono text-xs">103.22.14.6</td>
-                  </tr>
-                  <tr>
-                    <td className="px-6 py-3 font-semibold text-slate-700">Rakib Hossain</td>
-                    <td className="px-2 py-3 text-slate-500">Updated student "Ayesha Rahman"</td>
-                    <td className="px-2 py-3 text-slate-500">Yesterday, 4:52 PM</td>
-                    <td className="px-6 py-3 text-slate-400 font-mono text-xs">45.118.9.201</td>
-                  </tr>
-                  <tr>
-                    <td className="px-6 py-3 font-semibold text-slate-700">Nusrat Jahan</td>
-                    <td className="px-2 py-3 text-slate-500">Invited administrator "Tania Karim"</td>
-                    <td className="px-2 py-3 text-slate-500">Aug 3, 2026</td>
-                    <td className="px-6 py-3 text-slate-400 font-mono text-xs">103.22.14.6</td>
-                  </tr>
-                  <tr>
-                    <td className="px-6 py-3 font-semibold text-slate-700">Rakib Hossain</td>
-                    <td className="px-2 py-3 text-slate-500">Archived assignment "Old Quiz"</td>
-                    <td className="px-2 py-3 text-slate-500">Aug 1, 2026</td>
-                    <td className="px-6 py-3 text-slate-400 font-mono text-xs">45.118.9.201</td>
-                  </tr>
-                </tbody>
-              </table>
-              <div className="px-6 py-4 border-t border-slate-100">
-                <button className="text-sm font-semibold text-brand-600 hover:text-brand-700">View full log →</button>
+
+              {promoteFromClassId && promoteToClassId && (
+                <div>
+                  <label className="block text-[13px] font-semibold text-slate-700 mb-3">Select Students & Enter New Roll Numbers</label>
+                  <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-slate-100 bg-slate-50">
+                            <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400 w-10">
+                              <input
+                                type="checkbox"
+                                checked={promoteStudentIds.length > 0 && promoteStudentIds.length === getStudentsForClass(promoteFromClassId).length}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    const allStudents = getStudentsForClass(promoteFromClassId);
+                                    setPromoteStudentIds(allStudents.map(s => s.studentId));
+                                  } else {
+                                    setPromoteStudentIds([]);
+                                  }
+                                }}
+                                className="h-4 w-4 rounded border-slate-300 text-brand-600"
+                              />
+                            </th>
+                            <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400">STUDENT NAME</th>
+                            <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400">CURRENT ROLL</th>
+                            <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400">CURRENT CLASS</th>
+                            <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400">NEW ROLL NUMBER</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                          {getStudentsForClass(promoteFromClassId).length === 0 ? (
+                            <tr>
+                              <td colSpan={5} className="px-4 py-8 text-center text-slate-500 text-xs">
+                                No students in this class
+                              </td>
+                            </tr>
+                          ) : (
+                            getStudentsForClass(promoteFromClassId).map(student => {
+                              const currentCourse = classes.find(c => c.id === student.classCourseId);
+                              const currentRoll = allEnrollments.find(
+                                enrollment => enrollment.studentId === student.studentId && enrollment.classCourseId === promoteFromClassId
+                              )?.rollNumber ?? student.rollNumber ?? '—';
+                              return (
+                                <tr key={student.studentId} className={promoteStudentIds.includes(student.studentId) ? 'bg-brand-50' : ''}>
+                                  <td className="px-4 py-3">
+                                    <input
+                                      type="checkbox"
+                                      checked={promoteStudentIds.includes(student.studentId)}
+                                      onChange={() => toggleStudentSelection(student.studentId)}
+                                      className="h-4 w-4 rounded border-slate-300 text-brand-600"
+                                    />
+                                  </td>
+                                  <td className="px-4 py-3 font-semibold text-slate-700">{student.studentName}</td>
+                                  <td className="px-4 py-3 text-slate-600">{currentRoll || '—'}</td>
+                                  <td className="px-4 py-3 text-slate-600">{currentCourse ? formatClassCourseLabel(currentCourse) : '—'}</td>
+                                  <td className="px-4 py-3">
+                                    {promoteStudentIds.includes(student.studentId) ? (
+                                      <input
+                                        type="text"
+                                        placeholder="Enter new roll number"
+                                        value={promoteStudentRollNumbers[student.studentId] || ''}
+                                        onChange={(e) => {
+                                          setPromoteStudentRollNumbers(prev => ({
+                                            ...prev,
+                                            [student.studentId]: e.target.value
+                                          }));
+                                        }}
+                                        className="w-full max-w-xs rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                                      />
+                                    ) : (
+                                      <span className="text-slate-400 text-xs">—</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-2 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPromoteFromClassId('');
+                    setPromoteToClassId('');
+                    setPromoteStudentIds([]);
+                    setPromoteStudentRollNumbers({});
+                    setPromoteError(null);
+                    setPromoteSuccess(null);
+                  }}
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50"
+                >
+                  Clear
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBulkPromoteStudents}
+                  disabled={promoteLoading || promoteStudentIds.length === 0 || !promoteToClassId}
+                  className="px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {promoteLoading ? 'Promoting…' : 'Promote Students'}
+                </button>
               </div>
             </div>
 
@@ -591,15 +761,6 @@ export function AdminAmsSettingsPage() {
                 <p className="text-xs text-slate-400 mt-0.5">These actions are irreversible. Proceed with care.</p>
               </div>
               <div className="divide-y divide-slate-100">
-                <div className="flex flex-col gap-3 px-6 py-4 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-700">Export all school data</p>
-                    <p className="text-xs text-slate-400 mt-0.5">Download students, teachers, classes, assignments and submissions as CSV.</p>
-                  </div>
-                  <button className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 shrink-0">
-                    Export
-                  </button>
-                </div>
                 <div className="flex flex-col gap-3 px-6 py-4 md:flex-row md:items-center md:justify-between">
                   <div>
                     <p className="text-sm font-semibold text-slate-700">Deactivate school account</p>

@@ -15,6 +15,16 @@ type InfoSection = {
   fields: InfoField[]
 }
 
+function formatDate(dateString: string | undefined): string {
+  if (!dateString) return '—'
+  try {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+  } catch {
+    return '—'
+  }
+}
+
 export default function Page() {
   const notificationItems = getNotificationDefinitionsForRole('Student')
 
@@ -24,8 +34,8 @@ export default function Page() {
       fields: [
         { key: 'studentId', label: 'Student ID', getValue: (user: UserDto | null) => user?.studentId || '—' },
         { key: 'gender', label: 'Gender', getValue: (user: UserDto | null) => user?.gender || '—' },
-        { key: 'dateOfBirth', label: 'Date of birth', getValue: (user: UserDto | null) => user?.dateOfBirth || '—' },
-        { key: 'admissionDate', label: 'Admission date', getValue: (user: UserDto | null) => user?.admissionDate || '—' },
+        { key: 'dateOfBirth', label: 'Date of birth', getValue: (user: UserDto | null) => formatDate(user?.dateOfBirth) },
+        { key: 'admissionDate', label: 'Admission date', getValue: (user: UserDto | null) => formatDate(user?.admissionDate) },
         { key: 'status', label: 'Status', getValue: (user: UserDto | null) => user ? `${user.isActive ? 'Active' : 'Inactive'}` : '—' },
       ],
     },

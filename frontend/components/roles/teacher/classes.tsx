@@ -21,30 +21,42 @@ export function TeacherClassesPage() {
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(4);
   const [pageIndex, setPageIndex] = useState(0);
 
-  useEffect(() => {
-    async function loadData() {
-      setError(null);
-      setLoading(true);
-      try {
-        const [apiClasses, apiSubjects, apiAssignments, apiEnrollments] = await Promise.all([
-          getClassCourses(),
-          getSubjects(),
-          getAssignments(),
-          getEnrollments()
-        ]);
-        setClasses(apiClasses);
-        setSubjects(apiSubjects);
-        setAssignments(apiAssignments);
-        setEnrollments(apiEnrollments);
-      } catch (err) {
-        console.error(err);
-        setError('Unable to load classes. Please refresh the page.');
-      } finally {
-        setLoading(false);
-      }
+  async function loadData() {
+    setError(null);
+    setLoading(true);
+    try {
+      const [apiClasses, apiSubjects, apiAssignments, apiEnrollments] = await Promise.all([
+        getClassCourses(),
+        getSubjects(),
+        getAssignments(),
+        getEnrollments()
+      ]);
+      setClasses(apiClasses);
+      setSubjects(apiSubjects);
+      setAssignments(apiAssignments);
+      setEnrollments(apiEnrollments);
+    } catch (err) {
+      console.error(err);
+      setError('Unable to load classes. Please refresh the page.');
+    } finally {
+      setLoading(false);
     }
+  }
 
+  useEffect(() => {
     void loadData();
+  }, []);
+
+  // Listen for academic year changes and reload data
+  useEffect(() => {
+    const handleAcademicYearChanged = () => {
+      void loadData();
+    };
+
+    window.addEventListener('ams-academic-year-updated', handleAcademicYearChanged);
+    return () => {
+      window.removeEventListener('ams-academic-year-updated', handleAcademicYearChanged);
+    };
   }, []);
 
   const classSubjectsMap = useMemo(() => {

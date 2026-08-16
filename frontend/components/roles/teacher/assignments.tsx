@@ -126,24 +126,36 @@ export function TeacherAssignmentsPage() {
     return () => window.removeEventListener('click', handleClick);
   }, []);
 
-  useEffect(() => {
-    async function loadData() {
-      setLoadError(null);
-      setLoading(true);
-      try {
-        const [apiAssignments, apiClasses, apiSubjects] = await Promise.all([getAssignments(), getClassCourses(), getSubjects()]);
-        setAssignments(apiAssignments);
-        setClasses(apiClasses);
-        setSubjects(apiSubjects);
-      } catch (error) {
-        console.error(error);
-        setLoadError('Unable to load assignments. Please refresh the page.');
-      } finally {
-        setLoading(false);
-      }
+  async function loadData() {
+    setLoadError(null);
+    setLoading(true);
+    try {
+      const [apiAssignments, apiClasses, apiSubjects] = await Promise.all([getAssignments(), getClassCourses(), getSubjects()]);
+      setAssignments(apiAssignments);
+      setClasses(apiClasses);
+      setSubjects(apiSubjects);
+    } catch (error) {
+      console.error(error);
+      setLoadError('Unable to load assignments. Please refresh the page.');
+    } finally {
+      setLoading(false);
     }
+  }
 
+  useEffect(() => {
     void loadData();
+  }, []);
+
+  // Listen for academic year changes and reload data
+  useEffect(() => {
+    const handleAcademicYearChanged = () => {
+      void loadData();
+    };
+
+    window.addEventListener('ams-academic-year-updated', handleAcademicYearChanged);
+    return () => {
+      window.removeEventListener('ams-academic-year-updated', handleAcademicYearChanged);
+    };
   }, []);
 
   useEffect(() => {

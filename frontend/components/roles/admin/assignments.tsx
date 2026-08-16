@@ -78,20 +78,28 @@ export function AdminAssignmentsPage() {
     return { total, published, drafts, dueSoon };
   }, [assignments]);
 
-  useEffect(() => {
-    async function loadAssignments() {
-      setIsLoading(true);
-      try {
-        const items = await getAssignments();
-        setAssignments(items.filter((assignment) => assignment.status === 'Published'));
-      } catch (error) {
-        console.error('Failed to load assignments', error);
-      } finally {
-        setIsLoading(false);
-      }
+  const loadAssignments = async () => {
+    setIsLoading(true);
+    try {
+      const items = await getAssignments();
+      setAssignments(items.filter((assignment) => assignment.status === 'Published'));
+    } catch (error) {
+      console.error('Failed to load assignments', error);
+    } finally {
+      setIsLoading(false);
     }
+  };
 
+  useEffect(() => {
     void loadAssignments();
+  }, []);
+
+  // Listen for academic year changes and reload data
+  useEffect(() => {
+    window.addEventListener('ams-academic-year-updated', loadAssignments);
+    return () => {
+      window.removeEventListener('ams-academic-year-updated', loadAssignments);
+    };
   }, []);
 
 

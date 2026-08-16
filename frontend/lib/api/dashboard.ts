@@ -1,6 +1,7 @@
 import { request } from '../api';
 
 export interface AdminDashboardStats {
+  academicYear: string;
   totalUsers: number;
   totalTeachers: number;
   totalStudents: number;
@@ -11,6 +12,7 @@ export interface AdminDashboardStats {
 }
 
 export interface TeacherDashboardStats {
+  academicYear: string;
   activeAssignmentsCount: number;
   draftAssignmentsCount: number;
   pendingGradingSubmissionsCount: number;

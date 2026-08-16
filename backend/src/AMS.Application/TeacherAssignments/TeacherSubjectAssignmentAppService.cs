@@ -12,17 +12,20 @@ public class TeacherSubjectAssignmentAppService : ITeacherSubjectAssignmentAppSe
     private readonly IUserRepository _userRepository;
     private readonly ISubjectRepository _subjectRepository;
     private readonly IClassCourseRepository _classCourseRepository;
+    private readonly IAcademicYearRepository _academicYearRepository;
 
     public TeacherSubjectAssignmentAppService(
         ITeacherSubjectAssignmentRepository assignmentRepository,
         IUserRepository userRepository,
         ISubjectRepository subjectRepository,
-        IClassCourseRepository classCourseRepository)
+        IClassCourseRepository classCourseRepository,
+        IAcademicYearRepository academicYearRepository)
     {
         _assignmentRepository = assignmentRepository;
         _userRepository = userRepository;
         _subjectRepository = subjectRepository;
         _classCourseRepository = classCourseRepository;
+        _academicYearRepository = academicYearRepository;
     }
 
     public async Task<IReadOnlyList<TeacherSubjectAssignmentDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
@@ -34,10 +37,27 @@ public class TeacherSubjectAssignmentAppService : ITeacherSubjectAssignmentAppSe
             _ => throw new ForbiddenException("Only admins and teachers can view teacher assignments.")
         };
 
+        var activeYear = await _academicYearRepository.GetActiveAsync(cancellationToken);
+        var filteredAssignments = new List<TeacherSubjectAssignment>();
+
+        foreach (var assignment in assignments)
+        {
+            var subject = await _subjectRepository.GetByIdAsync(assignment.SubjectId, cancellationToken);
+            if (subject is null) continue;
+
+            var classCourse = await _classCourseRepository.GetByIdAsync(subject.ClassCourseId, cancellationToken);
+            if (classCourse is null) continue;
+
+            if (activeYear is null || classCourse.AcademicYearId == activeYear.Id)
+            {
+                filteredAssignments.Add(assignment);
+            }
+        }
+
         var result = new List<TeacherSubjectAssignmentDto>();
         var teacherCache = new Dictionary<Guid, User>();
 
-        foreach (var assignment in assignments)
+        foreach (var assignment in filteredAssignments)
         {
             if (!teacherCache.TryGetValue(assignment.TeacherId, out var teacher))
             {
@@ -92,5 +112,63 @@ public class TeacherSubjectAssignmentAppService : ITeacherSubjectAssignmentAppSe
         if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can manage teacher assignments.");
 
         await _assignmentRepository.DeleteAsync(teacherId, subjectId, cancellationToken);
+    }
+
+    public async Task<TeacherSubjectAssignmentDto> ReassignTeacherAsync(ReassignTeacherDto input, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
+    {
+        if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can reassign teachers.");
+
+        var teacher = await _userRepository.GetByIdAsync(input.TeacherId, cancellationToken) ?? throw new NotFoundException("Teacher not found.");
+        var toSubject = await _subjectRepository.GetByIdAsync(input.ToSubjectId, cancellationToken) ?? throw new NotFoundException("Target subject not found.");
+        var toClass = await _classCourseRepository.GetByIdAsync(toSubject.ClassCourseId, cancellationToken) ?? throw new NotFoundException("Target class not found.");
+
+        // Delete old assignment
+        await _assignmentRepository.DeleteAsync(input.TeacherId, input.FromSubjectId, cancellationToken);
+
+        // Create new assignment
+        var newAssignment = new TeacherSubjectAssignment(input.TeacherId, input.ToSubjectId);
+        await _assignmentRepository.AddAsync(newAssignment, cancellationToken);
+
+        return new TeacherSubjectAssignmentDto
+        {
+            TeacherId = newAssignment.TeacherId,
+            TeacherName = teacher.FullName,
+            SubjectId = newAssignment.SubjectId,
+            SubjectName = toSubject.Name,
+            ClassCourseId = toSubject.ClassCourseId,
+            ClassCourseName = toClass.Name
+        };
+    }
+
+    public async Task<IReadOnlyList<TeacherSubjectAssignmentDto>> BulkReassignTeachersAsync(BulkReassignTeachersDto input, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
+    {
+        if (currentUserRole != nameof(UserRole.Admin)) throw new ForbiddenException("Only admins can reassign teachers.");
+
+        var toSubject = await _subjectRepository.GetByIdAsync(input.ToSubjectId, cancellationToken) ?? throw new NotFoundException("Target subject not found.");
+        var result = new List<TeacherSubjectAssignmentDto>();
+
+        foreach (var teacherId in input.TeacherIds)
+        {
+            try
+            {
+                var reassigned = await ReassignTeacherAsync(
+                    new ReassignTeacherDto
+                    {
+                        TeacherId = teacherId,
+                        FromSubjectId = input.FromSubjectId,
+                        ToSubjectId = input.ToSubjectId
+                    },
+                    currentUserId,
+                    currentUserRole,
+                    cancellationToken);
+                result.Add(reassigned);
+            }
+            catch
+            {
+                // Continue with next teacher even if one fails
+            }
+        }
+
+        return result;
     }
 }

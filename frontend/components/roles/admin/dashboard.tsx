@@ -98,6 +98,7 @@ export function AdminDashboardPage() {
               <p className="text-[12px] font-semibold uppercase text-[#7C3AED] mb-1">GOOD {new Date().getHours() < 12 ? 'MORNING' : new Date().getHours() < 18 ? 'AFTERNOON' : 'EVENING'}, SYSTEM ADMIN</p>
               <h2 className="text-2xl font-bold mb-1">Stay on top of teaching and student work.</h2>
               <p className="text-[13px] text-[#8A8F98]">A cleaner, responsive dashboard for student, teacher, and assignment operations.</p>
+              <p className="text-[13px] text-[#8A8F98] mt-2">Academic year: {stats?.academicYear || 'Not available'}</p>
             </div>
             <div className="flex flex-wrap gap-3">
               <Button type="button" onClick={() => setStudentModalOpen(true)}>Add Student</Button>

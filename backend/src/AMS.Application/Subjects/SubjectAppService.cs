@@ -10,18 +10,27 @@ public class SubjectAppService : ISubjectAppService
 {
     private readonly ISubjectRepository _subjectRepository;
     private readonly ITeacherSubjectAssignmentRepository _teacherSubjectAssignmentRepository;
+    private readonly IAcademicYearRepository _academicYearRepository;
 
-    public SubjectAppService(ISubjectRepository subjectRepository, ITeacherSubjectAssignmentRepository teacherSubjectAssignmentRepository)
+    public SubjectAppService(
+        ISubjectRepository subjectRepository,
+        ITeacherSubjectAssignmentRepository teacherSubjectAssignmentRepository,
+        IAcademicYearRepository academicYearRepository)
     {
         _subjectRepository = subjectRepository;
         _teacherSubjectAssignmentRepository = teacherSubjectAssignmentRepository;
+        _academicYearRepository = academicYearRepository;
     }
 
     public async Task<IReadOnlyList<SubjectDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
     {
+        // Get active academic year
+        var activeYear = await _academicYearRepository.GetActiveAsync(cancellationToken);
+        if (activeYear == null) throw new NotFoundException("No active academic year found.");
+
         if (currentUserRole == nameof(UserRole.Admin))
         {
-            var subjects = await _subjectRepository.GetAllAsync(cancellationToken);
+            var subjects = await _subjectRepository.GetByAcademicYearAsync(activeYear.Id, cancellationToken);
             return subjects.Select(ToDto).ToList();
         }
 
@@ -29,7 +38,7 @@ public class SubjectAppService : ISubjectAppService
         {
             var assigned = await _teacherSubjectAssignmentRepository.GetByTeacherAsync(currentUserId, cancellationToken);
             var subjectIds = assigned.Select(x => x.SubjectId).Distinct().ToHashSet();
-            var subjects = await _subjectRepository.GetAllAsync(cancellationToken);
+            var subjects = await _subjectRepository.GetByAcademicYearAsync(activeYear.Id, cancellationToken);
             return subjects.Where(x => subjectIds.Contains(x.Id)).Select(ToDto).ToList();
         }
 

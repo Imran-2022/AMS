@@ -22,6 +22,17 @@ public class SubjectRepository : ISubjectRepository
     public async Task<IReadOnlyList<Subject>> GetAllAsync(CancellationToken cancellationToken = default)
         => await _dbContext.Subjects.ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Subject>> GetByAcademicYearAsync(Guid academicYearId, CancellationToken cancellationToken = default)
+    {
+        // Join Subjects with ClassCourses to filter by AcademicYearId
+        return await _dbContext.Subjects
+            .Where(s => _dbContext.ClassCourses
+                .Where(cc => cc.AcademicYearId == academicYearId)
+                .Select(cc => cc.Id)
+                .Contains(s.ClassCourseId))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task AddAsync(Subject subject, CancellationToken cancellationToken = default)
     {
         await _dbContext.Subjects.AddAsync(subject, cancellationToken);

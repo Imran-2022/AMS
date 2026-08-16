@@ -110,7 +110,7 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Host=localhost;Port=5432;Database=amsdb;Username=postgres;Password=root";
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Host=localhost;Port=5432;Database=amsdb1;Username=postgres;Password=root";
 builder.Services.AddDbContext<AmsDbContext>(options =>
     options.UseNpgsql(connectionString));
 

@@ -71,6 +71,18 @@ export function AdminStudentsPage() {
     void loadData();
   }, []);
 
+  // Listen for academic year changes and reload data
+  useEffect(() => {
+    const handleAcademicYearChanged = () => {
+      void loadData();
+    };
+
+    window.addEventListener('ams-academic-year-updated', handleAcademicYearChanged);
+    return () => {
+      window.removeEventListener('ams-academic-year-updated', handleAcademicYearChanged);
+    };
+  }, []);
+
   useEffect(() => {
     if (classFilter === 'All classes') {
       setSectionFilter('All sections');
@@ -94,6 +106,7 @@ export function AdminStudentsPage() {
       ]);
 
       const classMap = Object.fromEntries(classes.map((cls) => [cls.id, cls]));
+      const currentYearStudentIds = new Set(enrollments.map((enrollment) => enrollment.studentId));
       const enrollmentMap = Object.fromEntries(enrollments.map((enrollment) => [enrollment.studentId, enrollment.classCourseId]));
 
       // Classes already have groupName from backend
@@ -105,7 +118,7 @@ export function AdminStudentsPage() {
       setStats(dashboardStats);
 
       const studentRecords = users
-        .filter((user) => user.role === 'Student')
+        .filter((user) => user.role === 'Student' && currentYearStudentIds.has(user.id))
         .map((user) => {
           const classCourseId = enrollmentMap[user.id];
           const classCourse = classMap[classCourseId];
@@ -263,6 +276,10 @@ export function AdminStudentsPage() {
   }
 
 
+  const totalStudentsCount = students.length;
+  const activeStudentsCount = students.filter((student) => student.status === 'Active').length;
+  const inactiveStudentsCount = students.filter((student) => student.status === 'Inactive').length;
+
   const classNames = useMemo(
     () => Array.from(new Set(classCourses.map((cls) => cls.name))).sort(sortClassName),
     [classCourses]
@@ -377,7 +394,7 @@ export function AdminStudentsPage() {
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
               </div>
             </div>
-            <p className="text-2xl font-extrabold text-slate-900">{isLoading ? '—' : stats?.totalStudents ?? 0}</p>
+            <p className="text-2xl font-extrabold text-slate-900">{isLoading ? '—' : totalStudentsCount}</p>
             <p className="text-xs text-slate-400 mt-1">Enrolled across all classes</p>
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
@@ -387,7 +404,7 @@ export function AdminStudentsPage() {
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
               </div>
             </div>
-            <p className="text-2xl font-extrabold text-slate-900">{isLoading ? '—' : students.filter((student) => student.status === 'Active').length}</p>
+            <p className="text-2xl font-extrabold text-slate-900">{isLoading ? '—' : activeStudentsCount}</p>
             <p className="text-xs text-slate-400 mt-1">Currently attending</p>
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
@@ -397,7 +414,7 @@ export function AdminStudentsPage() {
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
               </div>
             </div>
-            <p className="text-2xl font-extrabold text-slate-900">{isLoading ? '—' : students.filter((student) => student.status === 'Inactive').length}</p>
+            <p className="text-2xl font-extrabold text-slate-900">{isLoading ? '—' : inactiveStudentsCount}</p>
             <p className="text-xs text-slate-400 mt-1">Suspended or withdrawn</p>
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
@@ -578,8 +595,11 @@ export function AdminStudentsPage() {
                 <line x1="16" y1="11" x2="22" y2="11" />
               </svg>
             </div>
-            <p className="text-base font-bold text-slate-800">No students yet</p>
-            <p className="text-sm text-slate-500 mt-1 max-w-md">Add your first student, or import a roster from a CSV file to get started quickly.</p>
+            <p className="text-base font-bold text-slate-800">No students in this academic year yet</p>
+            <p className="text-sm text-slate-500 mt-1 max-w-lg">
+              This page stays empty until you promote students from the previous academic year into the current one.
+              Use the promotion settings to move students into the active year.
+            </p>
             <div className="mt-5">
               <Button onClick={openNewStudent}>Add student</Button>
             </div>

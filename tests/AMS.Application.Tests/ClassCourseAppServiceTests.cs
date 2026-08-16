@@ -3,6 +3,7 @@ using AMS.Application.Services;
 using AMS.Domain.Entities;
 using AMS.Domain.Repositories;
 using AMS.Domain.Shared;
+using Moq;
 using Xunit;
 
 namespace AMS.Application.Tests;
@@ -16,7 +17,10 @@ public class ClassCourseAppServiceTests
         {
             new ClassCourse(Guid.NewGuid(), "Grade 10", "A", Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid())
         });
-        var service = new ClassCourseAppService(repo, new FakeTeacherAssignmentRepository(), new FakeClassDefinitionRepository(Array.Empty<ClassDefinition>()), new FakeSubjectRepository());
+        var academicYearRepo = new Mock<IAcademicYearRepository>(MockBehavior.Strict);
+        academicYearRepo.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>())).ReturnsAsync((AcademicYear?)null);
+
+        var service = new ClassCourseAppService(repo, new FakeTeacherAssignmentRepository(), new FakeClassDefinitionRepository(Array.Empty<ClassDefinition>()), new FakeSubjectRepository(), academicYearRepo.Object);
 
         var ex = await Assert.ThrowsAsync<DomainException>(() => service.CreateAsync(new CreateClassCourseDto
         {
@@ -35,7 +39,10 @@ public class ClassCourseAppServiceTests
     {
         var repo = new FakeClassCourseRepository(Array.Empty<ClassCourse>());
         var classDefinition = new ClassDefinition(Guid.NewGuid(), "Nine");
-        var service = new ClassCourseAppService(repo, new FakeTeacherAssignmentRepository(), new FakeClassDefinitionRepository(new[] { classDefinition }), new FakeSubjectRepository());
+        var academicYearRepo = new Mock<IAcademicYearRepository>(MockBehavior.Strict);
+        academicYearRepo.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>())).ReturnsAsync((AcademicYear?)null);
+
+        var service = new ClassCourseAppService(repo, new FakeTeacherAssignmentRepository(), new FakeClassDefinitionRepository(new[] { classDefinition }), new FakeSubjectRepository(), academicYearRepo.Object);
 
         var ex = await Assert.ThrowsAsync<DomainException>(() => service.CreateAsync(new CreateClassCourseDto
         {
@@ -72,6 +79,9 @@ public class ClassCourseAppServiceTests
 
         public Task<IReadOnlyList<ClassCourse>> GetAllAsync(CancellationToken cancellationToken = default)
             => Task.FromResult<IReadOnlyList<ClassCourse>>(Classes);
+
+        public Task<IReadOnlyList<ClassCourse>> GetByAcademicYearAsync(Guid academicYearId, CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<ClassCourse>>(Classes.Where(c => c.AcademicYearId == academicYearId).ToList());
 
         public Task<ClassCourse?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
             => Task.FromResult(Classes.FirstOrDefault(c => c.Id == id));
@@ -119,6 +129,7 @@ public class ClassCourseAppServiceTests
     {
         public Task<Subject?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult<Subject?>(null);
         public Task<IReadOnlyList<Subject>> GetByClassCourseIdAsync(Guid classCourseId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Subject>>(Array.Empty<Subject>());
+        public Task<IReadOnlyList<Subject>> GetByAcademicYearAsync(Guid academicYearId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Subject>>(Array.Empty<Subject>());
         public Task<IReadOnlyList<Subject>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Subject>>(Array.Empty<Subject>());
         public Task AddAsync(Subject subject, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task UpdateAsync(Subject subject, CancellationToken cancellationToken = default) => Task.CompletedTask;

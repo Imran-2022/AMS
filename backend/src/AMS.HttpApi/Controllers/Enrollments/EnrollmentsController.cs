@@ -21,11 +21,11 @@ public class EnrollmentsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<StudentEnrollmentDto>>> GetAll()
+    public async Task<ActionResult<IReadOnlyList<StudentEnrollmentDto>>> GetAll([FromQuery] bool includeAllYears = false)
     {
         var currentUserId = _currentUser.UserId;
         var currentUserRole = _currentUser.Role;
-        var items = await _enrollmentAppService.GetAllAsync(currentUserId, currentUserRole);
+        var items = await _enrollmentAppService.GetAllAsync(currentUserId, currentUserRole, includeAllYears);
         return Ok(items);
     }
 
@@ -45,5 +45,23 @@ public class EnrollmentsController : ControllerBase
         var currentUserRole = _currentUser.Role;
         await _enrollmentAppService.DeleteAsync(studentId, classCourseId, currentUserId, currentUserRole);
         return NoContent();
+    }
+
+    [HttpPost("promote")]
+    public async Task<ActionResult<StudentEnrollmentDto>> PromoteStudent([FromBody] PromoteStudentDto input)
+    {
+        var currentUserId = _currentUser.UserId;
+        var currentUserRole = _currentUser.Role;
+        var item = await _enrollmentAppService.PromoteStudentAsync(input, currentUserId, currentUserRole);
+        return CreatedAtAction(nameof(GetAll), item);
+    }
+
+    [HttpPost("bulk-promote")]
+    public async Task<ActionResult<IReadOnlyList<StudentEnrollmentDto>>> BulkPromoteStudents([FromBody] BulkPromoteStudentsDto input)
+    {
+        var currentUserId = _currentUser.UserId;
+        var currentUserRole = _currentUser.Role;
+        var items = await _enrollmentAppService.BulkPromoteStudentsAsync(input, currentUserId, currentUserRole);
+        return Ok(items);
     }
 }

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Button, PageHeader, AmsPagination, Modal, AmsDeleteComfiramtionModal } from '../../ui';
 import { TeacherAssignmentModal } from './shared/TeacherAssignmentModal';
 import {
+  getAcademicYears,
   getClassCourses,
   getSubjects,
   getUsers,
@@ -37,6 +38,18 @@ export default function SubjectsAssignments() {
     void loadData();
   }, []);
 
+  // Listen for academic year changes and reload data
+  useEffect(() => {
+    const handleAcademicYearChanged = () => {
+      void loadData();
+    };
+
+    window.addEventListener('ams-academic-year-updated', handleAcademicYearChanged);
+    return () => {
+      window.removeEventListener('ams-academic-year-updated', handleAcademicYearChanged);
+    };
+  }, []);
+
   useEffect(() => {
     if (!actionMenuFor) return;
 
@@ -56,16 +69,25 @@ export default function SubjectsAssignments() {
   async function loadData() {
     try {
       setError(null);
-      const [apiClasses, apiSubjects, apiUsers, apiAssignments] = await Promise.all([
+      const [apiClasses, apiSubjects, apiUsers, apiAssignments, academicYears] = await Promise.all([
         getClassCourses(),
         getSubjects(),
         getUsers(),
         getTeacherAssignments(),
+        getAcademicYears(),
       ]);
-      setClasses(apiClasses);
-      setSubjects(apiSubjects);
+
+      const activeYearId = academicYears.find((year) => year.isActive)?.id;
+      const activeClassIds = new Set(
+        activeYearId
+          ? apiClasses.filter((classCourse) => classCourse.academicYearId === activeYearId).map((classCourse) => classCourse.id)
+          : apiClasses.map((classCourse) => classCourse.id)
+      );
+
+      setClasses(activeYearId ? apiClasses.filter((classCourse) => activeClassIds.has(classCourse.id)) : apiClasses);
+      setSubjects(activeYearId ? apiSubjects.filter((subject) => activeClassIds.has(subject.classCourseId)) : apiSubjects);
       setTeachers((apiUsers as UserDto[]).filter((u) => u.role === 'Teacher'));
-      setAssignments(apiAssignments);
+      setAssignments(activeYearId ? apiAssignments.filter((assignment) => activeClassIds.has(assignment.classCourseId)) : apiAssignments);
     } catch (err) {
       console.error(err);
       setError('Unable to load subjects data.');

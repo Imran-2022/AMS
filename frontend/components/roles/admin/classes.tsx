@@ -69,6 +69,19 @@ export function AdminClassesPage() {
     void loadAcademicYears();
   }, []);
 
+  // Listen for academic year changes and reload data
+  useEffect(() => {
+    const handleAcademicYearChanged = () => {
+      void loadData();
+      void loadAcademicYears();
+    };
+
+    window.addEventListener('ams-academic-year-updated', handleAcademicYearChanged);
+    return () => {
+      window.removeEventListener('ams-academic-year-updated', handleAcademicYearChanged);
+    };
+  }, []);
+
   async function loadAcademicYears() {
     try {
       const years = await getAcademicYears();

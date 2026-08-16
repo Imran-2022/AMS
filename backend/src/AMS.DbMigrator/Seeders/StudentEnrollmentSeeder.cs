@@ -60,7 +60,9 @@ public static class StudentEnrollmentSeeder
             var existing = await enrollmentRepo.GetAsync(student.Id, targetCourse.Id, ct);
             if (existing is not null) continue;
 
-            await enrollmentRepo.AddAsync(new StudentEnrollment(student.Id, targetCourse.Id, isActive: true, enrolledAt: DateTime.UtcNow), ct);
+            await enrollmentRepo.AddAsync(
+                new StudentEnrollment(student.Id, targetCourse.Id, targetCourse.AcademicYearId, isActive: true, enrolledAt: DateTime.UtcNow),
+                ct);
         }
     }
 }

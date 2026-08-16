@@ -29,27 +29,40 @@ export function StudentDashboardPage() {
   const [submissions, setSubmissions] = useState<SubmissionDto[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [dashboardStats, apiAssignments, apiSubmissions] = await Promise.all([
-          getStudentDashboardStats(),
-          getAssignments(),
-          getMySubmissions(),
-        ]);
-        setStats(dashboardStats);
-        setAssignments(apiAssignments);
-        setSubmissions(apiSubmissions);
-      } catch {
-        setStats(null);
-        setAssignments([]);
-        setSubmissions([]);
-      } finally {
-        setLoading(false);
-      }
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [dashboardStats, apiAssignments, apiSubmissions] = await Promise.all([
+        getStudentDashboardStats(),
+        getAssignments(),
+        getMySubmissions(),
+      ]);
+      setStats(dashboardStats);
+      setAssignments(apiAssignments);
+      setSubmissions(apiSubmissions);
+    } catch {
+      setStats(null);
+      setAssignments([]);
+      setSubmissions([]);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    void load();
+  useEffect(() => {
+    void loadData();
+  }, []);
+
+  // Listen for academic year changes and reload data
+  useEffect(() => {
+    const handleAcademicYearChanged = () => {
+      void loadData();
+    };
+
+    window.addEventListener('ams-academic-year-updated', handleAcademicYearChanged);
+    return () => {
+      window.removeEventListener('ams-academic-year-updated', handleAcademicYearChanged);
+    };
   }, []);
 
   const assignmentRows = useMemo(() => {

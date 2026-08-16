@@ -47,7 +47,8 @@ public class SubmissionAppServiceTests
             authService.Object,
             currentUser.Object,
             Mock.Of<IAttachmentAppService>(),
-            Mock.Of<INotificationService>());
+            Mock.Of<INotificationService>(),
+            Mock.Of<IAcademicYearRepository>());
 
         var ex = await Assert.ThrowsAsync<ForbiddenException>(() => service.GetByIdAsync(submissionId, otherStudentId, nameof(UserRole.Student)));
         Assert.Equal("Access denied.", ex.Message);
@@ -106,7 +107,8 @@ public class SubmissionAppServiceTests
             authService.Object,
             currentUser.Object,
             Mock.Of<IAttachmentAppService>(),
-            Mock.Of<INotificationService>());
+            Mock.Of<INotificationService>(),
+            Mock.Of<IAcademicYearRepository>());
 
         var result = await service.GetByIdAsync(submissionId, studentId, nameof(UserRole.Student));
 
