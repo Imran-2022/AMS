@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/shared/layout';
+import { PageLoader } from '@/shared/ui';
 import { getAssignments, getMySubmissions, type AssignmentDto, type SubmissionDto } from '@/lib/api';
 import { getStudentDashboardStats, type StudentDashboardStats } from '@/lib/api/dashboard';
 
@@ -136,6 +137,21 @@ export function StudentDashboardPage() {
     gradedCount: 0,
     upcomingDeadlinesCount: 0,
   };
+
+  if (loading) {
+    return (
+      <AppShell role="Student" breadcrumb="Student / Dashboard">
+        <div className="space-y-6">
+          <div>
+            <p className="text-base font-semibold text-slate-800">
+              <span className="text-xs font-bold text-brand-600">STUDENT PORTAL</span>
+            </p>
+          </div>
+          <PageLoader title="Loading dashboard" subtitle="Loading your assignments and performance summary…" />
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell role="Student" breadcrumb="Student / Dashboard">

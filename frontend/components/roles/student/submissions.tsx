@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AmsPagination, Button } from '../../ui';
+import { AmsPagination, Button, PageLoader } from '../../ui';
 import { AppShell } from '@/shared/layout';
 import { getMySubmissions, type SubmissionDto } from '@/lib/api';
 
@@ -91,6 +91,20 @@ export function StudentSubmissionsPage() {
     const start = pageIndex * pageSize;
     return filteredSubmissions.slice(start, start + pageSize);
   }, [filteredSubmissions, pageIndex, pageSize]);
+
+  if (loading) {
+    return (
+      <AppShell role="Student" breadcrumb="Student / Submissions">
+        <div className="space-y-6">
+          <div>
+            <p className="text-xs font-bold text-brand-600">STUDENT PORTAL</p>
+            <h1 className="text-3xl font-extrabold text-slate-800 mt-1">My Submissions</h1>
+          </div>
+          <PageLoader title="Loading submissions" subtitle="Loading your latest submission history…" />
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell role="Student" breadcrumb="Student / Submissions">

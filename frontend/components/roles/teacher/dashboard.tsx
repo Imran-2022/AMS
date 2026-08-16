@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/shared/layout';
-import { Button } from '../../ui/Button';
+import { Button, PageLoader } from '../../ui';
 import { getAssignments, getClassCourses, getSubjects, createAssignment, publishAssignment, uploadAttachment, getCurrentUser, getSubmissions } from '@/lib/api';
 import { getTeacherDashboardStats, type TeacherDashboardStats } from '@/lib/api/dashboard';
 import type { AssignmentDto, ClassCourseDto, SubjectDto, CreateAssignmentDto, UserDto, SubmissionDto } from '@/lib/api';
@@ -188,6 +188,19 @@ export function TeacherDashboardPage() {
       .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())
       .slice(0, 5);
   }, [submissions]);
+
+  if (loading) {
+    return (
+      <AppShell role="Teacher" breadcrumb="Teacher / Dashboard">
+        <div className="space-y-6">
+          <div>
+            <p className="text-lg font-bold text-brand-600 mb-1 uppercase">LOADING</p>
+          </div>
+          <PageLoader title="Loading dashboard" subtitle="Loading your student and assignment overview…" />
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell role="Teacher" breadcrumb="Teacher / Dashboard">

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { AppShell } from '@/shared/layout';
-import { AmsPagination } from '../../ui';
+import { AmsPagination, PageLoader } from '../../ui';
 import { getAssignments, getClassCourses, getEnrollments, getSubjects } from '@/lib/api';
 import type { AssignmentDto, ClassCourseDto, StudentEnrollmentDto, SubjectDto } from '@/lib/api';
 
@@ -145,10 +145,10 @@ export function TeacherClassesPage() {
       <AppShell role="Teacher" breadcrumb="Teacher / My Classes">
         <div className="space-y-6">
           <div>
-            <p className="text-xs font-bold  text-brand-600">TEACHER PORTAL</p>
+            <p className="text-xs font-bold text-brand-600">TEACHER PORTAL</p>
             <h1 className="mt-0.5 text-3xl font-extrabold text-slate-800">My Classes</h1>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-500">Loading your classes…</div>
+          <PageLoader title="Loading classes" subtitle="Loading your classes and class data…" />
         </div>
       </AppShell>
     );

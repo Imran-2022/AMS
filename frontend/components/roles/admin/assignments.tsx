@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/shared/layout';
-import { AmsPagination } from '../../ui';
+import { AmsPagination, PageLoader } from '../../ui';
 import { getAssignments, type AssignmentDto } from '@/lib/api';
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
@@ -113,6 +113,18 @@ export function AdminAssignmentsPage() {
   }, [filteredAssignments, pageIndex, pageSize]);
 
   const pageCount = Math.max(1, Math.ceil(filteredAssignments.length / pageSize));
+
+  if (isLoading) {
+    return (
+      <AppShell role="Admin" breadcrumb="Admin / Assignments">
+        <div className="space-y-6">
+          <p className="text-xs font-bold text-brand-600">ADMINISTRATION</p>
+          <h1 className="text-3xl font-extrabold text-slate-800 mt-0.5">Assignments</h1>
+          <PageLoader title="Loading assignments" subtitle="Loading assignment records for the selected academic year…" />
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell role="Admin" breadcrumb="Admin / Assignments">

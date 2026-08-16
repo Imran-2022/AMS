@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AmsDeleteComfiramtionModal, AmsPagination, Button } from '@/shared/ui';
+import { AmsDeleteComfiramtionModal, AmsPagination, Button, PageLoader } from '@/shared/ui';
 import { AddTeacherModal, type AddTeacherFormData } from '@/components/roles/admin/shared';
 import { AppShell } from '@/shared/layout';
-import { API_BASE_URL, createUser, deleteUser, getAcademicYears, getClassCourses, getUsers, updateUser } from '@/lib/api';
+import { API_BASE_URL, createUser, deleteUser, getAcademicYears, getClassCourses, getSelectedAcademicYearId, getUsers, updateUser } from '@/lib/api';
 import { getTeacherAssignments, type TeacherSubjectAssignmentDto } from '@/lib/api/teacherAssignments';
 import { X } from 'lucide-react';
 
@@ -105,34 +105,49 @@ export function AdminTeachersPage() {
   const [isTeacherModalOpen, setIsTeacherModalOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<TeacherRow | null>(null);
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherRow | null>(null);
+  const [selectedAcademicYearId, setSelectedAcademicYearId] = useState('');
   const [teacherModalSubmitting, setTeacherModalSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [pageSize, setPageSize] = useState(10);
   const [pageIndex, setPageIndex] = useState(0);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 
   useEffect(() => {
-    void loadTeachers();
+    const syncSelectedAcademicYear = () => {
+      setSelectedAcademicYearId(getSelectedAcademicYearId());
+    };
+
+    syncSelectedAcademicYear();
+    window.addEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
+    return () => {
+      window.removeEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
+    };
   }, []);
+
+  useEffect(() => {
+    void loadTeachers();
+  }, [selectedAcademicYearId]);
 
   async function loadTeachers() {
     try {
-      const [apiUsers, apiAssignments, apiClasses, academicYears] = await Promise.all([
+      setIsLoading(true);
+      const academicYears = await getAcademicYears();
+      const activeYearId = academicYears.find((year) => year.isActive)?.id ?? '';
+      const isViewingArchivedYear = Boolean(selectedAcademicYearId && selectedAcademicYearId !== activeYearId);
+
+      const [apiUsers, apiAssignments, apiClasses] = await Promise.all([
         getUsers(),
-        getTeacherAssignments(),
-        getClassCourses(),
-        getAcademicYears(),
+        getTeacherAssignments(isViewingArchivedYear),
+        getClassCourses(isViewingArchivedYear),
       ]);
 
-      const activeYearId = academicYears.find((year) => year.isActive)?.id;
-      const activeClassIds = new Set(
-        activeYearId
-          ? apiClasses.filter((classCourse) => classCourse.academicYearId === activeYearId).map((classCourse) => classCourse.id)
-          : apiClasses.map((classCourse) => classCourse.id)
-      );
+      const visibleClassIds = isViewingArchivedYear && selectedAcademicYearId
+        ? new Set(apiClasses.filter((classCourse) => classCourse.academicYearId === selectedAcademicYearId).map((classCourse) => classCourse.id))
+        : new Set(apiClasses.map((classCourse) => classCourse.id));
 
-      const visibleAssignments = activeYearId
-        ? apiAssignments.filter((assignment) => activeClassIds.has(assignment.classCourseId))
+      const visibleAssignments = isViewingArchivedYear
+        ? apiAssignments.filter((assignment) => visibleClassIds.has(assignment.classCourseId))
         : apiAssignments;
 
       const teacherUsers = apiUsers
@@ -165,6 +180,8 @@ export function AdminTeachersPage() {
     } catch (err) {
       console.error(err);
       setMode('error');
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -331,6 +348,20 @@ export function AdminTeachersPage() {
     const start = pageIndex * pageSize;
     return rows.slice(start, start + pageSize);
   }, [rows, pageIndex, pageSize]);
+
+  if (isLoading) {
+    return (
+      <AppShell role="Admin" breadcrumb="Admin / Teachers">
+        <div className="space-y-6">
+          <div>
+            <p className="text-xs font-bold uppercase text-indigo-600">Administration</p>
+            <h1 className="text-3xl font-extrabold text-slate-900 mt-1">Teachers</h1>
+          </div>
+          <PageLoader title="Loading teachers" subtitle="Loading teacher records and class allocations…" />
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell role="Admin" breadcrumb="Admin / Teachers">

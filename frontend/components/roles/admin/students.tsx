@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AppShell } from '@/shared/layout';
-import { AmsDeleteComfiramtionModal, AmsPagination, Button, Card, Pill, Th, Td } from '@/shared/ui';
+import { AmsDeleteComfiramtionModal, AmsPagination, Button, Card, PageLoader, Pill, Th, Td } from '@/shared/ui';
 import { AddStudentModal, type AddStudentFormData } from '@/components/roles/admin/shared';
-import { API_BASE_URL } from '@/lib/api';
+import { API_BASE_URL, getAcademicYears, getEnrollments, getSelectedAcademicYearId } from '@/lib/api';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
 import { createUser, deleteUser, getClassCourses, getGroupsForClass, getUsers, updateUser } from '@/lib/api';
-import { createEnrollment, deleteEnrollment, getEnrollments } from '@/lib/api/enrollments';
+import { createEnrollment, deleteEnrollment } from '@/lib/api/enrollments';
 import { MoreVertical, Plus, X } from 'lucide-react';
 import type { ClassCourseRecord, StudentFormData, StudentUserRecord } from './types';
 
@@ -64,12 +64,25 @@ export function AdminStudentsPage() {
   const [selectedStudent, setSelectedStudent] = useState<StudentUserRecord | null>(null);
   const [pendingDeleteStudent, setPendingDeleteStudent] = useState<StudentUserRecord | null>(null);
   const [studentModalSubmitting, setStudentModalSubmitting] = useState(false);
+  const [selectedAcademicYearId, setSelectedAcademicYearId] = useState('');
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
   const [pageIndex, setPageIndex] = useState(0);
 
   useEffect(() => {
-    void loadData();
+    const syncSelectedAcademicYear = () => {
+      setSelectedAcademicYearId(getSelectedAcademicYearId());
+    };
+
+    syncSelectedAcademicYear();
+    window.addEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
+    return () => {
+      window.removeEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
+    };
   }, []);
+
+  useEffect(() => {
+    void loadData();
+  }, [selectedAcademicYearId]);
 
   // Listen for academic year changes and reload data
   useEffect(() => {
@@ -81,7 +94,7 @@ export function AdminStudentsPage() {
     return () => {
       window.removeEventListener('ams-academic-year-updated', handleAcademicYearChanged);
     };
-  }, []);
+  }, [selectedAcademicYearId]);
 
   useEffect(() => {
     if (classFilter === 'All classes') {
@@ -95,22 +108,43 @@ export function AdminStudentsPage() {
     }
   }, [search, statusFilter, classFilter, sectionFilter, pageSize]);
 
+  if (isLoading) {
+    return (
+      <AppShell role="Admin" breadcrumb="Admin / Students">
+        <div className="flex flex-col gap-5">
+          <div>
+            <p className="text-xs font-bold uppercase text-indigo-600">Administration</p>
+            <h1 className="text-3xl font-extrabold text-slate-900 mt-1">Students</h1>
+          </div>
+          <PageLoader title="Loading students" subtitle="Loading current student records and enrollments…" />
+        </div>
+      </AppShell>
+    );
+  }
+
   async function loadData(newestStudentId?: string) {
     try {
       setIsLoading(true);
+      const academicYears = await getAcademicYears();
+      const activeYearId = academicYears.find((year) => year.isActive)?.id ?? '';
+      const isArchivedSelection = Boolean(selectedAcademicYearId && selectedAcademicYearId !== activeYearId);
+
       const [users, classes, enrollments, dashboardStats] = await Promise.all([
         getUsers(),
-        getClassCourses(),
-        getEnrollments(),
+        getClassCourses(isArchivedSelection),
+        getEnrollments(isArchivedSelection),
         getAdminDashboardStats(),
       ]);
 
       const classMap = Object.fromEntries(classes.map((cls) => [cls.id, cls]));
-      const currentYearStudentIds = new Set(enrollments.map((enrollment) => enrollment.studentId));
-      const enrollmentMap = Object.fromEntries(enrollments.map((enrollment) => [enrollment.studentId, enrollment.classCourseId]));
+      const filteredClasses = isArchivedSelection && selectedAcademicYearId
+        ? classes.filter((cls) => cls.academicYearId === selectedAcademicYearId)
+        : classes;
+      const currentYearStudentIds = new Set((enrollments || []).map((enrollment) => enrollment.studentId));
+      const enrollmentMap = Object.fromEntries((enrollments || []).map((enrollment) => [enrollment.studentId, enrollment.classCourseId]));
 
       // Classes already have groupName from backend
-      setClassCourses(classes.map((cls) => ({
+      setClassCourses(filteredClasses.map((cls) => ({
         ...cls,
         groupId: cls.groupId ?? undefined,
         groupName: cls.groupName ?? undefined,

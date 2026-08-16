@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/shared/layout';
-import { Button, Card, Metric, PageHeader, Pill, RoleBadge, Th, Td } from '@/shared/ui';
+import { Button, Card, Metric, PageHeader, PageLoader, Pill, RoleBadge, Th, Td } from '@/shared/ui';
 import { AddStudentModal, AddTeacherModal, TeacherAssignmentModal } from '@/components/roles/admin/shared';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
 import { getAssignments, getSubmissions, getUsers as apiGetUsers, getSubjects } from '@/lib/api';
@@ -87,6 +87,17 @@ export function AdminDashboardPage() {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  if (isLoading) {
+    return (
+      <AppShell role="Admin" breadcrumb="Admin / Dashboard">
+        <div className="space-y-6">
+          <p className="text-[12px] font-semibold uppercase text-[#7C3AED] mb-1">ADMINISTRATION</p>
+          <PageLoader title="Loading dashboard" subtitle="Loading upcoming assignments, submissions, and stats…" />
+        </div>
+      </AppShell>
+    );
   }
 
   return (

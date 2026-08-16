@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/shared/layout';
-import { AmsPagination, Button, FileUpload } from '../../ui';
+import { AmsPagination, Button, FileUpload, PageLoader } from '../../ui';
 import { createSubmission, getAssignments, getMySubmissions, type AssignmentDto, type SubmissionDto, updateSubmission, uploadAttachment } from '@/lib/api';
 
 function getStudentStatusLabel(status: string | undefined) {
@@ -172,6 +172,20 @@ export function StudentAssignmentsPage() {
     if (status === 'Graded') return 'bg-emerald-50 text-emerald-600';
     return 'bg-rose-50 text-rose-600';
   };
+
+  if (loading) {
+    return (
+      <AppShell role="Student" breadcrumb="Student / Assignments">
+        <div className="space-y-6">
+          <div>
+            <p className="text-xs font-bold tracking-[0.2em] text-brand-600">STUDENT PORTAL</p>
+            <h1 className="mt-1 text-3xl font-extrabold text-slate-800">My Assignments</h1>
+          </div>
+          <PageLoader title="Loading assignments" subtitle="Loading your upcoming and submitted work…" />
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell role="Student" breadcrumb="Student / Assignments">

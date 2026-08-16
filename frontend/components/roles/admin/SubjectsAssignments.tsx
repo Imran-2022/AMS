@@ -6,6 +6,7 @@ import { TeacherAssignmentModal } from './shared/TeacherAssignmentModal';
 import {
   getAcademicYears,
   getClassCourses,
+  getSelectedAcademicYearId,
   getSubjects,
   getUsers,
   createSubject,
@@ -23,6 +24,7 @@ export default function SubjectsAssignments() {
   const [assignments, setAssignments] = useState<TeacherSubjectAssignmentDto[]>([]);
   const [search, setSearch] = useState('');
   const [selectedClass, setSelectedClass] = useState('All classes');
+  const [selectedAcademicYearId, setSelectedAcademicYearId] = useState('');
   const [activeModal, setActiveModal] = useState<'subject' | 'assign' | 'view-subjects' | 'delete' | null>(null);
   const [viewSubjectsForClass, setViewSubjectsForClass] = useState<string | null>(null);
   const [actionMenuFor, setActionMenuFor] = useState<string | null>(null);
@@ -35,8 +37,20 @@ export default function SubjectsAssignments() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    void loadData();
+    const syncSelectedAcademicYear = () => {
+      setSelectedAcademicYearId(getSelectedAcademicYearId());
+    };
+
+    syncSelectedAcademicYear();
+    window.addEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
+    return () => {
+      window.removeEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
+    };
   }, []);
+
+  useEffect(() => {
+    void loadData();
+  }, [selectedAcademicYearId]);
 
   // Listen for academic year changes and reload data
   useEffect(() => {
@@ -48,7 +62,7 @@ export default function SubjectsAssignments() {
     return () => {
       window.removeEventListener('ams-academic-year-updated', handleAcademicYearChanged);
     };
-  }, []);
+  }, [selectedAcademicYearId]);
 
   useEffect(() => {
     if (!actionMenuFor) return;
@@ -69,25 +83,28 @@ export default function SubjectsAssignments() {
   async function loadData() {
     try {
       setError(null);
-      const [apiClasses, apiSubjects, apiUsers, apiAssignments, academicYears] = await Promise.all([
-        getClassCourses(),
-        getSubjects(),
+      const academicYears = await getAcademicYears();
+      const activeYearId = academicYears.find((year) => year.isActive)?.id ?? '';
+      const isViewingArchivedYear = Boolean(selectedAcademicYearId && selectedAcademicYearId !== activeYearId);
+      const includeAllYears = isViewingArchivedYear;
+
+      const [apiClasses, apiSubjects, apiUsers, apiAssignments] = await Promise.all([
+        getClassCourses(includeAllYears),
+        getSubjects(includeAllYears),
         getUsers(),
-        getTeacherAssignments(),
-        getAcademicYears(),
+        getTeacherAssignments(includeAllYears),
       ]);
 
-      const activeYearId = academicYears.find((year) => year.isActive)?.id;
-      const activeClassIds = new Set(
-        activeYearId
-          ? apiClasses.filter((classCourse) => classCourse.academicYearId === activeYearId).map((classCourse) => classCourse.id)
-          : apiClasses.map((classCourse) => classCourse.id)
-      );
+      const visibleClassIds = isViewingArchivedYear && selectedAcademicYearId
+        ? new Set(apiClasses.filter((classCourse) => classCourse.academicYearId === selectedAcademicYearId).map((classCourse) => classCourse.id))
+        : new Set(apiClasses.map((classCourse) => classCourse.id));
 
-      setClasses(activeYearId ? apiClasses.filter((classCourse) => activeClassIds.has(classCourse.id)) : apiClasses);
-      setSubjects(activeYearId ? apiSubjects.filter((subject) => activeClassIds.has(subject.classCourseId)) : apiSubjects);
+      setClasses(isViewingArchivedYear && selectedAcademicYearId
+        ? apiClasses.filter((classCourse) => classCourse.academicYearId === selectedAcademicYearId)
+        : apiClasses);
+      setSubjects(isViewingArchivedYear ? apiSubjects.filter((subject) => visibleClassIds.has(subject.classCourseId)) : apiSubjects);
       setTeachers((apiUsers as UserDto[]).filter((u) => u.role === 'Teacher'));
-      setAssignments(activeYearId ? apiAssignments.filter((assignment) => activeClassIds.has(assignment.classCourseId)) : apiAssignments);
+      setAssignments(isViewingArchivedYear ? apiAssignments.filter((assignment) => visibleClassIds.has(assignment.classCourseId)) : apiAssignments);
     } catch (err) {
       console.error(err);
       setError('Unable to load subjects data.');

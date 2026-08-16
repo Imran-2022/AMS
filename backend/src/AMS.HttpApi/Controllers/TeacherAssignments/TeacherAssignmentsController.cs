@@ -21,11 +21,11 @@ public class TeacherAssignmentsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<TeacherSubjectAssignmentDto>>> GetAll()
+    public async Task<ActionResult<IReadOnlyList<TeacherSubjectAssignmentDto>>> GetAll([FromQuery] bool includeAllAcademicYears = false)
     {
         var currentUserId = _currentUser.UserId;
         var currentUserRole = _currentUser.Role;
-        var items = await _appService.GetAllAsync(currentUserId, currentUserRole);
+        var items = await _appService.GetAllAsync(currentUserId, currentUserRole, includeAllAcademicYears);
         return Ok(items);
     }
 

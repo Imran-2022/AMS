@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AmsPagination } from '../../ui';
+import { AmsPagination, PageLoader } from '../../ui';
 import { AppShell } from '@/shared/layout';
 import { getSubmissions, type SubmissionDto } from '@/lib/api';
 
@@ -88,6 +88,18 @@ export function AdminSubmissionsPage() {
     const start = pageIndex * pageSize;
     return visibleSubmissions.slice(start, start + pageSize);
   }, [visibleSubmissions, pageIndex, pageSize]);
+
+  if (isLoading) {
+    return (
+      <AppShell role="Admin" breadcrumb="Admin / Submissions">
+        <div className="space-y-6">
+          <p className="text-xs font-bold text-brand-600">ADMINISTRATION</p>
+          <h1 className="text-3xl font-extrabold text-slate-800 mt-0.5">Submissions</h1>
+          <PageLoader title="Loading submissions" subtitle="Loading recent submissions and grading data…" />
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell role="Admin" breadcrumb="Admin / Submissions">

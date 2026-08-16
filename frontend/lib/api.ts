@@ -585,6 +585,24 @@ export async function getAcademicYears() {
   return request<{ id: string; name: string; startDate: string; endDate: string; isActive: boolean }[]>(`/api/academic-years`);
 }
 
+export function getSelectedAcademicYearId() {
+  if (typeof window === 'undefined') return '';
+  const stored = window.localStorage.getItem('ams-selected-academic-year');
+  if (stored) return stored;
+  const activeYear = window.localStorage.getItem('ams-active-academic-year');
+  return activeYear ?? '';
+}
+
+export function setSelectedAcademicYearId(yearId: string) {
+  if (typeof window === 'undefined') return;
+  if (yearId) {
+    window.localStorage.setItem('ams-selected-academic-year', yearId);
+    return;
+  }
+
+  window.localStorage.removeItem('ams-selected-academic-year');
+}
+
 export async function getActiveAcademicYear() {
   return request<{ id: string; name: string; startDate: string; endDate: string; isActive: boolean }>(`/api/academic-years/active`);
 }
@@ -615,8 +633,13 @@ export async function getGroupsForClass(classDefinitionId: string) {
   return request<{ id: string; name: string }[]>(`/api/class-definitions/${classDefinitionId}/groups`);
 }
 
-export async function getSubjects() {
-  return request<SubjectDto[]>(`/api/subjects`);
+export async function getSubjects(includeAllAcademicYears?: boolean) {
+  const params = new URLSearchParams();
+  if (includeAllAcademicYears) {
+    params.append('includeAllAcademicYears', 'true');
+  }
+  const query = params.toString();
+  return request<SubjectDto[]>(`/api/subjects${query ? `?${query}` : ''}`);
 }
 
 export async function createClassCourse(input: CreateClassCourseDto) {

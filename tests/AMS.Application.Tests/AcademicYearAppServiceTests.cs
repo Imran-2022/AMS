@@ -17,7 +17,9 @@ public class AcademicYearAppServiceTests
             repository,
             Moq.Mock.Of<IClassCourseRepository>(),
             Moq.Mock.Of<IClassDefinitionRepository>(),
-            Moq.Mock.Of<IGroupRepository>());
+            Moq.Mock.Of<IGroupRepository>(),
+            Moq.Mock.Of<ISubjectRepository>(),
+            Moq.Mock.Of<ITeacherSubjectAssignmentRepository>());
 
         var created = await service.CreateAsync(
             new CreateAcademicYearDto
@@ -45,7 +47,9 @@ public class AcademicYearAppServiceTests
             repository,
             Moq.Mock.Of<IClassCourseRepository>(),
             Moq.Mock.Of<IClassDefinitionRepository>(),
-            Moq.Mock.Of<IGroupRepository>());
+            Moq.Mock.Of<IGroupRepository>(),
+            Moq.Mock.Of<ISubjectRepository>(),
+            Moq.Mock.Of<ITeacherSubjectAssignmentRepository>());
 
         var activated = await service.ActivateAsync(
             nextYear.Id,

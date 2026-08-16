@@ -62,6 +62,11 @@ export function AdminClassesPage() {
   const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
   const [pageIndex, setPageIndex] = useState(0);
+  const [selectedAcademicYearId, setSelectedAcademicYearId] = useState<string>('');
+
+  // Compute whether we're viewing an archived year
+  const activeAcademicYear = academicYears.find((y) => y.isActive);
+  const isViewingArchivedYear = Boolean(selectedAcademicYearId && selectedAcademicYearId !== activeAcademicYear?.id);
 
   useEffect(() => {
     void loadData();
@@ -92,10 +97,22 @@ export function AdminClassesPage() {
       if (activeYear && !classForm.year) {
         setClassForm(c => ({ ...c, year: activeYear.id }));
       }
+      
+      // Initialize selectedAcademicYearId to active year if not already set
+      if (!selectedAcademicYearId && activeYear) {
+        setSelectedAcademicYearId(activeYear.id);
+      }
     } catch (err) {
       console.error('Failed to load academic years', err);
     }
   }
+
+  // Load data when selected academic year changes
+  useEffect(() => {
+    if (selectedAcademicYearId) {
+      void loadData();
+    }
+  }, [selectedAcademicYearId]);
 
   useEffect(() => {
     async function loadGroups() {
@@ -204,14 +221,24 @@ export function AdminClassesPage() {
   async function loadData() {
     try {
       setError(null);
+      const includeAllYears = !!isViewingArchivedYear;
       const [apiClasses, apiSubjects, apiAssignments, apiEnrollments] = await Promise.all([
-        getClassCourses(),
-        getSubjects(),
-        getTeacherAssignments(),
+        getClassCourses(includeAllYears),
+        getSubjects(includeAllYears),
+        getTeacherAssignments(includeAllYears),
         getEnrollments(),
       ]);
 
-      setClasses(apiClasses);
+      // Filter by selected academic year if viewing archived
+      let filteredClasses = apiClasses;
+      if (isViewingArchivedYear && selectedAcademicYearId) {
+        filteredClasses = apiClasses.filter(c => c.academicYearId === selectedAcademicYearId);
+      } else if (!isViewingArchivedYear && activeAcademicYear) {
+        // When viewing active year, filter to only that year's classes
+        filteredClasses = apiClasses.filter(c => c.academicYearId === activeAcademicYear.id);
+      }
+
+      setClasses(filteredClasses);
       setSubjects(apiSubjects);
       setAssignments(apiAssignments);
 
@@ -547,11 +574,24 @@ export function AdminClassesPage() {
             <h1 className="text-3xl font-extrabold text-slate-800 mt-0.5">Classes &amp; subjects</h1>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <select
+              value={selectedAcademicYearId}
+              onChange={(e) => setSelectedAcademicYearId(e.target.value)}
+              className="rounded border border-slate-300 bg-white px-3 py-2 text-sm"
+            >
+              {academicYears.map((year) => (
+                <option key={year.id} value={year.id}>
+                  {year.name} {year.isActive ? '(Active)' : '(Archived)'}
+                </option>
+              ))}
+            </select>
             <Button
               type="button"
               onClick={() => openModal('subject')}
               className="px-4 py-2.5 flex items-center gap-2"
               variant="secondary"
+              disabled={isViewingArchivedYear}
+              title={isViewingArchivedYear ? 'Cannot add subjects to archived year' : undefined}
             >
               + Add subject
             </Button>
@@ -559,6 +599,8 @@ export function AdminClassesPage() {
               type="button"
               onClick={() => openModal('class')}
               className="px-4 py-2.5 flex items-center gap-2"
+              disabled={isViewingArchivedYear}
+              title={isViewingArchivedYear ? 'Cannot add classes to archived year' : undefined}
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19" />
@@ -568,6 +610,13 @@ export function AdminClassesPage() {
             </Button>
           </div>
         </div>
+
+        {isViewingArchivedYear && (
+          <div className="rounded border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <p className="font-semibold">📋 Viewing archived academic year</p>
+            <p className="mt-1 text-amber-700">You are viewing a previous academic year in read-only mode. Switch to the active year to make changes.</p>
+          </div>
+        )}
 
         {error ? (
           <div className="rounded border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>
@@ -740,6 +789,8 @@ export function AdminClassesPage() {
                           variant="ghost"
                           onClick={() => openEditClass(cls)}
                           className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
+                          disabled={isViewingArchivedYear}
+                          title={isViewingArchivedYear ? 'Cannot edit archived year classes' : undefined}
                         >
                           Edit class
                         </Button>
@@ -748,6 +799,8 @@ export function AdminClassesPage() {
                           variant="ghost"
                           onClick={() => handleDelete('class', cls.id, `${cls.name} — ${cls.section}`)}
                           className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50"
+                          disabled={isViewingArchivedYear}
+                          title={isViewingArchivedYear ? 'Cannot delete archived year classes' : undefined}
                         >
                           Delete class
                         </Button>

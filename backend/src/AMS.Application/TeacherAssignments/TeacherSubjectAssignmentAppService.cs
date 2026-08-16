@@ -28,7 +28,7 @@ public class TeacherSubjectAssignmentAppService : ITeacherSubjectAssignmentAppSe
         _academicYearRepository = academicYearRepository;
     }
 
-    public async Task<IReadOnlyList<TeacherSubjectAssignmentDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<TeacherSubjectAssignmentDto>> GetAllAsync(Guid currentUserId, string currentUserRole, bool includeAllAcademicYears = false, CancellationToken cancellationToken = default)
     {
         var assignments = currentUserRole switch
         {
@@ -48,7 +48,8 @@ public class TeacherSubjectAssignmentAppService : ITeacherSubjectAssignmentAppSe
             var classCourse = await _classCourseRepository.GetByIdAsync(subject.ClassCourseId, cancellationToken);
             if (classCourse is null) continue;
 
-            if (activeYear is null || classCourse.AcademicYearId == activeYear.Id)
+            // If includeAllAcademicYears is true, include all years; otherwise only include active year
+            if (includeAllAcademicYears || activeYear is null || classCourse.AcademicYearId == activeYear.Id)
             {
                 filteredAssignments.Add(assignment);
             }

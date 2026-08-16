@@ -22,7 +22,7 @@ public class SubjectAppService : ISubjectAppService
         _academicYearRepository = academicYearRepository;
     }
 
-    public async Task<IReadOnlyList<SubjectDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<SubjectDto>> GetAllAsync(Guid currentUserId, string currentUserRole, bool includeAllAcademicYears = false, CancellationToken cancellationToken = default)
     {
         // Get active academic year
         var activeYear = await _academicYearRepository.GetActiveAsync(cancellationToken);
@@ -30,7 +30,17 @@ public class SubjectAppService : ISubjectAppService
 
         if (currentUserRole == nameof(UserRole.Admin))
         {
-            var subjects = await _subjectRepository.GetByAcademicYearAsync(activeYear.Id, cancellationToken);
+            IReadOnlyList<Subject> subjects;
+            if (includeAllAcademicYears)
+            {
+                // Get all subjects from all years
+                subjects = await _subjectRepository.GetAllAsync(cancellationToken) ?? new List<Subject>();
+            }
+            else
+            {
+                // Get only subjects from the active year
+                subjects = await _subjectRepository.GetByAcademicYearAsync(activeYear.Id, cancellationToken);
+            }
             return subjects.Select(ToDto).ToList();
         }
 
@@ -38,7 +48,16 @@ public class SubjectAppService : ISubjectAppService
         {
             var assigned = await _teacherSubjectAssignmentRepository.GetByTeacherAsync(currentUserId, cancellationToken);
             var subjectIds = assigned.Select(x => x.SubjectId).Distinct().ToHashSet();
-            var subjects = await _subjectRepository.GetByAcademicYearAsync(activeYear.Id, cancellationToken);
+            
+            IReadOnlyList<Subject> subjects;
+            if (includeAllAcademicYears)
+            {
+                subjects = await _subjectRepository.GetAllAsync(cancellationToken) ?? new List<Subject>();
+            }
+            else
+            {
+                subjects = await _subjectRepository.GetByAcademicYearAsync(activeYear.Id, cancellationToken);
+            }
             return subjects.Where(x => subjectIds.Contains(x.Id)).Select(ToDto).ToList();
         }
 

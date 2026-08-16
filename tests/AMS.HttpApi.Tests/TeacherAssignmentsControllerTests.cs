@@ -15,7 +15,7 @@ public class TeacherAssignmentsControllerTests
     {
         var items = new List<TeacherSubjectAssignmentDto> { new() { TeacherId = Guid.NewGuid(), SubjectId = Guid.NewGuid(), ClassCourseId = Guid.NewGuid(), TeacherName = "T", SubjectName = "S", ClassCourseName = "C" } };
         var service = new Mock<ITeacherSubjectAssignmentAppService>(MockBehavior.Strict);
-        service.Setup(s => s.GetAllAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(items);
+        service.Setup(s => s.GetAllAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(items);
 
         var currentUser = new Mock<ICurrentUserService>(MockBehavior.Strict);
         currentUser.SetupGet(c => c.UserId).Returns(Guid.NewGuid());

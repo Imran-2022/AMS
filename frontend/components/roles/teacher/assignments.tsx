@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BookOpen, ClipboardList, Copy, FileText, Layers, Pencil, Plus, Search, Send, Trash2, Eye } from 'lucide-react';
 import { AppShell } from '@/shared/layout';
-import { AmsDeleteComfiramtionModal, AmsPagination, Button, FileUpload } from '../../ui';
+import { AmsDeleteComfiramtionModal, AmsPagination, Button, FileUpload, PageLoader } from '../../ui';
 import { getAssignments, getClassCourses, getSubjects, createAssignment, duplicateAssignment as duplicateAssignmentApi, updateAssignment, deleteAssignment, publishAssignment, unpublishAssignment, uploadAttachment, listAttachments, renameAttachment, deleteAttachment } from '@/lib/api';
 import type { AssignmentDto, ClassCourseDto, SubjectDto, CreateAssignmentDto, UpdateAssignmentDto } from '@/lib/api';
 
@@ -230,6 +230,20 @@ export function TeacherAssignmentsPage() {
       pendingReviews,
     };
   }, [assignments]);
+
+  if (loading) {
+    return (
+      <AppShell role="Teacher" breadcrumb="Teacher / Assignments">
+        <div className="space-y-6">
+          <div>
+            <p className="text-xs font-bold tracking-[0.2em] text-brand-600">TEACHER PORTAL</p>
+            <h1 className="mt-1 text-3xl font-extrabold text-slate-800">My Assignments</h1>
+          </div>
+          <PageLoader title="Loading assignments" subtitle="Loading your assignment library…" />
+        </div>
+      </AppShell>
+    );
+  }
 
   const availableClasses = useMemo(() => {
     const classNames = assignments.map((assignment) => `${assignment.classCourseName} — ${assignment.classCourseSection}`);
