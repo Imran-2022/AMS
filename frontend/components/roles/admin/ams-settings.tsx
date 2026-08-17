@@ -21,19 +21,41 @@ import {
 
 type SettingsTab = 'academic' | 'promote-students' | 'danger';
 
+function getNextAcademicYearDefaults(years: { name: string; startDate: string; endDate: string }[]) {
+  const currentYear = new Date().getFullYear();
+  const sortedYears = [...years].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+  const lastYear = sortedYears[0];
+
+  if (!lastYear) {
+    return {
+      name: `${currentYear}-${currentYear + 1}`,
+      startDate: `${currentYear}-01-01`,
+      endDate: `${currentYear + 1}-01-01`,
+    };
+  }
+
+  const parsedName = lastYear.name.match(/(\d{4})\s*-\s*(\d{4})/);
+  const yearBasis = parsedName ? Number(parsedName[2]) : new Date(lastYear.endDate).getFullYear();
+  const nextStartYear = yearBasis;
+  const nextEndYear = yearBasis + 1;
+
+  return {
+    name: `${nextStartYear}-${nextEndYear}`,
+    startDate: `${nextStartYear}-01-01`,
+    endDate: `${nextEndYear}-01-01`,
+  };
+}
+
 export function AdminAmsSettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('academic');
   const [academicYears, setAcademicYears] = useState<{ id: string; name: string; startDate: string; endDate: string; isActive: boolean }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
-  const currentYear = new Date().getFullYear();
-  const defaultAcademicYearStart = `${currentYear}-01-01`;
-  const defaultAcademicYearEnd = `${currentYear + 1}-01-01`;
-  const defaultAcademicYearName = `${currentYear}-${currentYear + 1}`;
-  const [newYearName, setNewYearName] = useState(defaultAcademicYearName);
-  const [newYearStart, setNewYearStart] = useState(defaultAcademicYearStart);
-  const [newYearEnd, setNewYearEnd] = useState(defaultAcademicYearEnd);
+  const defaultAcademicYearDefaults = getNextAcademicYearDefaults(academicYears);
+  const [newYearName, setNewYearName] = useState(defaultAcademicYearDefaults.name);
+  const [newYearStart, setNewYearStart] = useState(defaultAcademicYearDefaults.startDate);
+  const [newYearEnd, setNewYearEnd] = useState(defaultAcademicYearDefaults.endDate);
   const [newYearIsActive, setNewYearIsActive] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -97,6 +119,11 @@ export function AdminAmsSettingsPage() {
       setError(null);
       const years = await getAcademicYears();
       setAcademicYears(years);
+
+      const nextDefaults = getNextAcademicYearDefaults(years);
+      setNewYearName(nextDefaults.name);
+      setNewYearStart(nextDefaults.startDate);
+      setNewYearEnd(nextDefaults.endDate);
     } catch (err) {
       console.error('Failed to load academic years', err);
       setError('Failed to load academic years');
@@ -152,9 +179,10 @@ export function AdminAmsSettingsPage() {
         }
       }
 
-      setNewYearName(defaultAcademicYearName);
-      setNewYearStart(defaultAcademicYearStart);
-      setNewYearEnd(defaultAcademicYearEnd);
+      const nextDefaults = getNextAcademicYearDefaults(academicYears);
+      setNewYearName(nextDefaults.name);
+      setNewYearStart(nextDefaults.startDate);
+      setNewYearEnd(nextDefaults.endDate);
       setNewYearIsActive(false);
       setShowCreateModal(false);
       await loadAcademicYears();
@@ -418,7 +446,7 @@ export function AdminAmsSettingsPage() {
                   <div className="flex flex-col gap-3 sm:flex-row sm:justify-end sm:gap-4">
                     <button
                       type="button" onClick={() => setShowCreateModal(false)}
-                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                      className="rounded border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
                     >
                       Cancel
                     </button>
@@ -426,7 +454,7 @@ export function AdminAmsSettingsPage() {
                       type="button"
                       onClick={handleCreateYear}
                       disabled={createLoading}
-                      className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {createLoading ? 'Creating…' : 'Create academic year'}
                     </button>
