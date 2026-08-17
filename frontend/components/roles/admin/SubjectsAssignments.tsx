@@ -37,6 +37,10 @@ export default function SubjectsAssignments() {
   const [pageIndex, setPageIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+  // Compute whether we're viewing an archived year
+  const activeAcademicYear = academicYears.find((y) => y.isActive);
+  const isViewingArchivedYear = Boolean(selectedAcademicYearId && selectedAcademicYearId !== activeAcademicYear?.id);
+
   // Load academic years and initialize to active year
   useEffect(() => {
     async function loadAcademicYears() {
@@ -306,11 +310,19 @@ export default function SubjectsAssignments() {
         eyebrow="Administration"
         title="Teacher Allocation"
         action={
-          <Button type="button" onClick={() => openModal('assign')} className="px-4 py-2.5">
-            Assign teacher
-          </Button>
+          !isViewingArchivedYear && (
+            <Button type="button" onClick={() => openModal('assign')} className="px-4 py-2.5">
+              Assign teacher
+            </Button>
+          )
         }
       />
+
+      {isViewingArchivedYear && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+          ℹ️ You are viewing archived data. Editing and adding is disabled in archive mode.
+        </div>
+      )}
 
 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-5">
@@ -398,9 +410,11 @@ export default function SubjectsAssignments() {
                 ? 'Try a different class filter or search term to find the allocation you need.'
                 : 'Assign a teacher to a subject to display allocation records here.'}
             </p>
-            <Button type="button" onClick={() => openModal('assign')} className="mt-6">
-              Assign teacher
-            </Button>
+            {!isViewingArchivedYear && (
+              <Button type="button" onClick={() => openModal('assign')} className="mt-6">
+                Assign teacher
+              </Button>
+            )}
           </div>
         ) : (
           <>
@@ -430,22 +444,24 @@ export default function SubjectsAssignments() {
                           <span className="text-slate-600">{teacherName}</span>
                         )}
                       </td>
-                      <td className="px-5 py-3.5 text-right">
-                        <div className="relative inline-flex">
-                          <button type="button" data-action-button={`subject-${subject.id}`} onClick={(ev) => { ev.stopPropagation(); setActionMenuFor(actionMenuFor === `subject-${subject.id}` ? null : `subject-${subject.id}`); }} className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md p-0 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
-                          {actionMenuFor === `subject-${subject.id}` ? (
-                            <div data-action-menu={`subject-${subject.id}`} onClick={(ev) => ev.stopPropagation()} className="absolute right-0 top-full z-20 mt-2 w-44 overflow-hidden rounded border border-slate-200 bg-white shadow-xl">
-                              {teacherName === 'Unassigned' ? (
-                                <Button type="button" variant="ghost" onClick={() => handleReassignTeacher(subject)} className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">Assign teacher</Button>
-                              ) : (
-                                <Button type="button" variant="ghost" onClick={() => handleReassignTeacher(subject)} className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">Reassign teacher</Button>
-                              )}
-                              <Button type="button" variant="ghost" onClick={() => openEditSubject(subject)} className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">Edit subject</Button>
-                              <Button type="button" variant="ghost" onClick={() => handleDelete('subject', subject.id, subject.name)} className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50">Delete subject</Button>
-                            </div>
-                          ) : null}
-                        </div>
-                      </td>
+                      {!isViewingArchivedYear && (
+                        <td className="px-5 py-3.5 text-right">
+                          <div className="relative inline-flex">
+                            <button type="button" data-action-button={`subject-${subject.id}`} onClick={(ev) => { ev.stopPropagation(); setActionMenuFor(actionMenuFor === `subject-${subject.id}` ? null : `subject-${subject.id}`); }} className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md p-0 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+                            {actionMenuFor === `subject-${subject.id}` ? (
+                              <div data-action-menu={`subject-${subject.id}`} onClick={(ev) => ev.stopPropagation()} className="absolute right-0 top-full z-20 mt-2 w-44 overflow-hidden rounded border border-slate-200 bg-white shadow-xl">
+                                {teacherName === 'Unassigned' ? (
+                                  <Button type="button" variant="ghost" onClick={() => handleReassignTeacher(subject)} className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">Assign teacher</Button>
+                                ) : (
+                                  <Button type="button" variant="ghost" onClick={() => handleReassignTeacher(subject)} className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">Reassign teacher</Button>
+                                )}
+                                <Button type="button" variant="ghost" onClick={() => openEditSubject(subject)} className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">Edit subject</Button>
+                                <Button type="button" variant="ghost" onClick={() => handleDelete('subject', subject.id, subject.name)} className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50">Delete subject</Button>
+                              </div>
+                            ) : null}
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}

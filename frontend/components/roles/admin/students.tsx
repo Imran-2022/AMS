@@ -69,6 +69,10 @@ export function AdminStudentsPage() {
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
   const [pageIndex, setPageIndex] = useState(0);
 
+  // Compute whether we're viewing an archived year
+  const activeAcademicYear = academicYears.find((y) => y.isActive);
+  const isViewingArchivedYear = Boolean(selectedAcademicYearId && selectedAcademicYearId !== activeAcademicYear?.id);
+
   // Load academic years and initialize to active year
   useEffect(() => {
     async function loadAcademicYears() {
@@ -396,11 +400,19 @@ export function AdminStudentsPage() {
             <p className="text-xs font-bold uppercase text-indigo-600">Administration</p>
             <h1 className="text-3xl font-extrabold text-slate-900 mt-1">Students</h1>
           </div>
-          <Button onClick={openNewStudent} className="inline-flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Add student
-          </Button>
+          {!isViewingArchivedYear && (
+            <Button onClick={openNewStudent} className="inline-flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Add student
+            </Button>
+          )}
         </div>
+
+        {isViewingArchivedYear && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+            ℹ️ You are viewing archived data. Editing and adding is disabled in archive mode.
+          </div>
+        )}
 
         {isLoading ? (
           <PageLoader title="Loading students" subtitle="Loading current student records and enrollments…" />
@@ -557,54 +569,56 @@ export function AdminStudentsPage() {
                               </Pill>
                             </Td>
                             <Td className="px-5 py-3.5 text-right">
-                              <div className="relative inline-flex">
-                                <button
-                                  type="button"
-                                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 cursor-pointer"
-                                  data-action-button={student.id}
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    if (actionMenuFor === student.id) {
-                                      setActionMenuFor(null);
-                                      return;
-                                    }
-                                    const rect = event.currentTarget.getBoundingClientRect();
-                                    setMenuPosition({
-                                      top: rect.bottom + 8,
-                                      left: rect.right - 176,
-                                    });
-                                    setActionMenuFor(student.id);
-                                  }}
-                                >
-                                  <MoreVertical className="h-5 w-5" />
-                                </button>
-                                {actionMenuFor === student.id && typeof document !== 'undefined'
-                                  ? createPortal(
-                                      <div
-                                        data-action-menu={student.id}
-                                        onClick={(event) => event.stopPropagation()}
-                                        style={{
-                                          position: 'fixed',
-                                          top: menuPosition.top,
-                                          left: menuPosition.left,
-                                          zIndex: 9999,
-                                        }}
-                                        className="w-44 overflow-hidden rounded border border-slate-200 bg-white shadow-xl"
-                                      >
-                                        <button type="button" onClick={() => { setSelectedStudent(student); setActionMenuFor(null); }} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">
-                                          View details
-                                        </button>
-                                        <button type="button" onClick={() => handleEditStudent(student)} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">
-                                          Edit student
-                                        </button>
-                                        <button type="button" onClick={() => openDeleteStudent(student)} className="w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50 cursor-pointer">
-                                          Delete student
-                                        </button>
-                                      </div>,
-                                      document.body
-                                    )
-                                  : null}
-                              </div>
+                              {!isViewingArchivedYear && (
+                                <div className="relative inline-flex">
+                                  <button
+                                    type="button"
+                                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 cursor-pointer"
+                                    data-action-button={student.id}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      if (actionMenuFor === student.id) {
+                                        setActionMenuFor(null);
+                                        return;
+                                      }
+                                      const rect = event.currentTarget.getBoundingClientRect();
+                                      setMenuPosition({
+                                        top: rect.bottom + 8,
+                                        left: rect.right - 176,
+                                      });
+                                      setActionMenuFor(student.id);
+                                    }}
+                                  >
+                                    <MoreVertical className="h-5 w-5" />
+                                  </button>
+                                  {actionMenuFor === student.id && typeof document !== 'undefined'
+                                    ? createPortal(
+                                        <div
+                                          data-action-menu={student.id}
+                                          onClick={(event) => event.stopPropagation()}
+                                          style={{
+                                            position: 'fixed',
+                                            top: menuPosition.top,
+                                            left: menuPosition.left,
+                                            zIndex: 9999,
+                                          }}
+                                          className="w-44 overflow-hidden rounded border border-slate-200 bg-white shadow-xl"
+                                        >
+                                          <button type="button" onClick={() => { setSelectedStudent(student); setActionMenuFor(null); }} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">
+                                            View details
+                                          </button>
+                                          <button type="button" onClick={() => handleEditStudent(student)} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">
+                                            Edit student
+                                          </button>
+                                          <button type="button" onClick={() => openDeleteStudent(student)} className="w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50 cursor-pointer">
+                                            Delete student
+                                          </button>
+                                        </div>,
+                                        document.body
+                                      )
+                                    : null}
+                                </div>
+                              )}
                             </Td>
                           </tr>
                         ))}

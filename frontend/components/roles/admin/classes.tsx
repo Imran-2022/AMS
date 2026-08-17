@@ -767,62 +767,60 @@ export function AdminClassesPage() {
                       </span>
                     </div>
                   </div>
-                  <div className="relative inline-flex">
-                    <button
-                      type="button" data-action-button={`class-${cls.id}`}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setActionMenuFor(actionMenuFor === `class-${cls.id}` ? null : `class-${cls.id}`);
-                      }}
-                      className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md p-0 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-                    >
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-                    </button>
-                    {actionMenuFor === `class-${cls.id}` ? (
-                      <div
-                        data-action-menu={`class-${cls.id}`}
-                        onClick={(ev) => ev.stopPropagation()}
-                        className="absolute right-0 top-full z-20 mt-2 w-40 overflow-hidden rounded border border-slate-200 bg-white shadow-xl"
+                  {!isViewingArchivedYear && (
+                    <div className="relative inline-flex">
+                      <button
+                        type="button" data-action-button={`class-${cls.id}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setActionMenuFor(actionMenuFor === `class-${cls.id}` ? null : `class-${cls.id}`);
+                        }}
+                        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md p-0 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
                       >
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => openModal('subject', cls.id)}
-                          className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                      </button>
+                      {actionMenuFor === `class-${cls.id}` ? (
+                        <div
+                          data-action-menu={`class-${cls.id}`}
+                          onClick={(ev) => ev.stopPropagation()}
+                          className="absolute right-0 top-full z-20 mt-2 w-40 overflow-hidden rounded border border-slate-200 bg-white shadow-xl"
                         >
-                          Add subjects
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => openModal('view-subjects', cls.id)}
-                          className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
-                        >
-                          View subjects
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => openEditClass(cls)}
-                          className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
-                          disabled={isViewingArchivedYear}
-                          title={isViewingArchivedYear ? 'Cannot edit archived year classes' : undefined}
-                        >
-                          Edit class
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => handleDelete('class', cls.id, `${cls.name} — ${cls.section}`)}
-                          className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50"
-                          disabled={isViewingArchivedYear}
-                          title={isViewingArchivedYear ? 'Cannot delete archived year classes' : undefined}
-                        >
-                          Delete class
-                        </Button>
-                      </div>
-                    ) : null}
-                  </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => openModal('subject', cls.id)}
+                            className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
+                          >
+                            Add subjects
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => openModal('view-subjects', cls.id)}
+                            className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
+                          >
+                            View subjects
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => openEditClass(cls)}
+                            className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
+                          >
+                            Edit class
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => handleDelete('class', cls.id, `${cls.name} — ${cls.section}`)}
+                            className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50"
+                          >
+                            Delete class
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-100 text-sm text-slate-500">
                   <p><span className="font-bold text-slate-900">{classSubjectCounts[cls.id] ?? 0}</span> subjects</p>

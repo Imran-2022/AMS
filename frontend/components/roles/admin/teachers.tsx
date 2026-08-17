@@ -114,6 +114,10 @@ export function AdminTeachersPage() {
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 
+  // Compute whether we're viewing an archived year
+  const activeAcademicYear = academicYears.find((y) => y.isActive);
+  const isViewingArchivedYear = Boolean(selectedAcademicYearId && selectedAcademicYearId !== activeAcademicYear?.id);
+
   // Load academic years and initialize to active year
   useEffect(() => {
     async function loadAcademicYears() {
@@ -381,11 +385,19 @@ export function AdminTeachersPage() {
             <p className="text-xs font-bold text-brand-600">ADMINISTRATION</p>
             <h1 className="text-3xl font-extrabold text-slate-800 mt-0.5">Teachers</h1>
           </div>
-          <Button onClick={openNewTeacher} className="flex items-center gap-2">
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add teacher
-          </Button>
+          {!isViewingArchivedYear && (
+            <Button onClick={openNewTeacher} className="flex items-center gap-2">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add teacher
+            </Button>
+          )}
         </div>
+
+        {isViewingArchivedYear && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+            ℹ️ You are viewing archived data. Editing and adding is disabled in archive mode.
+          </div>
+        )}
 
         <div className={`hidden ${mode === 'error' ? 'flex' : ''} bg-rose-50 border border-rose-200 rounded-2xl px-5 py-4 items-center justify-between`} id="errorBanner">
           <div className="flex items-center gap-3">
@@ -519,31 +531,33 @@ export function AdminTeachersPage() {
                           </span>
                         </td>
                         <td className="px-5 py-3.5 text-right align-middle">
-                          <div className="relative inline-flex">
-                            <button
-                              type="button" data-action-button={t.id}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openActionMenuForTeacher(t, e.currentTarget);
-                              }}
-                              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 cursor-pointer"
-                            >
-                              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-                            </button>
-                            {actionMenuFor === t.id && typeof document !== 'undefined' ? createPortal(
-                              <div
-                                data-action-menu={t.id}
-                                onClick={(ev) => ev.stopPropagation()}
-                                style={{ position: 'fixed', top: menuPosition.top, left: menuPosition.left, zIndex: 9999 }}
-                                className="w-44 overflow-hidden rounded border border-slate-200 bg-white shadow-xl"
+                          {!isViewingArchivedYear && (
+                            <div className="relative inline-flex">
+                              <button
+                                type="button" data-action-button={t.id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openActionMenuForTeacher(t, e.currentTarget);
+                                }}
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 cursor-pointer"
                               >
-                                <button type="button" onClick={() => { setSelectedTeacher(t); setActionMenuFor(null); }} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">View details</button>
-                                <button type="button" onClick={() => { handleEditTeacher(t); setActionMenuFor(null); }} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">Edit teacher</button>
-                                <button type="button" onClick={() => { openDeleteTeacher(t); }} className="w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50 cursor-pointer">Delete teacher</button>
-                              </div>,
-                              document.body
-                            ) : null}
-                          </div>
+                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                              </button>
+                              {actionMenuFor === t.id && typeof document !== 'undefined' ? createPortal(
+                                <div
+                                  data-action-menu={t.id}
+                                  onClick={(ev) => ev.stopPropagation()}
+                                  style={{ position: 'fixed', top: menuPosition.top, left: menuPosition.left, zIndex: 9999 }}
+                                  className="w-44 overflow-hidden rounded border border-slate-200 bg-white shadow-xl"
+                                >
+                                  <button type="button" onClick={() => { setSelectedTeacher(t); setActionMenuFor(null); }} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">View details</button>
+                                  <button type="button" onClick={() => { handleEditTeacher(t); setActionMenuFor(null); }} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">Edit teacher</button>
+                                  <button type="button" onClick={() => { openDeleteTeacher(t); }} className="w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50 cursor-pointer">Delete teacher</button>
+                                </div>,
+                                document.body
+                              ) : null}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))}

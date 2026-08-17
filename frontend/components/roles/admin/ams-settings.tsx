@@ -69,6 +69,9 @@ export function AdminAmsSettingsPage() {
   const [promoteToGroupId, setPromoteToGroupId] = useState('');
   const [promoteStudentIds, setPromoteStudentIds] = useState<string[]>([]);
   const [promoteStudentRollNumbers, setPromoteStudentRollNumbers] = useState<Record<string, string>>({});
+  const [promoteTargetSection, setPromoteTargetSection] = useState('');
+  const [promoteTargetGroup, setPromoteTargetGroup] = useState('');
+  const [alreadyPromotedStudentIds, setAlreadyPromotedStudentIds] = useState<string[]>([]);
   const [promoteLoading, setPromoteLoading] = useState(false);
   const [promoteError, setPromoteError] = useState<string | null>(null);
   const [promoteSuccess, setPromoteSuccess] = useState<string | null>(null);
@@ -235,9 +238,11 @@ export function AdminAmsSettingsPage() {
         toClassCourseId: promoteToClassId,
         students: studentsWithRolls
       });
-      setPromoteSuccess(`${promoteStudentIds.length} student(s) promoted successfully`);
+
+      const promotedCount = promoteStudentIds.length;
+      setAlreadyPromotedStudentIds(prev => [...new Set([...prev, ...promoteStudentIds])]);
+      setPromoteSuccess(`${promotedCount} student${promotedCount > 1 ? 's' : ''} moved to the new academic year`);
       notifyAcademicYearChanged();
-      await loadData();
       setPromoteFromClassId('');
       setPromoteToClassId('');
       setPromoteFromGroupId('');
@@ -271,7 +276,8 @@ export function AdminAmsSettingsPage() {
     return allEnrollments.filter(enrollment => {
       const matchesClass = enrollment.classCourseId === classId;
       const isAlreadyPromotedToTargetYear = studentIdsAlreadyInTargetYear.has(enrollment.studentId);
-      return matchesClass && !isAlreadyPromotedToTargetYear;
+      const isAlreadyPromotedThisSession = alreadyPromotedStudentIds.includes(enrollment.studentId);
+      return matchesClass && !isAlreadyPromotedToTargetYear && !isAlreadyPromotedThisSession;
     });
   };
 
@@ -290,6 +296,11 @@ export function AdminAmsSettingsPage() {
   const formatClassCourseLabel = (classCourse?: Pick<ClassCourseDto, 'name' | 'section' | 'groupName'> | null) => {
     if (!classCourse) return 'Unknown class';
     return [classCourse.name, classCourse.section, classCourse.groupName].filter(Boolean).join(' - ');
+  };
+
+  const formatClassCourseShortLabel = (classCourse?: Pick<ClassCourseDto, 'name'> | null) => {
+    if (!classCourse) return 'Unknown class';
+    return classCourse.name;
   };
 
   const isHigherSecondaryClassName = (className?: string) => {
@@ -361,7 +372,7 @@ export function AdminAmsSettingsPage() {
   const sourceClassOptions = classes.filter(classCourse => classCourse.academicYearId === sourceAcademicYearId);
   const targetClassOptions = classes.filter(classCourse => classCourse.academicYearId === targetAcademicYearId);
 
-  const getNextClassForSelectedSource = (sourceClassId: string): string => {
+  const getNextClassForSelectedSource = (sourceClassId: string, sectionOverride?: string, groupOverride?: string): string => {
     const sourceClass = classes.find(p => p.id === sourceClassId);
     if (!sourceClass) return '';
 
@@ -376,7 +387,16 @@ export function AdminAmsSettingsPage() {
       return candidate.section === sourceClass.section;
     });
 
-    return nextCandidates[0]?.id ?? (getNextClassForPromotion(sourceClassId, classes.filter(c => c.academicYearId === targetAcademicYearId)) || '');
+    const selectedSection = sectionOverride || promoteTargetSection || sourceClass.section || nextCandidates[0]?.section || '';
+    const selectedGroup = groupOverride ?? promoteTargetGroup ?? '';
+
+    const selectedCandidate = nextCandidates.find(candidate => {
+      const matchesSection = !selectedSection || candidate.section === selectedSection;
+      const matchesGroup = !selectedGroup || (candidate.groupName ?? '') === selectedGroup;
+      return matchesSection && matchesGroup;
+    }) || nextCandidates.find(candidate => !selectedSection || candidate.section === selectedSection) || nextCandidates[0];
+
+    return selectedCandidate?.id ?? (getNextClassForPromotion(sourceClassId, classes.filter(c => c.academicYearId === targetAcademicYearId)) || '');
   };
 
   const getPromotionTargetOptions = (sourceClassId: string) => {
@@ -661,6 +681,8 @@ export function AdminAmsSettingsPage() {
                       setPromoteToGroupId('');
                       setPromoteStudentIds([]);
                       setPromoteStudentRollNumbers({});
+                      setPromoteTargetSection('');
+                      setPromoteTargetGroup('');
                     }}
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                   >
@@ -674,7 +696,7 @@ export function AdminAmsSettingsPage() {
                   <label className="block text-[13px] font-semibold text-slate-700 mb-1">Class after promotion</label>
                   <div className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 outline-none">
                     {promoteToClassId && classes.find(c => c.id === promoteToClassId)
-                      ? `Next class - ${formatClassCourseLabel(classes.find(c => c.id === promoteToClassId)!)}`
+                      ? `Next class - ${formatClassCourseShortLabel(classes.find(c => c.id === promoteToClassId)!)}`
                       : 'Select the class before promotion'}
                   </div>
                   {!promoteFromClassId && (
@@ -685,6 +707,53 @@ export function AdminAmsSettingsPage() {
                   )}
                 </div>
               </div>
+
+              {promoteFromClassId && promoteToClassId && (() => {
+                const targetClassName = classes.find(c => c.id === promoteToClassId)?.name ?? '';
+                const targetCourseOptions = classes.filter(course => course.academicYearId === targetAcademicYearId && course.name === targetClassName);
+                const sectionOptions = Array.from(new Set(targetCourseOptions.map(c => c.section).filter(Boolean)));
+                const groupOptions = Array.from(new Set(targetCourseOptions.map(c => c.groupName).filter((value): value is string => Boolean(value))));
+
+                return (
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="block text-[13px] font-semibold text-slate-700 mb-1">Section</label>
+                      <select
+                        value={promoteTargetSection || (sectionOptions[0] ?? '')}
+                        onChange={(event) => {
+                          const selectedSection = event.target.value;
+                          setPromoteTargetSection(selectedSection);
+                          const nextClassId = getNextClassForSelectedSource(promoteFromClassId, selectedSection, promoteTargetGroup);
+                          setPromoteToClassId(nextClassId);
+                        }}
+                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                      >
+                        {sectionOptions.length === 0 ? <option value="">No section</option> : sectionOptions.map(section => (
+                          <option key={section} value={section}>{section}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[13px] font-semibold text-slate-700 mb-1">Group (optional)</label>
+                      <select
+                        value={promoteTargetGroup || (groupOptions[0] ?? '')}
+                        onChange={(event) => {
+                          const selectedGroup = event.target.value;
+                          setPromoteTargetGroup(selectedGroup);
+                          const nextClassId = getNextClassForSelectedSource(promoteFromClassId, promoteTargetSection || sectionOptions[0] || '', selectedGroup);
+                          setPromoteToClassId(nextClassId);
+                        }}
+                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                      >
+                        <option value="">Select a group</option>
+                        {groupOptions.map(group => (
+                          <option key={group} value={group}>{group}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {promoteFromClassId && promoteToClassId && (
                 <div>
@@ -713,12 +782,14 @@ export function AdminAmsSettingsPage() {
                             <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400">CURRENT ROLL</th>
                             <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400">CURRENT CLASS</th>
                             <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400">NEW ROLL NUMBER</th>
+                            <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400">SECTION</th>
+                            <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400">GROUP</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
                           {getStudentsForClass(promoteFromClassId).length === 0 ? (
                             <tr>
-                              <td colSpan={5} className="px-4 py-8 text-center text-slate-500 text-xs">
+                              <td colSpan={7} className="px-4 py-8 text-center text-slate-500 text-xs">
                                 No students in this class for the selected source year. Students must have an enrollment record in this class before they can be promoted.
                               </td>
                             </tr>
@@ -728,6 +799,9 @@ export function AdminAmsSettingsPage() {
                               const currentRoll = allEnrollments.find(
                                 enrollment => enrollment.studentId === student.studentId && enrollment.classCourseId === promoteFromClassId
                               )?.rollNumber ?? student.rollNumber ?? '—';
+                              const targetClassName = classes.find(c => c.id === promoteToClassId)?.name ?? '';
+                              const targetClassLevel = targetClassName ? extractClassLevel(targetClassName) : null;
+                              const targetClassOptionsForRow = classes.filter(c => c.academicYearId === targetAcademicYearId && (targetClassLevel === null || extractClassLevel(c.name) === targetClassLevel));
                               return (
                                 <tr key={student.studentId} className={promoteStudentIds.includes(student.studentId) ? 'bg-brand-50' : ''}>
                                   <td className="px-4 py-3">
@@ -759,6 +833,38 @@ export function AdminAmsSettingsPage() {
                                       <span className="text-slate-400 text-xs">—</span>
                                     )}
                                   </td>
+                                  <td className="px-4 py-3">
+                                    {promoteStudentIds.includes(student.studentId) ? (
+                                      <select
+                                        value={promoteTargetSection || ''}
+                                        onChange={(event) => setPromoteTargetSection(event.target.value)}
+                                        className="w-full max-w-[120px] rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                                      >
+                                        <option value="">Select</option>
+                                        {Array.from(new Set(targetClassOptionsForRow.map(c => c.section).filter(Boolean))).map(section => (
+                                          <option key={section} value={section}>{section}</option>
+                                        ))}
+                                      </select>
+                                    ) : (
+                                      <span className="text-slate-400 text-xs">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    {promoteStudentIds.includes(student.studentId) ? (
+                                      <select
+                                        value={promoteTargetGroup || ''}
+                                        onChange={(event) => setPromoteTargetGroup(event.target.value)}
+                                        className="w-full max-w-[140px] rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                                      >
+                                        <option value="">Optional</option>
+                                        {Array.from(new Set(targetClassOptionsForRow.map(c => c.groupName).filter((value): value is string => Boolean(value)))).map(group => (
+                                          <option key={group} value={group}>{group}</option>
+                                        ))}
+                                      </select>
+                                    ) : (
+                                      <span className="text-slate-400 text-xs">—</span>
+                                    )}
+                                  </td>
                                 </tr>
                               );
                             })
@@ -778,6 +884,8 @@ export function AdminAmsSettingsPage() {
                     setPromoteToClassId('');
                     setPromoteStudentIds([]);
                     setPromoteStudentRollNumbers({});
+                    setPromoteTargetSection('');
+                    setPromoteTargetGroup('');
                     setPromoteError(null);
                     setPromoteSuccess(null);
                   }}
