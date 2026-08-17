@@ -8,6 +8,7 @@ import {
   activateAcademicYear, 
   createAcademicYear, 
   notifyAcademicYearChanged,
+  setSelectedAcademicYearId,
   promoteStudent,
   bulkPromoteStudents,
   getClassCourses,
@@ -108,6 +109,10 @@ export function AdminAmsSettingsPage() {
     try {
       setError(null);
       await activateAcademicYear(yearId);
+      setSelectedAcademicYearId(yearId);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('ams-active-academic-year', yearId);
+      }
       await loadAcademicYears();
       notifyAcademicYearChanged();
     } catch (err) {
@@ -133,12 +138,20 @@ export function AdminAmsSettingsPage() {
     try {
       setCreateError(null);
       setCreateLoading(true);
-      await createAcademicYear({
+      const createdYear = await createAcademicYear({
         name: newYearName,
         startDate: `${newYearStart}T00:00:00Z`,
         endDate: `${newYearEnd}T00:00:00Z`,
         isActive: newYearIsActive
       });
+
+      if (newYearIsActive && createdYear?.id) {
+        setSelectedAcademicYearId(createdYear.id);
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('ams-active-academic-year', createdYear.id);
+        }
+      }
+
       setNewYearName(defaultAcademicYearName);
       setNewYearStart(defaultAcademicYearStart);
       setNewYearEnd(defaultAcademicYearEnd);
@@ -300,9 +313,15 @@ export function AdminAmsSettingsPage() {
 
   const activeAcademicYearId = academicYears.find(year => year.isActive)?.id ?? '';
 
+  // Get the most recent archived year (to avoid showing classes from all past years)
+  const mostRecentArchivedYear = academicYears
+    .filter(year => !year.isActive)
+    .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
+    [0];
+
   const sourceClassOptions = classes.filter(classCourse => {
-    if (!activeAcademicYearId) return true;
-    return classCourse.academicYearId && classCourse.academicYearId !== activeAcademicYearId;
+    if (!mostRecentArchivedYear) return false;
+    return classCourse.academicYearId === mostRecentArchivedYear.id;
   });
 
   const getNextClassForSelectedSource = (sourceClassId: string): string => {
@@ -538,10 +557,24 @@ export function AdminAmsSettingsPage() {
                 </div>
               ) : null}
 
+              {!mostRecentArchivedYear ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+                  ℹ️ No archived academic years available. Create and complete an academic year first before promoting students.
+                </div>
+              ) : null}
+
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label className="block text-[13px] font-semibold text-slate-700 mb-1">Class before promotion</label>
+                  <label className="block text-[13px] font-semibold text-slate-700 mb-1">
+                    Class before promotion
+                    {mostRecentArchivedYear && (
+                      <span className="text-[11px] font-normal text-slate-500 ml-1.5">
+                        (from {mostRecentArchivedYear.name})
+                      </span>
+                    )}
+                  </label>
                   <select
+                    disabled={!mostRecentArchivedYear || sourceClassOptions.length === 0}
                     value={promoteFromClassId}
                     onChange={(event) => {
                       const classId = event.target.value;
@@ -673,7 +706,7 @@ export function AdminAmsSettingsPage() {
                     setPromoteError(null);
                     setPromoteSuccess(null);
                   }}
-                  className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50"
+                  className="px-5 py-2.5 rounded border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50"
                 >
                   Clear
                 </button>
@@ -681,7 +714,7 @@ export function AdminAmsSettingsPage() {
                   type="button"
                   onClick={handleBulkPromoteStudents}
                   disabled={promoteLoading || promoteStudentIds.length === 0 || !promoteToClassId}
-                  className="px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="px-5 py-2.5 rounded bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {promoteLoading ? 'Promoting…' : 'Promote Students'}
                 </button>
@@ -703,7 +736,7 @@ export function AdminAmsSettingsPage() {
                     <p className="text-sm font-semibold text-slate-700">Deactivate school account</p>
                     <p className="text-xs text-slate-400 mt-0.5">All users lose access immediately. Data is retained for 30 days.</p>
                   </div>
-                  <button className="px-4 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-sm font-semibold hover:bg-rose-100 shrink-0">
+                  <button className="px-5 py-2 rounded bg-rose-50 border border-rose-200 text-rose-600 text-sm font-semibold hover:bg-rose-100 shrink-0">
                     Deactivate
                   </button>
                 </div>

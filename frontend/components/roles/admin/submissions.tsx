@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AmsPagination, PageLoader } from '../../ui';
 import { AppShell } from '@/shared/layout';
-import { getAcademicYears, getClassCourses, getSubmissions, type SubmissionDto } from '@/lib/api';
+import { getAcademicYears, getClassCourses, getSelectedAcademicYearId, getSubmissions, type SubmissionDto } from '@/lib/api';
 
 const statusClasses: Record<string, string> = {
   Graded: 'bg-emerald-50 text-emerald-600',
@@ -49,10 +49,15 @@ export function AdminSubmissionsPage() {
       try {
         const years = await getAcademicYears();
         setAcademicYears(years);
-        
+
         const activeYear = years.find(y => y.isActive);
-        if (activeYear) {
-          setSelectedAcademicYearId(activeYear.id);
+        const storedYearId = getSelectedAcademicYearId();
+        const preferredYearId = storedYearId && years.some((year) => year.id === storedYearId)
+          ? storedYearId
+          : activeYear?.id ?? years[0]?.id ?? '';
+
+        if (preferredYearId) {
+          setSelectedAcademicYearId(preferredYearId);
         }
       } catch (err) {
         console.error('Failed to load academic years', err);
@@ -64,7 +69,10 @@ export function AdminSubmissionsPage() {
   // Listen for academic year changes from AppShell
   useEffect(() => {
     const syncSelectedAcademicYear = () => {
-      setSelectedAcademicYearId(window.localStorage.getItem('ams-selected-academic-year') ?? window.localStorage.getItem('ams-active-academic-year') ?? '');
+      const updatedYearId = getSelectedAcademicYearId();
+      if (updatedYearId) {
+        setSelectedAcademicYearId(updatedYearId);
+      }
     };
 
     window.addEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
@@ -77,19 +85,20 @@ export function AdminSubmissionsPage() {
     async function loadSubmissions() {
       setIsLoading(true);
       try {
-        const yearId = selectedAcademicYearId || window.localStorage.getItem('ams-selected-academic-year') || window.localStorage.getItem('ams-active-academic-year') || '';
+        const yearId = selectedAcademicYearId || getSelectedAcademicYearId();
         const academicYears = await getAcademicYears();
         const activeYearId = academicYears.find((year) => year.isActive)?.id ?? '';
         const isViewingArchivedYear = Boolean(yearId && yearId !== activeYearId);
+        const includeAllYears = isViewingArchivedYear;
         const [items, classCourses] = await Promise.all([
-          getSubmissions(true),
-          getClassCourses(true),
+          getSubmissions(includeAllYears),
+          getClassCourses(includeAllYears),
         ]);
-        const visibleClassIds = isViewingArchivedYear && yearId
+        const visibleClassIds = yearId
           ? new Set(classCourses.filter((classCourse) => classCourse.academicYearId === yearId).map((classCourse) => classCourse.id))
           : new Set(classCourses.map((classCourse) => classCourse.id));
 
-        const visibleItems = isViewingArchivedYear
+        const visibleItems = yearId
           ? items.filter((submission) => visibleClassIds.has(submission.classCourseId))
           : items;
         setSubmissions(visibleItems);

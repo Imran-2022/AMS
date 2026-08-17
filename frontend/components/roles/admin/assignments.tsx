@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/shared/layout';
 import { AmsPagination, PageLoader } from '../../ui';
-import { getAcademicYears, getAssignments, getClassCourses, type AssignmentDto } from '@/lib/api';
+import { getAcademicYears, getAssignments, getClassCourses, getSelectedAcademicYearId, type AssignmentDto } from '@/lib/api';
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 
@@ -86,10 +86,15 @@ export function AdminAssignmentsPage() {
       try {
         const years = await getAcademicYears();
         setAcademicYears(years);
-        
+
         const activeYear = years.find(y => y.isActive);
-        if (activeYear) {
-          setSelectedAcademicYearId(activeYear.id);
+        const storedYearId = getSelectedAcademicYearId();
+        const preferredYearId = storedYearId && years.some((year) => year.id === storedYearId)
+          ? storedYearId
+          : activeYear?.id ?? years[0]?.id ?? '';
+
+        if (preferredYearId) {
+          setSelectedAcademicYearId(preferredYearId);
         }
       } catch (err) {
         console.error('Failed to load academic years', err);
@@ -101,7 +106,10 @@ export function AdminAssignmentsPage() {
   // Listen for academic year changes from AppShell
   useEffect(() => {
     const syncSelectedAcademicYear = () => {
-      setSelectedAcademicYearId(window.localStorage.getItem('ams-selected-academic-year') ?? window.localStorage.getItem('ams-active-academic-year') ?? '');
+      const updatedYearId = getSelectedAcademicYearId();
+      if (updatedYearId) {
+        setSelectedAcademicYearId(updatedYearId);
+      }
     };
 
     window.addEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
@@ -113,19 +121,20 @@ export function AdminAssignmentsPage() {
   const loadAssignments = async () => {
     setIsLoading(true);
     try {
-      const yearId = selectedAcademicYearId || window.localStorage.getItem('ams-selected-academic-year') || window.localStorage.getItem('ams-active-academic-year') || '';
+      const yearId = selectedAcademicYearId || getSelectedAcademicYearId();
       const academicYears = await getAcademicYears();
       const activeYearId = academicYears.find((year) => year.isActive)?.id ?? '';
       const isViewingArchivedYear = Boolean(yearId && yearId !== activeYearId);
+      const includeAllYears = isViewingArchivedYear;
       const [items, classCourses] = await Promise.all([
-        getAssignments(true),
-        getClassCourses(true),
+        getAssignments(includeAllYears),
+        getClassCourses(includeAllYears),
       ]);
-      const visibleClassIds = isViewingArchivedYear && yearId
+      const visibleClassIds = yearId
         ? new Set(classCourses.filter((classCourse) => classCourse.academicYearId === yearId).map((classCourse) => classCourse.id))
         : new Set(classCourses.map((classCourse) => classCourse.id));
 
-      const visibleItems = isViewingArchivedYear
+      const visibleItems = yearId
         ? items.filter((assignment) => visibleClassIds.has(assignment.classCourseId))
         : items;
 

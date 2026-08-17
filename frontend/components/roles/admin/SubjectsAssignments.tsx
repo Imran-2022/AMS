@@ -43,10 +43,15 @@ export default function SubjectsAssignments() {
       try {
         const years = await getAcademicYears();
         setAcademicYears(years);
-        
+
         const activeYear = years.find(y => y.isActive);
-        if (activeYear) {
-          setSelectedAcademicYearId(activeYear.id);
+        const storedYearId = getSelectedAcademicYearId();
+        const preferredYearId = storedYearId && years.some((year) => year.id === storedYearId)
+          ? storedYearId
+          : activeYear?.id ?? years[0]?.id ?? '';
+
+        if (preferredYearId) {
+          setSelectedAcademicYearId(preferredYearId);
         }
       } catch (err) {
         console.error('Failed to load academic years', err);
@@ -71,17 +76,7 @@ export default function SubjectsAssignments() {
     void loadData();
   }, [selectedAcademicYearId]);
 
-  // Listen for academic year changes and reload data
-  useEffect(() => {
-    const handleAcademicYearChanged = () => {
-      void loadData();
-    };
 
-    window.addEventListener('ams-academic-year-updated', handleAcademicYearChanged);
-    return () => {
-      window.removeEventListener('ams-academic-year-updated', handleAcademicYearChanged);
-    };
-  }, [selectedAcademicYearId]);
 
   useEffect(() => {
     if (!actionMenuFor) return;

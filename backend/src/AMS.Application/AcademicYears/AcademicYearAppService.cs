@@ -57,6 +57,13 @@ public class AcademicYearAppService : IAcademicYearAppService
         }
 
         await _academicYearRepository.AddAsync(year, cancellationToken);
+
+        if (input.IsActive)
+        {
+            await EnsureClassesExistForYearAsync(year.Id, cancellationToken);
+            await CarryForwardStructureAsync(year.Id, activeYear?.Id, cancellationToken);
+        }
+
         return ToDto(year);
     }
 

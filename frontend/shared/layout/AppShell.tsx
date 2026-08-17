@@ -263,9 +263,25 @@ function Topbar({ breadcrumb, role, onMobileMenuToggle }: { breadcrumb: string; 
   }, []);
 
   useEffect(() => {
-    const handleYearReload = () => {
-      const selected = getSelectedAcademicYearId();
-      setSelectedAcademicYearIdState(selected);
+    const handleYearReload = async () => {
+      try {
+        const years = await getAcademicYears();
+        setAcademicYears(years);
+
+        const storedSelected = getSelectedAcademicYearId();
+        const activeYear = years.find((year) => year.isActive);
+        const preferred = storedSelected && years.some((year) => year.id === storedSelected)
+          ? storedSelected
+          : activeYear?.id ?? years[0]?.id ?? '';
+
+        setSelectedAcademicYearIdState(preferred);
+        persistSelectedAcademicYearId(preferred);
+        if (preferred) {
+          window.localStorage.setItem('ams-active-academic-year', preferred);
+        }
+      } catch {
+        console.error('Failed to refetch academic years');
+      }
     };
 
     window.addEventListener('ams-academic-year-updated', handleYearReload);

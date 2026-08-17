@@ -15,6 +15,7 @@ import {
   getClassDefinitions,
   getGroupsForClass,
   getAcademicYears,
+  getSelectedAcademicYearId,
 } from '@/lib/api';
 import { getEnrollments } from '@/lib/api/enrollments';
 import { getTeacherAssignments } from '@/lib/api/teacherAssignments';
@@ -63,6 +64,7 @@ export function AdminClassesPage() {
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
   const [pageIndex, setPageIndex] = useState(0);
   const [selectedAcademicYearId, setSelectedAcademicYearId] = useState<string>('');
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
   // Compute whether we're viewing an archived year
   const activeAcademicYear = academicYears.find((y) => y.isActive);
@@ -77,7 +79,12 @@ export function AdminClassesPage() {
   // Listen for academic year changes and reload data
   useEffect(() => {
     const handleAcademicYearChanged = () => {
-      void loadData();
+      // Sync the selected year from AppShell before loading
+      const updatedYearId = window.localStorage.getItem('ams-selected-academic-year') ?? 
+                            window.localStorage.getItem('ams-active-academic-year') ?? '';
+      if (updatedYearId) {
+        setSelectedAcademicYearId(updatedYearId);
+      }
       void loadAcademicYears();
     };
 
@@ -91,16 +98,19 @@ export function AdminClassesPage() {
     try {
       const years = await getAcademicYears();
       setAcademicYears(years);
-      
-      // Set active year as default
+
       const activeYear = years.find(y => y.isActive);
+      const storedYearId = getSelectedAcademicYearId();
+      const preferredYearId = storedYearId && years.some((year) => year.id === storedYearId)
+        ? storedYearId
+        : activeYear?.id ?? years[0]?.id ?? '';
+
       if (activeYear && !classForm.year) {
         setClassForm(c => ({ ...c, year: activeYear.id }));
       }
-      
-      // Initialize selectedAcademicYearId to active year
-      if (activeYear) {
-        setSelectedAcademicYearId(activeYear.id);
+
+      if (preferredYearId) {
+        setSelectedAcademicYearId(preferredYearId);
       }
     } catch (err) {
       console.error('Failed to load academic years', err);
@@ -221,7 +231,15 @@ export function AdminClassesPage() {
   async function loadData() {
     try {
       setError(null);
-      const includeAllYears = !!isViewingArchivedYear;
+      setIsLoadingData(true);
+      setClasses([]);
+      setSubjects([]);
+      setAssignments([]);
+
+      const yearToLoad = selectedAcademicYearId || activeAcademicYear?.id || '';
+      const isViewingArchivedYear = Boolean(yearToLoad && activeAcademicYear && yearToLoad !== activeAcademicYear.id);
+      const includeAllYears = isViewingArchivedYear;
+
       const [apiClasses, apiSubjects, apiAssignments, apiEnrollments] = await Promise.all([
         getClassCourses(includeAllYears),
         getSubjects(includeAllYears),
@@ -229,18 +247,15 @@ export function AdminClassesPage() {
         getEnrollments(),
       ]);
 
-      // Filter by selected academic year if viewing archived
+      const yearToFilterBy = yearToLoad || activeAcademicYear?.id || '';
       let filteredClasses = apiClasses;
-      if (isViewingArchivedYear && selectedAcademicYearId) {
-        filteredClasses = apiClasses.filter(c => c.academicYearId === selectedAcademicYearId);
-      } else if (!isViewingArchivedYear && activeAcademicYear) {
-        // When viewing active year, filter to only that year's classes
-        filteredClasses = apiClasses.filter(c => c.academicYearId === activeAcademicYear.id);
+      if (yearToFilterBy) {
+        filteredClasses = apiClasses.filter((c) => c.academicYearId === yearToFilterBy);
       }
 
       setClasses(filteredClasses);
-      setSubjects(apiSubjects);
-      setAssignments(apiAssignments);
+      setSubjects(includeAllYears ? apiSubjects.filter((subject) => filteredClasses.some((cls) => cls.id === subject.classCourseId)) : apiSubjects);
+      setAssignments(includeAllYears ? apiAssignments.filter((assignment) => filteredClasses.some((cls) => cls.id === assignment.classCourseId)) : apiAssignments);
 
       const enrollmentCounts = apiEnrollments.reduce<Record<string, number>>((acc: Record<string, number>, e: any) => {
         acc[e.classCourseId] = (acc[e.classCourseId] ?? 0) + 1;
@@ -250,6 +265,8 @@ export function AdminClassesPage() {
     } catch (err) {
       console.error(err);
       setError('Unable to load class data. Please refresh the page.');
+    } finally {
+      setIsLoadingData(false);
     }
   }
 
@@ -546,6 +563,16 @@ export function AdminClassesPage() {
   );
 
   const summaryMetrics = useMemo(() => {
+    if (isLoadingData) {
+      return {
+        totalClasses: 0,
+        totalSections: 0,
+        totalGroups: 0,
+        totalStudents: 0,
+        classesMissingTeacher: 0,
+      };
+    }
+
     const classIds = new Set(classes.map((cls) => cls.id));
     const totalClasses = classes.length;
     const totalSections = classes.filter((cls) => cls.section).length;
@@ -563,7 +590,7 @@ export function AdminClassesPage() {
       totalStudents,
       classesMissingTeacher: missingTeacherClassIds.size,
     };
-  }, [classes, classStudentCountsState, subjects, assignmentMap]);
+  }, [classes, classStudentCountsState, subjects, assignmentMap, isLoadingData]);
 
   return (
     <AppShell role="Admin" breadcrumb="Admin / Classes & subjects">
@@ -574,17 +601,6 @@ export function AdminClassesPage() {
             <h1 className="text-3xl font-extrabold text-slate-800 mt-0.5">Classes &amp; subjects</h1>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <select
-              value={selectedAcademicYearId}
-              onChange={(e) => setSelectedAcademicYearId(e.target.value)}
-              className="rounded border border-slate-300 bg-white px-3 py-2 text-sm"
-            >
-              {academicYears.map((year) => (
-                <option key={year.id} value={year.id}>
-                  {year.name} {year.isActive ? '(Active)' : '(Archived)'}
-                </option>
-              ))}
-            </select>
             <Button
               type="button"
               onClick={() => openModal('subject')}
