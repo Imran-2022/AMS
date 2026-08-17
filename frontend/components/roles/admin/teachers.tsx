@@ -479,40 +479,46 @@ export function AdminTeachersPage() {
                   <tbody className="divide-y divide-slate-50">
                     {pagedRows.map((t) => (
                       <tr key={t.id} className="hover:bg-slate-50 transition-colors duration-150 cursor-pointer" onClick={() => setSelectedTeacher(t)}>
-                        <td className="px-2 py-3.5">
+                        <td className="px-2 py-3.5 align-middle">
                           <span className="font-semibold text-slate-700">{t.name}</span>
                         </td>
-                        <td className="px-2 py-3.5 text-slate-500">{t.email}</td>
-                        <td className="px-2 py-3.5 align-top">
+                        <td className="px-2 py-3.5 text-slate-500 align-middle">{t.email}</td>
+                        <td className="px-2 py-3.5 align-middle">
                           {t.subjectSpecialization ? (
-                            <div className="flex max-w-[220px] flex-col gap-1">
-                              {t.subjectSpecialization.split(',').map((s) => s.trim()).filter(Boolean).map((s) => (
+                            <div className="flex max-w-[200px] flex-wrap gap-1">
+                              {t.subjectSpecialization.split(',').map((s) => s.trim()).filter(Boolean).slice(0, 2).map((s) => (
                                 <span key={s} className="chip w-fit">{s}</span>
                               ))}
+                              {t.subjectSpecialization.split(',').filter(Boolean).length > 2 && (
+                                <span className="chip w-fit bg-slate-100 text-slate-600">+{t.subjectSpecialization.split(',').filter(Boolean).length - 2}</span>
+                              )}
                             </div>
                           ) : (
                             <span className="text-slate-500">Not assigned</span>
                           )}
                         </td>
-                        <td className="px-2 py-3.5 align-top">
+                        <td className="px-2 py-3.5 align-middle">
                           {t.subjects.length > 0 ? (
-                            <div className="flex max-w-[220px] flex-col gap-1">
-                              {t.subjects.map((s) => <span key={s} className="chip w-fit">{s}</span>)}
+                            <div className="flex max-w-[200px] flex-wrap gap-1">
+                              {t.subjects.slice(0, 2).map((s) => <span key={s} className="chip w-fit">{s}</span>)}
+                              {t.subjects.length > 2 && (
+                                <span className="chip w-fit bg-slate-100 text-slate-600">+{t.subjects.length - 2}</span>
+                              )}
                             </div>
                           ) : (
                             <span className="text-slate-500">Not assigned</span>
                           )}
                         </td>
-                        <td className="px-2 py-3.5 text-slate-500">
+                        <td className="px-2 py-3.5 text-slate-500 align-middle">
                           {t.classesCount > 0 ? `${t.classesCount} ${t.classesCount === 1 ? 'class' : 'classes'}` : 'Not assigned'}
                         </td>
-                        <td className="px-2 py-3.5">
+                        <td className="px-2 py-3.5 align-middle">
                           <span className={`badge ${t.tone === 'emerald' ? 'bg-emerald-50 text-emerald-600' : t.tone === 'slate' ? 'bg-slate-100 text-slate-700' : 'bg-amber-50 text-amber-600'}`}>
                             <span className={`badge-dot ${t.tone === 'emerald' ? 'bg-emerald-500' : t.tone === 'slate' ? 'bg-slate-500' : 'bg-amber-500'}`}></span>
                             {t.status}
                           </span>
                         </td>
-                        <td className="px-5 py-3.5 text-right">
+                        <td className="px-5 py-3.5 text-right align-middle">
                           <div className="relative inline-flex">
                             <button
                               type="button" data-action-button={t.id}
