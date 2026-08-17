@@ -213,15 +213,17 @@ export function AdminStudentsPage() {
         getAdminDashboardStats(selectedAcademicYearId || undefined),
       ]);
 
+      const desiredYearId = selectedAcademicYearId || activeYearId;
       const classMap = Object.fromEntries(classes.map((cls) => [cls.id, cls]));
-      const filteredClasses = isArchivedSelection && selectedAcademicYearId
-        ? classes.filter((cls) => cls.academicYearId === selectedAcademicYearId)
-        : classes;
-      const currentYearStudentIds = new Set((enrollments || []).map((enrollment) => enrollment.studentId));
-      const enrollmentMap = Object.fromEntries((enrollments || []).map((enrollment) => [enrollment.studentId, enrollment.classCourseId]));
+      const visibleClasses = classes.filter((cls) => cls.academicYearId === desiredYearId);
+      const visibleEnrollments = (enrollments || []).filter(
+        (enrollment) => classMap[enrollment.classCourseId]?.academicYearId === desiredYearId
+      );
+      const currentYearStudentIds = new Set(visibleEnrollments.map((enrollment) => enrollment.studentId));
+      const enrollmentMap = Object.fromEntries(visibleEnrollments.map((enrollment) => [enrollment.studentId, enrollment.classCourseId]));
 
       // Classes already have groupName from backend
-      setClassCourses(filteredClasses.map((cls) => ({
+      setClassCourses(visibleClasses.map((cls) => ({
         ...cls,
         groupId: cls.groupId ?? undefined,
         groupName: cls.groupName ?? undefined,

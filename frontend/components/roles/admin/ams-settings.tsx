@@ -61,6 +61,8 @@ export function AdminAmsSettingsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   
   // Promotion state
+  const [promoteFromAcademicYearId, setPromoteFromAcademicYearId] = useState('');
+  const [promoteToAcademicYearId, setPromoteToAcademicYearId] = useState('');
   const [promoteFromClassId, setPromoteFromClassId] = useState('');
   const [promoteToClassId, setPromoteToClassId] = useState('');
   const [promoteFromGroupId, setPromoteFromGroupId] = useState('');
@@ -119,6 +121,14 @@ export function AdminAmsSettingsPage() {
       setError(null);
       const years = await getAcademicYears();
       setAcademicYears(years);
+
+      const activeYearId = years.find(year => year.isActive)?.id ?? '';
+      const previousYearId = [...years]
+        .filter(year => !year.isActive)
+        .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())[0]?.id ?? activeYearId;
+
+      if (!promoteFromAcademicYearId && previousYearId) setPromoteFromAcademicYearId(previousYearId);
+      if (!promoteToAcademicYearId && activeYearId) setPromoteToAcademicYearId(activeYearId);
 
       const nextDefaults = getNextAcademicYearDefaults(years);
       setNewYearName(nextDefaults.name);
@@ -246,22 +256,22 @@ export function AdminAmsSettingsPage() {
   const getStudentsForClass = (classId: string): StudentEnrollmentDto[] => {
     if (!classId) return [];
 
-    const sourceClass = classes.find(course => course.id === classId);
-    const sourceYearId = sourceClass?.academicYearId;
-
-    const studentIdsWithLaterYearEnrollment = new Set(
-      allEnrollments
-        .filter(enrollment => {
-          const enrollmentClass = classes.find(course => course.id === enrollment.classCourseId);
-          return !!enrollmentClass && !!sourceYearId && enrollmentClass.academicYearId !== sourceYearId;
-        })
-        .map(enrollment => enrollment.studentId)
+    const targetYearId = promoteToClassId ? classes.find(course => course.id === promoteToClassId)?.academicYearId : undefined;
+    const studentIdsAlreadyInTargetYear = new Set(
+      targetYearId
+        ? allEnrollments
+            .filter(enrollment => {
+              const enrollmentClass = classes.find(course => course.id === enrollment.classCourseId);
+              return !!enrollmentClass && enrollmentClass.academicYearId === targetYearId;
+            })
+            .map(enrollment => enrollment.studentId)
+        : []
     );
 
     return allEnrollments.filter(enrollment => {
       const matchesClass = enrollment.classCourseId === classId;
-      const hasLaterYearEnrollment = studentIdsWithLaterYearEnrollment.has(enrollment.studentId);
-      return matchesClass && !hasLaterYearEnrollment;
+      const isAlreadyPromotedToTargetYear = studentIdsAlreadyInTargetYear.has(enrollment.studentId);
+      return matchesClass && !isAlreadyPromotedToTargetYear;
     });
   };
 
@@ -341,16 +351,15 @@ export function AdminAmsSettingsPage() {
 
   const activeAcademicYearId = academicYears.find(year => year.isActive)?.id ?? '';
 
-  // Get the most recent archived year (to avoid showing classes from all past years)
   const mostRecentArchivedYear = academicYears
     .filter(year => !year.isActive)
-    .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
-    [0];
+    .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())[0];
 
-  const sourceClassOptions = classes.filter(classCourse => {
-    if (!mostRecentArchivedYear) return false;
-    return classCourse.academicYearId === mostRecentArchivedYear.id;
-  });
+  const sourceAcademicYearId = promoteFromAcademicYearId || mostRecentArchivedYear?.id || '';
+  const targetAcademicYearId = promoteToAcademicYearId || activeAcademicYearId;
+
+  const sourceClassOptions = classes.filter(classCourse => classCourse.academicYearId === sourceAcademicYearId);
+  const targetClassOptions = classes.filter(classCourse => classCourse.academicYearId === targetAcademicYearId);
 
   const getNextClassForSelectedSource = (sourceClassId: string): string => {
     const sourceClass = classes.find(p => p.id === sourceClassId);
@@ -360,14 +369,14 @@ export function AdminAmsSettingsPage() {
     if (sourceLevel === null) return '';
 
     const nextCandidates = classes.filter(candidate => {
-      if (candidate.academicYearId !== activeAcademicYearId) return false;
+      if (candidate.academicYearId !== targetAcademicYearId) return false;
       const candidateLevel = extractClassLevel(candidate.name);
       if (candidateLevel !== sourceLevel + 1) return false;
       if (!sourceClass.section || !candidate.section) return true;
       return candidate.section === sourceClass.section;
     });
 
-    return nextCandidates[0]?.id ?? (getNextClassForPromotion(sourceClassId) || '');
+    return nextCandidates[0]?.id ?? (getNextClassForPromotion(sourceClassId, classes.filter(c => c.academicYearId === targetAcademicYearId)) || '');
   };
 
   const getPromotionTargetOptions = (sourceClassId: string) => {
@@ -585,31 +594,69 @@ export function AdminAmsSettingsPage() {
                 </div>
               ) : null}
 
-              {!mostRecentArchivedYear ? (
+              {!academicYears.length ? (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
-                  ℹ️ No archived academic years available. Create and complete an academic year first before promoting students.
+                  ℹ️ No academic years available. Create and complete an academic year first before promoting students.
                 </div>
               ) : null}
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label className="block text-[13px] font-semibold text-slate-700 mb-1">
-                    Class before promotion
-                    {mostRecentArchivedYear && (
-                      <span className="text-[11px] font-normal text-slate-500 ml-1.5">
-                        (from {mostRecentArchivedYear.name})
-                      </span>
-                    )}
-                  </label>
+                  <label className="block text-[13px] font-semibold text-slate-700 mb-1">Academic year before promotion</label>
                   <select
-                    disabled={!mostRecentArchivedYear || sourceClassOptions.length === 0}
+                    value={sourceAcademicYearId}
+                    onChange={(event) => {
+                      const yearId = event.target.value;
+                      setPromoteFromAcademicYearId(yearId);
+                      setPromoteFromClassId('');
+                      setPromoteToClassId('');
+                      setPromoteStudentIds([]);
+                      setPromoteStudentRollNumbers({});
+                    }}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                  >
+                    {academicYears
+                      .filter(year => !year.isActive)
+                      .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
+                      .map(year => (
+                        <option key={year.id} value={year.id}>{year.name}</option>
+                      ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[13px] font-semibold text-slate-700 mb-1">Academic year after promotion</label>
+                  <select
+                    value={targetAcademicYearId}
+                    onChange={(event) => {
+                      const yearId = event.target.value;
+                      setPromoteToAcademicYearId(yearId);
+                      setPromoteToClassId('');
+                      setPromoteStudentIds([]);
+                      setPromoteStudentRollNumbers({});
+                    }}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                  >
+                    {academicYears
+                      .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
+                      .map(year => (
+                        <option key={year.id} value={year.id}>{year.name}{year.isActive ? ' (Active)' : ''}</option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label className="block text-[13px] font-semibold text-slate-700 mb-1">Class before promotion</label>
+                  <select
+                    disabled={!sourceAcademicYearId || sourceClassOptions.length === 0}
                     value={promoteFromClassId}
                     onChange={(event) => {
                       const classId = event.target.value;
                       setPromoteFromClassId(classId);
                       setPromoteFromGroupId('');
 
-                      const nextClassId = getNextClassForSelectedSource(classId) || classId;
+                      const nextClassId = classId ? getNextClassForSelectedSource(classId) : '';
                       setPromoteToClassId(nextClassId);
                       setPromoteToGroupId('');
                       setPromoteStudentIds([]);
@@ -631,10 +678,10 @@ export function AdminAmsSettingsPage() {
                       : 'Select the class before promotion'}
                   </div>
                   {!promoteFromClassId && (
-                    <p className="text-[11px] text-slate-400 mt-1">Choose the class before promotion to set the target class</p>
+                    <p className="text-[11px] text-slate-400 mt-1">Choose the source year and class to set the target class</p>
                   )}
                   {promoteFromClassId && !promoteToClassId && (
-                    <p className="text-[11px] text-rose-500 mt-1">No valid target class available for this level</p>
+                    <p className="text-[11px] text-rose-500 mt-1">No valid target class available for the selected year/level</p>
                   )}
                 </div>
               </div>
@@ -672,7 +719,7 @@ export function AdminAmsSettingsPage() {
                           {getStudentsForClass(promoteFromClassId).length === 0 ? (
                             <tr>
                               <td colSpan={5} className="px-4 py-8 text-center text-slate-500 text-xs">
-                                No students in this class
+                                No students in this class for the selected source year. Students must have an enrollment record in this class before they can be promoted.
                               </td>
                             </tr>
                           ) : (
