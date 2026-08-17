@@ -32,16 +32,35 @@ export default function SubjectsAssignments() {
   const [subjectForm, setSubjectForm] = useState({ name: '', code: '', gradeId: '', groupId: '' });
   const [editingSubject, setEditingSubject] = useState<SubjectDto | null>(null);
   const [assignForm, setAssignForm] = useState({ classDefinitionId: '', classCourseId: '', subjectId: '', teacherId: '' });
+  const [academicYears, setAcademicYears] = useState<{ id: string; name: string; isActive: boolean }[]>([]);
   const [pageSize, setPageSize] = useState(10);
   const [pageIndex, setPageIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+  // Load academic years and initialize to active year
+  useEffect(() => {
+    async function loadAcademicYears() {
+      try {
+        const years = await getAcademicYears();
+        setAcademicYears(years);
+        
+        const activeYear = years.find(y => y.isActive);
+        if (activeYear) {
+          setSelectedAcademicYearId(activeYear.id);
+        }
+      } catch (err) {
+        console.error('Failed to load academic years', err);
+      }
+    }
+    void loadAcademicYears();
+  }, []);
+
+  // Listen for academic year changes from AppShell
   useEffect(() => {
     const syncSelectedAcademicYear = () => {
       setSelectedAcademicYearId(getSelectedAcademicYearId());
     };
 
-    syncSelectedAcademicYear();
     window.addEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
     return () => {
       window.removeEventListener('ams-academic-year-updated', syncSelectedAcademicYear);

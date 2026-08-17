@@ -98,8 +98,8 @@ export function AdminClassesPage() {
         setClassForm(c => ({ ...c, year: activeYear.id }));
       }
       
-      // Initialize selectedAcademicYearId to active year if not already set
-      if (!selectedAcademicYearId && activeYear) {
+      // Initialize selectedAcademicYearId to active year
+      if (activeYear) {
         setSelectedAcademicYearId(activeYear.id);
       }
     } catch (err) {

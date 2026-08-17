@@ -106,6 +106,7 @@ export function AdminTeachersPage() {
   const [editingTeacher, setEditingTeacher] = useState<TeacherRow | null>(null);
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherRow | null>(null);
   const [selectedAcademicYearId, setSelectedAcademicYearId] = useState('');
+  const [academicYears, setAcademicYears] = useState<{ id: string; name: string; isActive: boolean }[]>([]);
   const [teacherModalSubmitting, setTeacherModalSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [pageSize, setPageSize] = useState(10);
@@ -113,12 +114,30 @@ export function AdminTeachersPage() {
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 
+  // Load academic years and initialize to active year
+  useEffect(() => {
+    async function loadAcademicYears() {
+      try {
+        const years = await getAcademicYears();
+        setAcademicYears(years);
+        
+        const activeYear = years.find(y => y.isActive);
+        if (activeYear) {
+          setSelectedAcademicYearId(activeYear.id);
+        }
+      } catch (err) {
+        console.error('Failed to load academic years', err);
+      }
+    }
+    void loadAcademicYears();
+  }, []);
+
+  // Listen for academic year changes from AppShell
   useEffect(() => {
     const syncSelectedAcademicYear = () => {
       setSelectedAcademicYearId(getSelectedAcademicYearId());
     };
 
-    syncSelectedAcademicYear();
     window.addEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
     return () => {
       window.removeEventListener('ams-academic-year-updated', syncSelectedAcademicYear);

@@ -21,7 +21,7 @@ import {
 type SettingsTab = 'academic' | 'promote-students' | 'danger';
 
 export function AdminAmsSettingsPage() {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('promote-students');
+  const [activeTab, setActiveTab] = useState<SettingsTab>('academic');
   const [academicYears, setAcademicYears] = useState<{ id: string; name: string; startDate: string; endDate: string; isActive: boolean }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -335,7 +335,7 @@ export function AdminAmsSettingsPage() {
   const tabButton = (label: string, value: SettingsTab) => (
     <button
       type="button" onClick={() => setActiveTab(value)}
-      className={`flex w-full items-center justify-start rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition-all cursor-pointer ${
+      className={`flex w-full items-center justify-start rounded px-3 py-2.5 text-left text-sm font-semibold transition-all cursor-pointer ${
         activeTab === value
           ? 'bg-brand-50 text-brand-700 shadow-sm ring-1 ring-brand-100'
           : 'text-slate-500 hover:bg-slate-50'
@@ -353,8 +353,8 @@ export function AdminAmsSettingsPage() {
           <h1 className="text-3xl font-extrabold text-slate-800 mt-0.5">Settings</h1>
         </div>
 
-        <div className="grid gap-5 xl:grid-cols-[260px_minmax(0,1fr)]">
-          <aside className="bg-white rounded-2xl border border-slate-200 p-2.5 shadow-sm">
+        <div className="grid gap-5 xl:grid-cols-[260px_minmax(0,1fr)] xl:items-start">
+          <aside className="h-fit bg-white rounded-2xl border border-slate-200 p-2.5 shadow-sm">
             <div className="space-y-1.5">
               {tabButton('Academic', 'academic')}
               {tabButton('Promote Students', 'promote-students')}
@@ -368,9 +368,20 @@ export function AdminAmsSettingsPage() {
                 activeTab === 'academic' ? 'block' : 'hidden'
               } bg-white rounded-2xl border border-slate-200 p-6 space-y-6`}
             >
-              <div>
-                <p className="text-sm font-bold text-slate-700">Academic years</p>
-                <p className="text-xs text-slate-400 mt-0.5">Manage active academic years. Only one year can be active at a time.</p>
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <p className="text-sm font-bold text-slate-700">Academic years</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Manage active academic years. Only one year can be active at a time.</p>
+                </div>
+                <button
+                  type="button" onClick={() => {
+                    setCreateError(null);
+                    setShowCreateModal(true);
+                  }}
+                  className="rounded bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 cursor-pointer shrink-0"
+                >
+                  Create academic year
+                </button>
               </div>
 
               {error && (
@@ -379,23 +390,6 @@ export function AdminAmsSettingsPage() {
                 </div>
               )}
 
-              <div className="rounded-2xl border border-slate-200 p-6 mb-6">
-                <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-                  <div>
-                    <p className="text-sm font-bold text-slate-700">Create an academic year</p>
-                    <p className="text-xs text-slate-400 mt-0.5">Add a new academic session and optionally set it active.</p>
-                  </div>
-                  <button
-                    type="button" onClick={() => {
-                      setCreateError(null);
-                      setShowCreateModal(true);
-                    }}
-                    className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 cursor-pointer"
-                  >
-                    Create academic year
-                  </button>
-                </div>
-              </div>
               <Modal
                 open={showCreateModal}
                 onClose={() => setShowCreateModal(false)}
@@ -507,7 +501,7 @@ export function AdminAmsSettingsPage() {
                             {!year.isActive && (
                               <button
                                 onClick={() => handleActivateYear(year.id)}
-                                className="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700 cursor-pointer"
+                                className="px-3 py-1.5 rounded bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700 cursor-pointer"
                               >
                                 Activate
                               </button>
@@ -697,14 +691,14 @@ export function AdminAmsSettingsPage() {
             <div
               className={`${
                 activeTab === 'danger' ? 'block' : 'hidden'
-              } bg-white rounded-2xl border border-rose-200 overflow-hidden`}
+              } bg-white rounded-2xl border border-slate-200 p-6 space-y-6`}
             >
-              <div className="p-6 pb-4">
-                <p className="text-sm font-bold text-rose-700">Danger zone</p>
+              <div>
+                <p className="text-sm font-bold text-slate-700">Danger zone</p>
                 <p className="text-xs text-slate-400 mt-0.5">These actions are irreversible. Proceed with care.</p>
               </div>
-              <div className="divide-y divide-slate-100">
-                <div className="flex flex-col gap-3 px-6 py-4 md:flex-row md:items-center md:justify-between">
+              <div className="rounded-2xl border border-slate-200 p-6">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
                     <p className="text-sm font-semibold text-slate-700">Deactivate school account</p>
                     <p className="text-xs text-slate-400 mt-0.5">All users lose access immediately. Data is retained for 30 days.</p>

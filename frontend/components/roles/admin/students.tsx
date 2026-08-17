@@ -65,15 +65,34 @@ export function AdminStudentsPage() {
   const [pendingDeleteStudent, setPendingDeleteStudent] = useState<StudentUserRecord | null>(null);
   const [studentModalSubmitting, setStudentModalSubmitting] = useState(false);
   const [selectedAcademicYearId, setSelectedAcademicYearId] = useState('');
+  const [academicYears, setAcademicYears] = useState<{ id: string; name: string; isActive: boolean }[]>([]);
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
   const [pageIndex, setPageIndex] = useState(0);
 
+  // Load academic years and initialize to active year
+  useEffect(() => {
+    async function loadAcademicYears() {
+      try {
+        const years = await getAcademicYears();
+        setAcademicYears(years);
+        
+        const activeYear = years.find(y => y.isActive);
+        if (activeYear) {
+          setSelectedAcademicYearId(activeYear.id);
+        }
+      } catch (err) {
+        console.error('Failed to load academic years', err);
+      }
+    }
+    void loadAcademicYears();
+  }, []);
+
+  // Listen for academic year changes from AppShell
   useEffect(() => {
     const syncSelectedAcademicYear = () => {
       setSelectedAcademicYearId(getSelectedAcademicYearId());
     };
 
-    syncSelectedAcademicYear();
     window.addEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
     return () => {
       window.removeEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
