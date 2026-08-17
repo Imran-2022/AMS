@@ -29,6 +29,7 @@ export function AdminDashboardPage() {
   const [dashboardClassCourses, setDashboardClassCourses] = useState<ClassCourseRecord[]>([]);
   const [dashboardTeachers, setDashboardTeachers] = useState<{ id: string; fullName: string }[]>([]);
   const [dashboardSubjects, setDashboardSubjects] = useState<{ id: string; name: string; classCourseId: string }[]>([]);
+  const [isViewingArchivedYear, setIsViewingArchivedYear] = useState(false);
 
   const router = useRouter();
 
@@ -63,15 +64,16 @@ export function AdminDashboardPage() {
       const selectedYearId = getSelectedAcademicYearId();
       const years = await getAcademicYears();
       const activeYearId = years.find((year) => year.isActive)?.id ?? '';
-      const isViewingArchivedYear = Boolean(selectedYearId && selectedYearId !== activeYearId);
+      const isViewingArchived = Boolean(selectedYearId && selectedYearId !== activeYearId);
+      setIsViewingArchivedYear(isViewingArchived);
 
       const [s, assignments, submissions, classes, users, subjects] = await Promise.all([
         getAdminDashboardStats(selectedYearId || undefined),
-        getAssignments(isViewingArchivedYear),
-        getSubmissions(isViewingArchivedYear),
-        getClassCourses(isViewingArchivedYear),
+        getAssignments(isViewingArchived),
+        getSubmissions(isViewingArchived),
+        getClassCourses(isViewingArchived),
         apiGetUsers(),
-        getSubjects(isViewingArchivedYear),
+        getSubjects(isViewingArchived),
       ]);
       setStats(s);
       setRecentAssignments(assignments.filter((assignment) => assignment.status === 'Published').slice(0, 8));
@@ -117,6 +119,12 @@ export function AdminDashboardPage() {
   return (
     <AppShell role="Admin" breadcrumb="Admin / Dashboard">
       <div className="grid gap-6">
+        {isViewingArchivedYear && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 flex gap-3">
+            <span className="text-lg">ℹ️</span>
+            <p className="text-sm text-amber-800">You are viewing archived data. Editing and adding is disabled in archive mode.</p>
+          </div>
+        )}
         <section className="rounded-2xl border border-[#ECECEF] bg-white p-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
@@ -124,11 +132,13 @@ export function AdminDashboardPage() {
               <h2 className="text-2xl font-bold mb-1">Stay on top of teaching and student work.</h2>
               <p className="text-[13px] text-[#8A8F98]">A cleaner, responsive dashboard for student, teacher, and assignment operations.</p>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Button type="button" onClick={() => setStudentModalOpen(true)}>Add Student</Button>
-              <Button type="button" variant="secondary" onClick={() => setTeacherModalOpen(true)}>Add Teacher</Button>
-              <Button type="button" variant="secondary" onClick={() => setAssignTeacherOpen(true)}>Assign Teacher</Button>
-            </div>
+            {!isViewingArchivedYear && (
+              <div className="flex flex-wrap gap-3">
+                <Button type="button" onClick={() => setStudentModalOpen(true)}>Add Student</Button>
+                <Button type="button" variant="secondary" onClick={() => setTeacherModalOpen(true)}>Add Teacher</Button>
+                <Button type="button" variant="secondary" onClick={() => setAssignTeacherOpen(true)}>Assign Teacher</Button>
+              </div>
+            )}
           </div>
         </section>
 
