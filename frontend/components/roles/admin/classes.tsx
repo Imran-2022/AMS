@@ -601,29 +601,29 @@ export function AdminClassesPage() {
             <h1 className="text-3xl font-extrabold text-slate-800 mt-0.5">Classes &amp; subjects</h1>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Button
-              type="button"
-              onClick={() => openModal('subject')}
-              className="px-4 py-2.5 flex items-center gap-2"
-              variant="secondary"
-              disabled={isViewingArchivedYear}
-              title={isViewingArchivedYear ? 'Cannot add subjects to archived year' : undefined}
-            >
-              + Add subject
-            </Button>
-            <Button
-              type="button"
-              onClick={() => openModal('class')}
-              className="px-4 py-2.5 flex items-center gap-2"
-              disabled={isViewingArchivedYear}
-              title={isViewingArchivedYear ? 'Cannot add classes to archived year' : undefined}
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              Add class
-            </Button>
+            {!isViewingArchivedYear && (
+              <>
+                <Button
+                  type="button"
+                  onClick={() => openModal('subject')}
+                  className="px-4 py-2.5 flex items-center gap-2"
+                  variant="secondary"
+                >
+                  + Add subject
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => openModal('class')}
+                  className="px-4 py-2.5 flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  Add class
+                </Button>
+              </>
+            )}
           </div>
         </div>
 

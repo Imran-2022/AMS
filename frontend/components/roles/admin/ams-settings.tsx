@@ -69,6 +69,8 @@ export function AdminAmsSettingsPage() {
   const [promoteToGroupId, setPromoteToGroupId] = useState('');
   const [promoteStudentIds, setPromoteStudentIds] = useState<string[]>([]);
   const [promoteStudentRollNumbers, setPromoteStudentRollNumbers] = useState<Record<string, string>>({});
+  const [promoteStudentSections, setPromoteStudentSections] = useState<Record<string, string>>({});
+  const [promoteStudentGroups, setPromoteStudentGroups] = useState<Record<string, string>>({});
   const [promoteTargetSection, setPromoteTargetSection] = useState('');
   const [promoteTargetGroup, setPromoteTargetGroup] = useState('');
   const [alreadyPromotedStudentIds, setAlreadyPromotedStudentIds] = useState<string[]>([]);
@@ -227,17 +229,47 @@ export function AdminAmsSettingsPage() {
       setPromoteSuccess(null);
       setPromoteLoading(true);
       
-      // Prepare students with roll numbers
-      const studentsWithRolls = promoteStudentIds.map(studentId => ({
-        studentId,
-        newRollNumber: promoteStudentRollNumbers[studentId] || undefined
-      }));
+      // Group students by their target class based on selected section/group
+      const studentsByTargetClass: Record<string, string[]> = {};
       
-      await bulkPromoteStudents({
-        fromClassCourseId: promoteFromClassId,
-        toClassCourseId: promoteToClassId,
-        students: studentsWithRolls
-      });
+      for (const studentId of promoteStudentIds) {
+        const selectedSection = promoteStudentSections[studentId] || promoteTargetSection;
+        const selectedGroup = promoteStudentGroups[studentId] ?? promoteTargetGroup ?? '';
+        
+        // Find the target class for this student
+        const targetClassName = classes.find(c => c.id === promoteToClassId)?.name ?? '';
+        const targetClassLevel = targetClassName ? extractClassLevel(targetClassName) : null;
+        const targetClassOptions = classes.filter(c => 
+          c.academicYearId === targetAcademicYearId && 
+          (targetClassLevel === null || extractClassLevel(c.name) === targetClassLevel)
+        );
+        
+        const studentTargetClass = targetClassOptions.find(candidate => {
+          const matchesSection = !selectedSection || candidate.section === selectedSection;
+          const matchesGroup = !selectedGroup || (candidate.groupName ?? '') === selectedGroup;
+          return matchesSection && matchesGroup;
+        });
+        
+        const targetClassId = studentTargetClass?.id || promoteToClassId;
+        if (!studentsByTargetClass[targetClassId]) {
+          studentsByTargetClass[targetClassId] = [];
+        }
+        studentsByTargetClass[targetClassId].push(studentId);
+      }
+      
+      // Promote students grouped by target class
+      for (const [targetClassId, studentIds] of Object.entries(studentsByTargetClass)) {
+        const studentsWithRolls = studentIds.map(studentId => ({
+          studentId,
+          newRollNumber: promoteStudentRollNumbers[studentId] || undefined
+        }));
+        
+        await bulkPromoteStudents({
+          fromClassCourseId: promoteFromClassId,
+          toClassCourseId: targetClassId,
+          students: studentsWithRolls
+        });
+      }
 
       const promotedCount = promoteStudentIds.length;
       setAlreadyPromotedStudentIds(prev => [...new Set([...prev, ...promoteStudentIds])]);
@@ -249,6 +281,8 @@ export function AdminAmsSettingsPage() {
       setPromoteToGroupId('');
       setPromoteStudentIds([]);
       setPromoteStudentRollNumbers({});
+      setPromoteStudentSections({});
+      setPromoteStudentGroups({});
     } catch (err) {
       console.error('Failed to promote students', err);
       setPromoteError(err instanceof Error ? err.message : String(err));
@@ -632,6 +666,8 @@ export function AdminAmsSettingsPage() {
                       setPromoteToClassId('');
                       setPromoteStudentIds([]);
                       setPromoteStudentRollNumbers({});
+                      setPromoteStudentSections({});
+                      setPromoteStudentGroups({});
                     }}
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                   >
@@ -653,6 +689,8 @@ export function AdminAmsSettingsPage() {
                       setPromoteToClassId('');
                       setPromoteStudentIds([]);
                       setPromoteStudentRollNumbers({});
+                      setPromoteStudentSections({});
+                      setPromoteStudentGroups({});
                     }}
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                   >
@@ -681,6 +719,8 @@ export function AdminAmsSettingsPage() {
                       setPromoteToGroupId('');
                       setPromoteStudentIds([]);
                       setPromoteStudentRollNumbers({});
+                      setPromoteStudentSections({});
+                      setPromoteStudentGroups({});
                       setPromoteTargetSection('');
                       setPromoteTargetGroup('');
                     }}
@@ -708,52 +748,7 @@ export function AdminAmsSettingsPage() {
                 </div>
               </div>
 
-              {promoteFromClassId && promoteToClassId && (() => {
-                const targetClassName = classes.find(c => c.id === promoteToClassId)?.name ?? '';
-                const targetCourseOptions = classes.filter(course => course.academicYearId === targetAcademicYearId && course.name === targetClassName);
-                const sectionOptions = Array.from(new Set(targetCourseOptions.map(c => c.section).filter(Boolean)));
-                const groupOptions = Array.from(new Set(targetCourseOptions.map(c => c.groupName).filter((value): value is string => Boolean(value))));
 
-                return (
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="block text-[13px] font-semibold text-slate-700 mb-1">Section</label>
-                      <select
-                        value={promoteTargetSection || (sectionOptions[0] ?? '')}
-                        onChange={(event) => {
-                          const selectedSection = event.target.value;
-                          setPromoteTargetSection(selectedSection);
-                          const nextClassId = getNextClassForSelectedSource(promoteFromClassId, selectedSection, promoteTargetGroup);
-                          setPromoteToClassId(nextClassId);
-                        }}
-                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                      >
-                        {sectionOptions.length === 0 ? <option value="">No section</option> : sectionOptions.map(section => (
-                          <option key={section} value={section}>{section}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[13px] font-semibold text-slate-700 mb-1">Group (optional)</label>
-                      <select
-                        value={promoteTargetGroup || (groupOptions[0] ?? '')}
-                        onChange={(event) => {
-                          const selectedGroup = event.target.value;
-                          setPromoteTargetGroup(selectedGroup);
-                          const nextClassId = getNextClassForSelectedSource(promoteFromClassId, promoteTargetSection || sectionOptions[0] || '', selectedGroup);
-                          setPromoteToClassId(nextClassId);
-                        }}
-                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                      >
-                        <option value="">Select a group</option>
-                        {groupOptions.map(group => (
-                          <option key={group} value={group}>{group}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                );
-              })()}
 
               {promoteFromClassId && promoteToClassId && (
                 <div>
@@ -813,13 +808,13 @@ export function AdminAmsSettingsPage() {
                                     />
                                   </td>
                                   <td className="px-4 py-3 font-semibold text-slate-700">{student.studentName}</td>
-                                  <td className="px-4 py-3 text-slate-600">{currentRoll || '—'}</td>
+                                  <td className="px-4 py-3 text-slate-600 font-medium text-slate-800">{student.rollNumber || '—'}</td>
                                   <td className="px-4 py-3 text-slate-600">{currentCourse ? formatClassCourseLabel(currentCourse) : '—'}</td>
                                   <td className="px-4 py-3">
                                     {promoteStudentIds.includes(student.studentId) ? (
                                       <input
                                         type="text"
-                                        placeholder="Enter new roll number"
+                                        placeholder="Roll #"
                                         value={promoteStudentRollNumbers[student.studentId] || ''}
                                         onChange={(e) => {
                                           setPromoteStudentRollNumbers(prev => ({
@@ -827,7 +822,7 @@ export function AdminAmsSettingsPage() {
                                             [student.studentId]: e.target.value
                                           }));
                                         }}
-                                        className="w-full max-w-xs rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                                        className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                                       />
                                     ) : (
                                       <span className="text-slate-400 text-xs">—</span>
@@ -836,9 +831,9 @@ export function AdminAmsSettingsPage() {
                                   <td className="px-4 py-3">
                                     {promoteStudentIds.includes(student.studentId) ? (
                                       <select
-                                        value={promoteTargetSection || ''}
-                                        onChange={(event) => setPromoteTargetSection(event.target.value)}
-                                        className="w-full max-w-[120px] rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                                        value={promoteStudentSections[student.studentId] || ''}
+                                        onChange={(event) => setPromoteStudentSections(prev => ({ ...prev, [student.studentId]: event.target.value }))}
+                                        className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                                       >
                                         <option value="">Select</option>
                                         {Array.from(new Set(targetClassOptionsForRow.map(c => c.section).filter(Boolean))).map(section => (
@@ -852,9 +847,9 @@ export function AdminAmsSettingsPage() {
                                   <td className="px-4 py-3">
                                     {promoteStudentIds.includes(student.studentId) ? (
                                       <select
-                                        value={promoteTargetGroup || ''}
-                                        onChange={(event) => setPromoteTargetGroup(event.target.value)}
-                                        className="w-full max-w-[140px] rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                                        value={promoteStudentGroups[student.studentId] || ''}
+                                        onChange={(event) => setPromoteStudentGroups(prev => ({ ...prev, [student.studentId]: event.target.value }))}
+                                        className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                                       >
                                         <option value="">Optional</option>
                                         {Array.from(new Set(targetClassOptionsForRow.map(c => c.groupName).filter((value): value is string => Boolean(value)))).map(group => (
@@ -884,6 +879,8 @@ export function AdminAmsSettingsPage() {
                     setPromoteToClassId('');
                     setPromoteStudentIds([]);
                     setPromoteStudentRollNumbers({});
+                    setPromoteStudentSections({});
+                    setPromoteStudentGroups({});
                     setPromoteTargetSection('');
                     setPromoteTargetGroup('');
                     setPromoteError(null);

@@ -7,7 +7,7 @@ import { AmsDeleteComfiramtionModal, AmsPagination, Button, Card, PageLoader, Pi
 import { AddStudentModal, type AddStudentFormData } from '@/components/roles/admin/shared';
 import { API_BASE_URL, getAcademicYears, getEnrollments, getSelectedAcademicYearId } from '@/lib/api';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
-import { createUser, deleteUser, getClassCourses, getGroupsForClass, getUsers, updateUser } from '@/lib/api';
+import { createUser, getClassCourses, getGroupsForClass, getUsers, updateUser } from '@/lib/api';
 import { createEnrollment, deleteEnrollment } from '@/lib/api/enrollments';
 import { MoreVertical, Plus, X } from 'lucide-react';
 import type { ClassCourseRecord, StudentFormData, StudentUserRecord } from './types';
@@ -206,18 +206,22 @@ export function AdminStudentsPage() {
   async function loadData(newestStudentId?: string) {
     try {
       setIsLoading(true);
+      
+      // Get academic years first to determine which year we're loading
       const academicYears = await getAcademicYears();
       const activeYearId = academicYears.find((year) => year.isActive)?.id ?? '';
+      const desiredYearId = selectedAcademicYearId || activeYearId;
+      
+      // Fetch data conditionally: if viewing archived year, get all years; if viewing active, get only active
       const isArchivedSelection = Boolean(selectedAcademicYearId && selectedAcademicYearId !== activeYearId);
-
+      
       const [users, classes, enrollments, dashboardStats] = await Promise.all([
         getUsers(),
         getClassCourses(isArchivedSelection),
         getEnrollments(isArchivedSelection),
-        getAdminDashboardStats(selectedAcademicYearId || undefined),
+        getAdminDashboardStats(desiredYearId),
       ]);
 
-      const desiredYearId = selectedAcademicYearId || activeYearId;
       const classMap = Object.fromEntries(classes.map((cls) => [cls.id, cls]));
       const visibleClasses = classes.filter((cls) => cls.academicYearId === desiredYearId);
       const visibleEnrollments = (enrollments || []).filter(
@@ -381,7 +385,7 @@ export function AdminStudentsPage() {
     }
 
     try {
-      await deleteUser(pendingDeleteStudent.id);
+      await deleteEnrollment(pendingDeleteStudent.id, pendingDeleteStudent.classCourseId!);
       await loadData();
       resetSelection();
     } catch (err) {
