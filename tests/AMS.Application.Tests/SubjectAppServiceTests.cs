@@ -34,6 +34,29 @@ public class SubjectAppServiceTests
     }
 
     [Fact]
+    public async Task GetAllAsync_AsAdmin_WithIncludeAllAcademicYears_DoesNotRequireActiveYear()
+    {
+        var subjects = new List<Subject>
+        {
+            new Subject(Guid.NewGuid(), "Mathematics", "MATH101", Guid.NewGuid()),
+            new Subject(Guid.NewGuid(), "History", "HIST101", Guid.NewGuid())
+        };
+
+        var subjectRepo = new Mock<ISubjectRepository>(MockBehavior.Strict);
+        subjectRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(subjects);
+
+        var assignmentRepo = new Mock<ITeacherSubjectAssignmentRepository>(MockBehavior.Strict);
+        var academicYearRepo = new Mock<IAcademicYearRepository>(MockBehavior.Strict);
+        academicYearRepo.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>())).ReturnsAsync((AcademicYear?)null);
+
+        var service = new SubjectAppService(subjectRepo.Object, assignmentRepo.Object, academicYearRepo.Object);
+
+        var result = await service.GetAllAsync(Guid.NewGuid(), nameof(UserRole.Admin), includeAllAcademicYears: true);
+
+        Assert.Equal(2, result.Count);
+    }
+
+    [Fact]
     public async Task GetAllAsync_AsTeacher_Returns_AssignedSubjectsOnly()
     {
         var teacherId = Guid.NewGuid();
