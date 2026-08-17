@@ -35,8 +35,9 @@ export interface StudentDashboardStats {
   upcomingDeadlinesCount: number;
 }
 
-export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
-  return request<AdminDashboardStats>('/api/dashboard/admin');
+export async function getAdminDashboardStats(academicYearId?: string): Promise<AdminDashboardStats> {
+  const params = academicYearId ? `?academicYearId=${encodeURIComponent(academicYearId)}` : '';
+  return request<AdminDashboardStats>(`/api/dashboard/admin${params}`);
 }
 
 export async function getTeacherDashboardStats(): Promise<TeacherDashboardStats> {

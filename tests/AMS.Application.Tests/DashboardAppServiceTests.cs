@@ -130,6 +130,84 @@ public class DashboardAppServiceTests
     }
 
     [Fact]
+    public async Task GetAdminStatsAsync_Should_Filter_By_Selected_Academic_Year_Id()
+    {
+        var activeYear = new AcademicYear(Guid.NewGuid(), "2026-2027", DateTime.UtcNow.AddDays(-10), DateTime.UtcNow.AddDays(300), true);
+        var previousYear = new AcademicYear(Guid.NewGuid(), "2025-2026", DateTime.UtcNow.AddDays(-200), DateTime.UtcNow.AddDays(-20), false);
+
+        var activeClass = new ClassCourse(Guid.NewGuid(), "Class 7", "A", activeYear.Id, Guid.NewGuid());
+        var previousClass = new ClassCourse(Guid.NewGuid(), "Class 6", "A", previousYear.Id, Guid.NewGuid());
+
+        var activeSubject = new Subject(Guid.NewGuid(), "Math", "MATH101", activeClass.Id);
+        var previousSubject = new Subject(Guid.NewGuid(), "History", "HIST101", previousClass.Id);
+
+        var activeAssignment = new Assignment(Guid.NewGuid(), "Current Year Assignment", "Desc", activeSubject.Id, Guid.NewGuid(), DateTime.UtcNow.AddDays(3), 100, AssignmentStatus.Published, true, true, DateTime.UtcNow);
+        var previousAssignment = new Assignment(Guid.NewGuid(), "Previous Year Assignment", "Desc", previousSubject.Id, Guid.NewGuid(), DateTime.UtcNow.AddDays(3), 100, AssignmentStatus.Published, true, true, DateTime.UtcNow);
+
+        var userRepo = new Mock<IUserRepository>(MockBehavior.Strict);
+        userRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<User>
+        {
+            new User(Guid.NewGuid(), "Admin", "admin@example.com", "hash", UserRole.Admin),
+            new User(Guid.NewGuid(), "Current Teacher", "teacher@example.com", "hash", UserRole.Teacher),
+            new User(Guid.NewGuid(), "Previous Teacher", "oldteacher@example.com", "hash", UserRole.Teacher),
+            new User(Guid.NewGuid(), "Current Student", "student@example.com", "hash", UserRole.Student),
+            new User(Guid.NewGuid(), "Previous Student", "oldstudent@example.com", "hash", UserRole.Student)
+        });
+
+        var classRepo = new Mock<IClassCourseRepository>(MockBehavior.Strict);
+        classRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[] { activeClass, previousClass });
+
+        var subjectRepo = new Mock<ISubjectRepository>(MockBehavior.Strict);
+        subjectRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[] { activeSubject, previousSubject });
+
+        var assignmentRepo = new Mock<IAssignmentRepository>(MockBehavior.Strict);
+        assignmentRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[] { activeAssignment, previousAssignment });
+
+        var submissionRepo = new Mock<ISubmissionRepository>(MockBehavior.Strict);
+        submissionRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[]
+        {
+            new Submission(Guid.NewGuid(), activeAssignment.Id, Guid.NewGuid(), "content", DateTime.UtcNow, false, SubmissionStatus.Submitted),
+            new Submission(Guid.NewGuid(), previousAssignment.Id, Guid.NewGuid(), "content", DateTime.UtcNow, false, SubmissionStatus.Submitted)
+        });
+
+        var enrollmentRepo = new Mock<IStudentEnrollmentRepository>(MockBehavior.Strict);
+        enrollmentRepo.Setup(r => r.GetByAcademicYearAsync(previousYear.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new[]
+        {
+            new StudentEnrollment(Guid.NewGuid(), previousClass.Id, previousYear.Id, "02")
+        });
+
+        var teacherAssignmentRepo = new Mock<ITeacherSubjectAssignmentRepository>(MockBehavior.Strict);
+        teacherAssignmentRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[]
+        {
+            new TeacherSubjectAssignment(Guid.NewGuid(), activeSubject.Id),
+            new TeacherSubjectAssignment(Guid.NewGuid(), previousSubject.Id)
+        });
+
+        var academicYearRepo = new Mock<IAcademicYearRepository>(MockBehavior.Strict);
+        academicYearRepo.Setup(r => r.GetByIdAsync(previousYear.Id, It.IsAny<CancellationToken>())).ReturnsAsync(previousYear);
+        academicYearRepo.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>())).ReturnsAsync(activeYear);
+
+        var service = new DashboardAppService(
+            userRepo.Object,
+            classRepo.Object,
+            Mock.Of<IGroupRepository>(),
+            subjectRepo.Object,
+            assignmentRepo.Object,
+            submissionRepo.Object,
+            enrollmentRepo.Object,
+            teacherAssignmentRepo.Object,
+            academicYearRepo.Object);
+
+        var stats = await service.GetAdminStatsAsync(previousYear.Id);
+
+        Assert.Equal("2025-2026", stats.AcademicYear);
+        Assert.Equal(1, stats.TotalClasses);
+        Assert.Equal(1, stats.TotalSubjects);
+        Assert.Equal(1, stats.TotalAssignments);
+        Assert.Equal(1, stats.TotalSubmissions);
+    }
+
+    [Fact]
     public async Task GetStudentStatsAsync_Should_Use_Active_Academic_Year_Only()
     {
         var activeYear = new AcademicYear(Guid.NewGuid(), "2026-2027", DateTime.UtcNow.AddDays(-10), DateTime.UtcNow.AddDays(300), true);

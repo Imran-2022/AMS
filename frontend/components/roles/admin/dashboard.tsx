@@ -6,7 +6,7 @@ import { AppShell } from '@/shared/layout';
 import { Button, Card, Metric, PageHeader, PageLoader, Pill, RoleBadge, Th, Td } from '@/shared/ui';
 import { AddStudentModal, AddTeacherModal, TeacherAssignmentModal } from '@/components/roles/admin/shared';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
-import { getAssignments, getSubmissions, getUsers as apiGetUsers, getSubjects } from '@/lib/api';
+import { getAcademicYears, getAssignments, getSubmissions, getUsers as apiGetUsers, getSubjects, getSelectedAcademicYearId } from '@/lib/api';
 import { MoreVertical, UserPlus, UserCheck, BookOpen, ClipboardList } from 'lucide-react';
 import { createUser, deleteUser, getClassCourses, getUsers, updateUser } from '@/lib/api';
 import { createEnrollment, deleteEnrollment, getEnrollments } from '@/lib/api/enrollments';
@@ -36,6 +36,15 @@ export function AdminDashboardPage() {
     void loadDashboard();
   }, []);
 
+  useEffect(() => {
+    const handleAcademicYearChange = () => {
+      void loadDashboard();
+    };
+
+    window.addEventListener('ams-academic-year-updated', handleAcademicYearChange);
+    return () => window.removeEventListener('ams-academic-year-updated', handleAcademicYearChange);
+  }, []);
+
   const goToAssignments = () => router.push('/roles/admin/assignments');
   const goToSubmissions = () => router.push('/roles/admin/submissions');
   const goToAssignmentDetail = (assignmentId: string) => router.push(`/roles/admin/assignments/${assignmentId}`);
@@ -51,13 +60,18 @@ export function AdminDashboardPage() {
     try {
       setIsLoading(true);
       setLoadError(null);
+      const selectedYearId = getSelectedAcademicYearId();
+      const years = await getAcademicYears();
+      const activeYearId = years.find((year) => year.isActive)?.id ?? '';
+      const isViewingArchivedYear = Boolean(selectedYearId && selectedYearId !== activeYearId);
+
       const [s, assignments, submissions, classes, users, subjects] = await Promise.all([
-        getAdminDashboardStats(),
-        getAssignments(),
-        getSubmissions(),
-        getClassCourses(),
+        getAdminDashboardStats(selectedYearId || undefined),
+        getAssignments(isViewingArchivedYear),
+        getSubmissions(isViewingArchivedYear),
+        getClassCourses(isViewingArchivedYear),
         apiGetUsers(),
-        getSubjects(),
+        getSubjects(isViewingArchivedYear),
       ]);
       setStats(s);
       setRecentAssignments(assignments.filter((assignment) => assignment.status === 'Published').slice(0, 8));
@@ -109,7 +123,6 @@ export function AdminDashboardPage() {
               <p className="text-[12px] font-semibold uppercase text-[#7C3AED] mb-1">GOOD {new Date().getHours() < 12 ? 'MORNING' : new Date().getHours() < 18 ? 'AFTERNOON' : 'EVENING'}, SYSTEM ADMIN</p>
               <h2 className="text-2xl font-bold mb-1">Stay on top of teaching and student work.</h2>
               <p className="text-[13px] text-[#8A8F98]">A cleaner, responsive dashboard for student, teacher, and assignment operations.</p>
-              <p className="text-[13px] text-[#8A8F98] mt-2">Academic year: {stats?.academicYear || 'Not available'}</p>
             </div>
             <div className="flex flex-wrap gap-3">
               <Button type="button" onClick={() => setStudentModalOpen(true)}>Add Student</Button>

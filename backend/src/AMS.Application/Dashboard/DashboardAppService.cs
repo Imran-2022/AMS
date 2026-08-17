@@ -38,9 +38,13 @@ public class DashboardAppService : IDashboardAppService
         _academicYearRepository = academicYearRepository;
     }
 
-    public async Task<AdminDashboardStatsDto> GetAdminStatsAsync()
+    public async Task<AdminDashboardStatsDto> GetAdminStatsAsync(Guid? academicYearId = null)
     {
-        var activeYear = await _academicYearRepository.GetActiveAsync();
+        var selectedYear = academicYearId.HasValue
+            ? await _academicYearRepository.GetByIdAsync(academicYearId.Value)
+            : await _academicYearRepository.GetActiveAsync();
+
+        var yearToUse = selectedYear ?? await _academicYearRepository.GetActiveAsync();
 
         var users = await _userRepository.GetAllAsync();
         var allClasses = await _classCourseRepository.GetAllAsync();
@@ -48,12 +52,12 @@ public class DashboardAppService : IDashboardAppService
         var allAssignments = await _assignmentRepository.GetAllAsync();
         var allSubmissions = await _submissionRepository.GetAllAsync();
 
-        var classes = activeYear is null
+        var classes = yearToUse is null
             ? allClasses
-            : allClasses.Where(c => c.AcademicYearId == activeYear.Id).ToList();
+            : allClasses.Where(c => c.AcademicYearId == yearToUse.Id).ToList();
 
         var classIds = classes.Select(c => c.Id).ToHashSet();
-        var subjects = activeYear is null
+        var subjects = yearToUse is null
             ? allSubjects
             : allSubjects.Where(s => classIds.Contains(s.ClassCourseId)).ToList();
 
@@ -65,7 +69,7 @@ public class DashboardAppService : IDashboardAppService
         var assignmentIds = assignments.Select(a => a.Id).ToHashSet();
         var submissions = allSubmissions.Where(s => assignmentIds.Contains(s.AssignmentId)).ToList();
 
-        var teacherCount = activeYear is null
+        var teacherCount = yearToUse is null
             ? users.Count(u => u.Role == UserRole.Teacher)
             : (await _teacherAssignmentRepository.GetAllAsync())
                 .Where(assignment =>
@@ -73,22 +77,22 @@ public class DashboardAppService : IDashboardAppService
                     var subject = allSubjects.FirstOrDefault(s => s.Id == assignment.SubjectId);
                     if (subject is null) return false;
                     var classCourse = allClasses.FirstOrDefault(c => c.Id == subject.ClassCourseId);
-                    return classCourse is not null && classCourse.AcademicYearId == activeYear.Id;
+                    return classCourse is not null && classCourse.AcademicYearId == yearToUse.Id;
                 })
                 .Select(x => x.TeacherId)
                 .Distinct()
                 .Count();
 
-        var studentCount = activeYear is null
+        var studentCount = yearToUse is null
             ? users.Count(u => u.Role == UserRole.Student)
-            : (await _enrollmentRepository.GetByAcademicYearAsync(activeYear.Id)).
-                Select(x => x.StudentId).
-                Distinct().
-                Count();
+            : (await _enrollmentRepository.GetByAcademicYearAsync(yearToUse.Id))
+                .Select(x => x.StudentId)
+                .Distinct()
+                .Count();
 
         return new AdminDashboardStatsDto
         {
-            AcademicYear = activeYear?.Name ?? string.Empty,
+            AcademicYear = yearToUse?.Name ?? string.Empty,
             TotalUsers = users.Count,
             TotalTeachers = teacherCount,
             TotalStudents = studentCount,

@@ -19,9 +19,9 @@ public class DashboardController : ControllerBase
 
     [HttpGet("admin")]
     [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<AdminDashboardStatsDto>> GetAdminStats()
+    public async Task<ActionResult<AdminDashboardStatsDto>> GetAdminStats([FromQuery] Guid? academicYearId = null)
     {
-        var result = await _dashboardAppService.GetAdminStatsAsync();
+        var result = await _dashboardAppService.GetAdminStatsAsync(academicYearId);
         return Ok(result);
     }
 

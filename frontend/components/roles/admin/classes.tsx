@@ -244,7 +244,7 @@ export function AdminClassesPage() {
         getClassCourses(includeAllYears),
         getSubjects(includeAllYears),
         getTeacherAssignments(includeAllYears),
-        getEnrollments(),
+        getEnrollments(includeAllYears),
       ]);
 
       const yearToFilterBy = yearToLoad || activeAcademicYear?.id || '';

@@ -42,7 +42,7 @@ public class StudentDashboardStatsDto
 
 public interface IDashboardAppService
 {
-    Task<AdminDashboardStatsDto> GetAdminStatsAsync();
+    Task<AdminDashboardStatsDto> GetAdminStatsAsync(Guid? academicYearId = null);
     Task<TeacherDashboardStatsDto> GetTeacherStatsAsync(Guid teacherId);
     Task<StudentDashboardStatsDto> GetStudentStatsAsync(Guid studentId);
 }

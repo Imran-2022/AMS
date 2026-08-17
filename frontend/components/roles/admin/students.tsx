@@ -210,7 +210,7 @@ export function AdminStudentsPage() {
         getUsers(),
         getClassCourses(isArchivedSelection),
         getEnrollments(isArchivedSelection),
-        getAdminDashboardStats(),
+        getAdminDashboardStats(selectedAcademicYearId || undefined),
       ]);
 
       const classMap = Object.fromEntries(classes.map((cls) => [cls.id, cls]));
