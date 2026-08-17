@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AmsPagination, PageLoader } from '../../ui';
 import { AppShell } from '@/shared/layout';
-import { getSubmissions, type SubmissionDto } from '@/lib/api';
+import { getAcademicYears, getClassCourses, getSubmissions, type SubmissionDto } from '@/lib/api';
 
 const statusClasses: Record<string, string> = {
   Graded: 'bg-emerald-50 text-emerald-600',
@@ -29,6 +29,7 @@ export function AdminSubmissionsPage() {
   const [selectedAssignment, setSelectedAssignment] = useState('All assignments');
   const [search, setSearch] = useState('');
   const [submissions, setSubmissions] = useState<SubmissionDto[]>([]);
+  const [selectedAcademicYearId, setSelectedAcademicYearId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const CLASS_OPTIONS = useMemo(
@@ -42,11 +43,37 @@ export function AdminSubmissionsPage() {
   );
 
   useEffect(() => {
+    const syncSelectedAcademicYear = () => {
+      setSelectedAcademicYearId(window.localStorage.getItem('ams-selected-academic-year') ?? window.localStorage.getItem('ams-active-academic-year') ?? '');
+    };
+
+    syncSelectedAcademicYear();
+    window.addEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
+    return () => {
+      window.removeEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
+    };
+  }, []);
+
+  useEffect(() => {
     async function loadSubmissions() {
       setIsLoading(true);
       try {
-        const items = await getSubmissions();
-        setSubmissions(items);
+        const yearId = selectedAcademicYearId || window.localStorage.getItem('ams-selected-academic-year') || window.localStorage.getItem('ams-active-academic-year') || '';
+        const academicYears = await getAcademicYears();
+        const activeYearId = academicYears.find((year) => year.isActive)?.id ?? '';
+        const isViewingArchivedYear = Boolean(yearId && yearId !== activeYearId);
+        const [items, classCourses] = await Promise.all([
+          getSubmissions(true),
+          getClassCourses(true),
+        ]);
+        const visibleClassIds = isViewingArchivedYear && yearId
+          ? new Set(classCourses.filter((classCourse) => classCourse.academicYearId === yearId).map((classCourse) => classCourse.id))
+          : new Set(classCourses.map((classCourse) => classCourse.id));
+
+        const visibleItems = isViewingArchivedYear
+          ? items.filter((submission) => visibleClassIds.has(submission.classCourseId))
+          : items;
+        setSubmissions(visibleItems);
       } catch (error) {
         console.error('Failed to load submissions', error);
       } finally {
@@ -55,7 +82,7 @@ export function AdminSubmissionsPage() {
     }
 
     void loadSubmissions();
-  }, []);
+  }, [selectedAcademicYearId]);
 
   const totals = useMemo(() => {
     const total = submissions.length;

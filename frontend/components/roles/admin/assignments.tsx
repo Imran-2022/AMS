@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/shared/layout';
 import { AmsPagination, PageLoader } from '../../ui';
-import { getAssignments, type AssignmentDto } from '@/lib/api';
+import { getAcademicYears, getAssignments, getClassCourses, type AssignmentDto } from '@/lib/api';
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 
@@ -16,6 +16,7 @@ export function AdminAssignmentsPage() {
   const [search, setSearch] = useState('');
   const [assignments, setAssignments] = useState<AssignmentDto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedAcademicYearId, setSelectedAcademicYearId] = useState('');
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   const ALL_CLASSES = useMemo(
@@ -78,11 +79,38 @@ export function AdminAssignmentsPage() {
     return { total, published, drafts, dueSoon };
   }, [assignments]);
 
+  useEffect(() => {
+    const syncSelectedAcademicYear = () => {
+      setSelectedAcademicYearId(window.localStorage.getItem('ams-selected-academic-year') ?? window.localStorage.getItem('ams-active-academic-year') ?? '');
+    };
+
+    syncSelectedAcademicYear();
+    window.addEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
+    return () => {
+      window.removeEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
+    };
+  }, []);
+
   const loadAssignments = async () => {
     setIsLoading(true);
     try {
-      const items = await getAssignments();
-      setAssignments(items.filter((assignment) => assignment.status === 'Published'));
+      const yearId = selectedAcademicYearId || window.localStorage.getItem('ams-selected-academic-year') || window.localStorage.getItem('ams-active-academic-year') || '';
+      const academicYears = await getAcademicYears();
+      const activeYearId = academicYears.find((year) => year.isActive)?.id ?? '';
+      const isViewingArchivedYear = Boolean(yearId && yearId !== activeYearId);
+      const [items, classCourses] = await Promise.all([
+        getAssignments(true),
+        getClassCourses(true),
+      ]);
+      const visibleClassIds = isViewingArchivedYear && yearId
+        ? new Set(classCourses.filter((classCourse) => classCourse.academicYearId === yearId).map((classCourse) => classCourse.id))
+        : new Set(classCourses.map((classCourse) => classCourse.id));
+
+      const visibleItems = isViewingArchivedYear
+        ? items.filter((assignment) => visibleClassIds.has(assignment.classCourseId))
+        : items;
+
+      setAssignments(visibleItems.filter((assignment) => assignment.status === 'Published'));
     } catch (error) {
       console.error('Failed to load assignments', error);
     } finally {
@@ -92,15 +120,7 @@ export function AdminAssignmentsPage() {
 
   useEffect(() => {
     void loadAssignments();
-  }, []);
-
-  // Listen for academic year changes and reload data
-  useEffect(() => {
-    window.addEventListener('ams-academic-year-updated', loadAssignments);
-    return () => {
-      window.removeEventListener('ams-academic-year-updated', loadAssignments);
-    };
-  }, []);
+  }, [selectedAcademicYearId]);
 
 
   const rowCount = filteredAssignments.length;

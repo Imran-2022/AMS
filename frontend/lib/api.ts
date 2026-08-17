@@ -263,6 +263,7 @@ export type SubmissionDto = {
   studentInitials: string;
   avatarUrl?: string;
   assignmentTitle: string;
+  classCourseId: string;
   classCourseName: string;
   classCourseSection: string;
   groupName?: string;
@@ -515,16 +516,26 @@ export async function changePassword(currentPassword: string, newPassword: strin
   });
 }
 
-export async function getAssignments() {
-  return request<AssignmentDto[]>(`/api/assignments`);
+export async function getAssignments(includeAllAcademicYears = false) {
+  const params = new URLSearchParams();
+  if (includeAllAcademicYears) {
+    params.append('includeAllAcademicYears', 'true');
+  }
+  const query = params.toString();
+  return request<AssignmentDto[]>(`/api/assignments${query ? `?${query}` : ''}`);
 }
 
 export async function getAssignment(id: string) {
   return request<AssignmentDto>(`/api/assignments/${id}`);
 }
 
-export async function getSubmissions() {
-  return request<SubmissionDto[]>(`/api/submissions`);
+export async function getSubmissions(includeAllAcademicYears = false) {
+  const params = new URLSearchParams();
+  if (includeAllAcademicYears) {
+    params.append('includeAllAcademicYears', 'true');
+  }
+  const query = params.toString();
+  return request<SubmissionDto[]>(`/api/submissions${query ? `?${query}` : ''}`);
 }
 
 export async function getSubmission(id: string) {

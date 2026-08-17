@@ -49,7 +49,7 @@ public class SubmissionAppService : ISubmissionAppService
         _academicYearRepository = academicYearRepository;
     }
 
-    public async Task<IReadOnlyList<SubmissionDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<SubmissionDto>> GetAllAsync(Guid currentUserId, string currentUserRole, bool includeAllAcademicYears = false, CancellationToken cancellationToken = default)
     {
         var principal = BuildPrincipal();
         IReadOnlyList<Submission> submissions;
@@ -59,7 +59,7 @@ public class SubmissionAppService : ISubmissionAppService
             var allSubmissions = await _submissionRepository.GetAllAsync(cancellationToken);
             var activeYear = await _academicYearRepository.GetActiveAsync(cancellationToken);
 
-            if (activeYear is null)
+            if (includeAllAcademicYears || activeYear is null)
             {
                 submissions = allSubmissions;
             }
@@ -312,6 +312,7 @@ public class SubmissionAppService : ISubmissionAppService
             AvatarUrl = student.AvatarUrl,
             AssignmentTitle = assignment.Title,
             MaxMarks = assignment.MaxMarks,
+            ClassCourseId = classCourse.Id,
             ClassCourseName = classCourse.Name,
             ClassCourseSection = classCourse.Section,
             GroupName = group?.Name,

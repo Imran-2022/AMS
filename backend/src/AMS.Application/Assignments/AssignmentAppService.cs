@@ -46,7 +46,7 @@ public class AssignmentAppService : IAssignmentAppService
         _academicYearRepository = academicYearRepository;
     }
 
-    public async Task<IReadOnlyList<AssignmentDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<AssignmentDto>> GetAllAsync(Guid currentUserId, string currentUserRole, bool includeAllAcademicYears = false, CancellationToken cancellationToken = default)
     {
         var allAssignments = await _assignmentRepository.GetAllAsync(cancellationToken);
         var activeYear = await _academicYearRepository.GetActiveAsync(cancellationToken);
@@ -60,7 +60,7 @@ public class AssignmentAppService : IAssignmentAppService
             var classCourse = await _classCourseRepository.GetByIdAsync(subject.ClassCourseId, cancellationToken);
             if (classCourse is null) continue;
 
-            if (activeYear is null || classCourse.AcademicYearId == activeYear.Id)
+            if (includeAllAcademicYears || activeYear is null || classCourse.AcademicYearId == activeYear.Id)
             {
                 visibleAssignments.Add(assignment);
             }

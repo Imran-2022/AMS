@@ -24,11 +24,11 @@ public class AssignmentsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<AssignmentDto>>> GetAll()
+    public async Task<ActionResult<IReadOnlyList<AssignmentDto>>> GetAll([FromQuery] bool includeAllAcademicYears = false)
     {
         var currentUserId = _currentUser.UserId;
         var currentUserRole = _currentUser.Role;
-        var assignments = await _assignmentAppService.GetAllAsync(currentUserId, currentUserRole);
+        var assignments = await _assignmentAppService.GetAllAsync(currentUserId, currentUserRole, includeAllAcademicYears);
         return Ok(assignments);
     }
 

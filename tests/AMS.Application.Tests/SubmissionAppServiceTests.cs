@@ -18,7 +18,7 @@ public class SubmissionAppServiceTests
         var studentId = Guid.NewGuid();
         var otherStudentId = Guid.NewGuid();
 
-        var submission = new Submission(submissionId, Guid.NewGuid(), studentId, "content", DateTime.UtcNow, false, SubmissionStatus.Submitted);
+        var submission = new Submission(submissionId, Guid.NewGuid(), studentId, "content", DateTime.UtcNow, false, SubmissionStatus.Submitted, null, 0);
 
         var submissionRepo = new Mock<ISubmissionRepository>(MockBehavior.Strict);
         submissionRepo.Setup(r => r.GetByIdAsync(submissionId, It.IsAny<CancellationToken>()))
@@ -62,7 +62,7 @@ public class SubmissionAppServiceTests
         var assignmentId = Guid.NewGuid();
         var classCourseId = Guid.NewGuid();
 
-        var submission = new Submission(submissionId, assignmentId, studentId, "content", DateTime.UtcNow, false, SubmissionStatus.Submitted);
+        var submission = new Submission(submissionId, assignmentId, studentId, "content", DateTime.UtcNow, false, SubmissionStatus.Submitted, null, 0);
         var assignment = new Assignment(assignmentId, "title", "desc", Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.AddDays(7), 100, AssignmentStatus.Published, true, true, DateTime.UtcNow);
         var student = new User(studentId, "Student Name", "student@example.com", "hash", UserRole.Student);
         var subject = new Subject(Guid.NewGuid(), "Math", "MATH101", classCourseId);
