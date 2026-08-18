@@ -35,6 +35,7 @@ public static class AdminUserSeeder
                 passwordHash: BCrypt.Net.BCrypt.HashPassword("Admin@123"),
                 role: UserRole.Admin,
                 phoneNumber: "+1234567890",
+                gender: "Male",
                 isActive: true,
                 createdAt: DateTime.UtcNow
             );
