@@ -493,8 +493,21 @@ export function TeacherAssignmentsPage() {
 
   const handleClassNameChange = (className: string) => {
     setSelectedClassName(className);
-    const firstSection = classes.find((cls) => cls.name === className)?.section ?? '';
+    const selected = classes.find((cls) => cls.name === className);
+    const firstSection = selected?.section ?? '';
     setSelectedSection(firstSection);
+
+    if (selected) {
+      const classSubjects = subjects.filter((subject) => subject.classCourseId === selected.id);
+      setForm((current) => ({
+        ...current,
+        classCourseId: selected.id,
+        classCourseName: selected.name,
+        classCourseSection: selected.section,
+        subjectId: classSubjects[0]?.id ?? '',
+        subjectName: classSubjects[0]?.name ?? '',
+      }));
+    }
   };
 
   const handleSectionChange = (section: string) => {
