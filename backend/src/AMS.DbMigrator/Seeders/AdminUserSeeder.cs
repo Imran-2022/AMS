@@ -23,18 +23,18 @@ public static class AdminUserSeeder
 
     private static async Task EnsureAdminUserAsync(IUserRepository userRepo, System.Threading.CancellationToken ct)
     {
-        var email = "admin@example.com";
+        var email = "admin@gmail.com";
         var existing = await userRepo.GetByEmailAsync(email, ct);
 
         if (existing is null)
         {
             var adminUser = new User(
                 id: Guid.NewGuid(),
-                fullName: "Admin User",
+                fullName: "System Admin",
                 email: email,
-                passwordHash: BCrypt.Net.BCrypt.HashPassword("Admin@123"),
+                passwordHash: BCrypt.Net.BCrypt.HashPassword("admin@gmail.com"),
                 role: UserRole.Admin,
-                phoneNumber: "+1234567890",
+                phoneNumber: "01771207845",
                 gender: "Male",
                 isActive: true,
                 createdAt: DateTime.UtcNow
