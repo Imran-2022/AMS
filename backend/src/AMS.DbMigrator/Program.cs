@@ -40,7 +40,10 @@ using var scope = host.Services.CreateScope();
 var dbContext = scope.ServiceProvider.GetRequiredService<AmsDbContext>();
 await dbContext.Database.MigrateAsync();
 
-// await AMSSeeder.SeedAsync(scope.ServiceProvider);
+// Seed class definitions
+await ClassDefinitionSeeder.SeedAsync(scope.ServiceProvider);
+// Seed academic years
+await AcademicYearSeeder.SeedAsync(scope.ServiceProvider);
 // Seed only admin user
 await AdminUserSeeder.SeedAsync(scope.ServiceProvider);
 
