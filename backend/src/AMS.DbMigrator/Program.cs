@@ -44,6 +44,7 @@ await dbContext.Database.MigrateAsync();
 
 // Seed class definitions
 await ClassDefinitionSeeder.SeedAsync(scope.ServiceProvider);
+await GroupSeeder.SeedAsync(scope.ServiceProvider);
 // Seed academic years
 await AcademicYearSeeder.SeedAsync(scope.ServiceProvider);
 // Seed only admin user
