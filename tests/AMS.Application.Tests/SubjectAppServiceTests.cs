@@ -18,15 +18,42 @@ public class SubjectAppServiceTests
         };
 
         var subjectRepo = new Mock<ISubjectRepository>(MockBehavior.Strict);
+        subjectRepo.Setup(r => r.GetByAcademicYearAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(subjects);
         subjectRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(subjects);
         var assignmentRepo = new Mock<ITeacherSubjectAssignmentRepository>(MockBehavior.Strict);
 
-        var service = new SubjectAppService(subjectRepo.Object, assignmentRepo.Object);
+        var academicYearRepo = new Mock<IAcademicYearRepository>(MockBehavior.Strict);
+        academicYearRepo.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new AcademicYear(Guid.NewGuid(), "2026-2027", DateTime.UtcNow, DateTime.UtcNow.AddYears(1), true));
+
+        var service = new SubjectAppService(subjectRepo.Object, assignmentRepo.Object, academicYearRepo.Object);
 
         var result = await service.GetAllAsync(Guid.NewGuid(), nameof(UserRole.Admin));
 
         Assert.Single(result);
         Assert.Equal(subjects[0].Name, result[0].Name);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_AsAdmin_WithIncludeAllAcademicYears_DoesNotRequireActiveYear()
+    {
+        var subjects = new List<Subject>
+        {
+            new Subject(Guid.NewGuid(), "Mathematics", "MATH101", Guid.NewGuid()),
+            new Subject(Guid.NewGuid(), "History", "HIST101", Guid.NewGuid())
+        };
+
+        var subjectRepo = new Mock<ISubjectRepository>(MockBehavior.Strict);
+        subjectRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(subjects);
+
+        var assignmentRepo = new Mock<ITeacherSubjectAssignmentRepository>(MockBehavior.Strict);
+        var academicYearRepo = new Mock<IAcademicYearRepository>(MockBehavior.Strict);
+        academicYearRepo.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>())).ReturnsAsync((AcademicYear?)null);
+
+        var service = new SubjectAppService(subjectRepo.Object, assignmentRepo.Object, academicYearRepo.Object);
+
+        var result = await service.GetAllAsync(Guid.NewGuid(), nameof(UserRole.Admin), includeAllAcademicYears: true);
+
+        Assert.Equal(2, result.Count);
     }
 
     [Fact]
@@ -41,13 +68,17 @@ public class SubjectAppServiceTests
         };
 
         var subjectRepo = new Mock<ISubjectRepository>(MockBehavior.Strict);
+        subjectRepo.Setup(r => r.GetByAcademicYearAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(subjects);
         subjectRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(subjects);
 
         var assignmentRepo = new Mock<ITeacherSubjectAssignmentRepository>(MockBehavior.Strict);
         assignmentRepo.Setup(r => r.GetByTeacherAsync(teacherId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { new TeacherSubjectAssignment(teacherId, subjectId) });
 
-        var service = new SubjectAppService(subjectRepo.Object, assignmentRepo.Object);
+        var academicYearRepo = new Mock<IAcademicYearRepository>(MockBehavior.Strict);
+        academicYearRepo.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new AcademicYear(Guid.NewGuid(), "2026-2027", DateTime.UtcNow, DateTime.UtcNow.AddYears(1), true));
+
+        var service = new SubjectAppService(subjectRepo.Object, assignmentRepo.Object, academicYearRepo.Object);
 
         var result = await service.GetAllAsync(teacherId, nameof(UserRole.Teacher));
 
@@ -69,7 +100,10 @@ public class SubjectAppServiceTests
         assignmentRepo.Setup(r => r.GetByTeacherAsync(teacherId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<TeacherSubjectAssignment>());
 
-        var service = new SubjectAppService(subjectRepo.Object, assignmentRepo.Object);
+        var academicYearRepo = new Mock<IAcademicYearRepository>(MockBehavior.Strict);
+        academicYearRepo.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>())).ReturnsAsync((AcademicYear?)null);
+
+        var service = new SubjectAppService(subjectRepo.Object, assignmentRepo.Object, academicYearRepo.Object);
 
         await Assert.ThrowsAsync<ForbiddenException>(() => service.GetByIdAsync(subjectId, teacherId, nameof(UserRole.Teacher)));
     }
@@ -79,7 +113,10 @@ public class SubjectAppServiceTests
     {
         var subjectRepo = new Mock<ISubjectRepository>(MockBehavior.Strict);
         var assignmentRepo = new Mock<ITeacherSubjectAssignmentRepository>(MockBehavior.Strict);
-        var service = new SubjectAppService(subjectRepo.Object, assignmentRepo.Object);
+        var academicYearRepo = new Mock<IAcademicYearRepository>(MockBehavior.Strict);
+        academicYearRepo.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>())).ReturnsAsync((AcademicYear?)null);
+
+        var service = new SubjectAppService(subjectRepo.Object, assignmentRepo.Object, academicYearRepo.Object);
 
         await Assert.ThrowsAsync<ForbiddenException>(() => service.CreateAsync(new AMS.Application.Contracts.Dtos.CreateSubjectDto
         {

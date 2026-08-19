@@ -119,7 +119,7 @@ public static class UserSeeder
             var id = Guid.NewGuid();
             var studentProfile = new StudentProfile(
                 id,
-                studentId: "STU-2027-0001",
+                studentId: "STU-0001",
                 guardianName: "Karim Ahmed",
                 guardianEmail: "guardian.karim@gmail.com",
                 parentMobile: "+8801800000001",
@@ -144,7 +144,7 @@ public static class UserSeeder
             var id = Guid.NewGuid();
             var studentProfile = new StudentProfile(
                 id,
-                studentId: "STU-2027-0002",
+                studentId: "STU-0002",
                 guardianName: "Salma Begum",
                 guardianEmail: "guardian.salma@gmail.com",
                 parentMobile: "+8801800000002",
@@ -169,7 +169,7 @@ public static class UserSeeder
             var id = Guid.NewGuid();
             var studentProfile = new StudentProfile(
                 id,
-                studentId: "STU-2027-0003",
+                studentId: "STU-0003",
                 guardianName: "Jamal Hossain",
                 guardianEmail: "guardian.jamal@gmail.com",
                 parentMobile: "+8801800000003",

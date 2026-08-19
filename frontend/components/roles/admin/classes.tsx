@@ -15,6 +15,7 @@ import {
   getClassDefinitions,
   getGroupsForClass,
   getAcademicYears,
+  getSelectedAcademicYearId,
 } from '@/lib/api';
 import { getEnrollments } from '@/lib/api/enrollments';
 import { getTeacherAssignments } from '@/lib/api/teacherAssignments';
@@ -62,6 +63,12 @@ export function AdminClassesPage() {
   const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
   const [pageIndex, setPageIndex] = useState(0);
+  const [selectedAcademicYearId, setSelectedAcademicYearId] = useState<string>('');
+  const [isLoadingData, setIsLoadingData] = useState(true);
+
+  // Compute whether we're viewing an archived year
+  const activeAcademicYear = academicYears.find((y) => y.isActive);
+  const isViewingArchivedYear = Boolean(selectedAcademicYearId && selectedAcademicYearId !== activeAcademicYear?.id);
 
   useEffect(() => {
     void loadData();
@@ -69,20 +76,53 @@ export function AdminClassesPage() {
     void loadAcademicYears();
   }, []);
 
+  // Listen for academic year changes and reload data
+  useEffect(() => {
+    const handleAcademicYearChanged = () => {
+      // Sync the selected year from AppShell before loading
+      const updatedYearId = window.localStorage.getItem('ams-selected-academic-year') ?? 
+                            window.localStorage.getItem('ams-active-academic-year') ?? '';
+      if (updatedYearId) {
+        setSelectedAcademicYearId(updatedYearId);
+      }
+      void loadAcademicYears();
+    };
+
+    window.addEventListener('ams-academic-year-updated', handleAcademicYearChanged);
+    return () => {
+      window.removeEventListener('ams-academic-year-updated', handleAcademicYearChanged);
+    };
+  }, []);
+
   async function loadAcademicYears() {
     try {
       const years = await getAcademicYears();
       setAcademicYears(years);
-      
-      // Set active year as default
+
       const activeYear = years.find(y => y.isActive);
+      const storedYearId = getSelectedAcademicYearId();
+      const preferredYearId = storedYearId && years.some((year) => year.id === storedYearId)
+        ? storedYearId
+        : activeYear?.id ?? years[0]?.id ?? '';
+
       if (activeYear && !classForm.year) {
         setClassForm(c => ({ ...c, year: activeYear.id }));
+      }
+
+      if (preferredYearId) {
+        setSelectedAcademicYearId(preferredYearId);
       }
     } catch (err) {
       console.error('Failed to load academic years', err);
     }
   }
+
+  // Load data when selected academic year changes
+  useEffect(() => {
+    if (selectedAcademicYearId) {
+      void loadData();
+    }
+  }, [selectedAcademicYearId]);
 
   useEffect(() => {
     async function loadGroups() {
@@ -191,16 +231,31 @@ export function AdminClassesPage() {
   async function loadData() {
     try {
       setError(null);
+      setIsLoadingData(true);
+      setClasses([]);
+      setSubjects([]);
+      setAssignments([]);
+
+      const yearToLoad = selectedAcademicYearId || activeAcademicYear?.id || '';
+      const isViewingArchivedYear = Boolean(yearToLoad && activeAcademicYear && yearToLoad !== activeAcademicYear.id);
+      const includeAllYears = isViewingArchivedYear;
+
       const [apiClasses, apiSubjects, apiAssignments, apiEnrollments] = await Promise.all([
-        getClassCourses(),
-        getSubjects(),
-        getTeacherAssignments(),
-        getEnrollments(),
+        getClassCourses(includeAllYears),
+        getSubjects(includeAllYears),
+        getTeacherAssignments(includeAllYears),
+        getEnrollments(includeAllYears),
       ]);
 
-      setClasses(apiClasses);
-      setSubjects(apiSubjects);
-      setAssignments(apiAssignments);
+      const yearToFilterBy = yearToLoad || activeAcademicYear?.id || '';
+      let filteredClasses = apiClasses;
+      if (yearToFilterBy) {
+        filteredClasses = apiClasses.filter((c) => c.academicYearId === yearToFilterBy);
+      }
+
+      setClasses(filteredClasses);
+      setSubjects(includeAllYears ? apiSubjects.filter((subject) => filteredClasses.some((cls) => cls.id === subject.classCourseId)) : apiSubjects);
+      setAssignments(includeAllYears ? apiAssignments.filter((assignment) => filteredClasses.some((cls) => cls.id === assignment.classCourseId)) : apiAssignments);
 
       const enrollmentCounts = apiEnrollments.reduce<Record<string, number>>((acc: Record<string, number>, e: any) => {
         acc[e.classCourseId] = (acc[e.classCourseId] ?? 0) + 1;
@@ -210,6 +265,8 @@ export function AdminClassesPage() {
     } catch (err) {
       console.error(err);
       setError('Unable to load class data. Please refresh the page.');
+    } finally {
+      setIsLoadingData(false);
     }
   }
 
@@ -506,6 +563,16 @@ export function AdminClassesPage() {
   );
 
   const summaryMetrics = useMemo(() => {
+    if (isLoadingData) {
+      return {
+        totalClasses: 0,
+        totalSections: 0,
+        totalGroups: 0,
+        totalStudents: 0,
+        classesMissingTeacher: 0,
+      };
+    }
+
     const classIds = new Set(classes.map((cls) => cls.id));
     const totalClasses = classes.length;
     const totalSections = classes.filter((cls) => cls.section).length;
@@ -523,7 +590,7 @@ export function AdminClassesPage() {
       totalStudents,
       classesMissingTeacher: missingTeacherClassIds.size,
     };
-  }, [classes, classStudentCountsState, subjects, assignmentMap]);
+  }, [classes, classStudentCountsState, subjects, assignmentMap, isLoadingData]);
 
   return (
     <AppShell role="Admin" breadcrumb="Admin / Classes & subjects">
@@ -534,27 +601,38 @@ export function AdminClassesPage() {
             <h1 className="text-3xl font-extrabold text-slate-800 mt-0.5">Classes &amp; subjects</h1>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Button
-              type="button"
-              onClick={() => openModal('subject')}
-              className="px-4 py-2.5 flex items-center gap-2"
-              variant="secondary"
-            >
-              + Add subject
-            </Button>
-            <Button
-              type="button"
-              onClick={() => openModal('class')}
-              className="px-4 py-2.5 flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              Add class
-            </Button>
+            {!isViewingArchivedYear && (
+              <>
+                <Button
+                  type="button"
+                  onClick={() => openModal('subject')}
+                  className="px-4 py-2.5 flex items-center gap-2"
+                  variant="secondary"
+                >
+                  + Add subject
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => openModal('class')}
+                  className="px-4 py-2.5 flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  Add class
+                </Button>
+              </>
+            )}
           </div>
         </div>
+
+        {isViewingArchivedYear && (
+          <div className="rounded border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <p className="font-semibold">📋 Viewing archived academic year</p>
+            <p className="mt-1 text-amber-700">You are viewing a previous academic year in read-only mode. Switch to the active year to make changes.</p>
+          </div>
+        )}
 
         {error ? (
           <div className="rounded border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>
@@ -689,58 +767,60 @@ export function AdminClassesPage() {
                       </span>
                     </div>
                   </div>
-                  <div className="relative inline-flex">
-                    <button
-                      type="button" data-action-button={`class-${cls.id}`}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setActionMenuFor(actionMenuFor === `class-${cls.id}` ? null : `class-${cls.id}`);
-                      }}
-                      className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md p-0 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-                    >
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-                    </button>
-                    {actionMenuFor === `class-${cls.id}` ? (
-                      <div
-                        data-action-menu={`class-${cls.id}`}
-                        onClick={(ev) => ev.stopPropagation()}
-                        className="absolute right-0 top-full z-20 mt-2 w-40 overflow-hidden rounded border border-slate-200 bg-white shadow-xl"
+                  {!isViewingArchivedYear && (
+                    <div className="relative inline-flex">
+                      <button
+                        type="button" data-action-button={`class-${cls.id}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setActionMenuFor(actionMenuFor === `class-${cls.id}` ? null : `class-${cls.id}`);
+                        }}
+                        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md p-0 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
                       >
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => openModal('subject', cls.id)}
-                          className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                      </button>
+                      {actionMenuFor === `class-${cls.id}` ? (
+                        <div
+                          data-action-menu={`class-${cls.id}`}
+                          onClick={(ev) => ev.stopPropagation()}
+                          className="absolute right-0 top-full z-20 mt-2 w-40 overflow-hidden rounded border border-slate-200 bg-white shadow-xl"
                         >
-                          Add subjects
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => openModal('view-subjects', cls.id)}
-                          className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
-                        >
-                          View subjects
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => openEditClass(cls)}
-                          className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
-                        >
-                          Edit class
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => handleDelete('class', cls.id, `${cls.name} — ${cls.section}`)}
-                          className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50"
-                        >
-                          Delete class
-                        </Button>
-                      </div>
-                    ) : null}
-                  </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => openModal('subject', cls.id)}
+                            className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
+                          >
+                            Add subjects
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => openModal('view-subjects', cls.id)}
+                            className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
+                          >
+                            View subjects
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => openEditClass(cls)}
+                            className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
+                          >
+                            Edit class
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => handleDelete('class', cls.id, `${cls.name} — ${cls.section}`)}
+                            className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50"
+                          >
+                            Delete class
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-100 text-sm text-slate-500">
                   <p><span className="font-bold text-slate-900">{classSubjectCounts[cls.id] ?? 0}</span> subjects</p>

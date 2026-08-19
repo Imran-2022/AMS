@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AmsDeleteComfiramtionModal, AmsPagination, Button } from '@/shared/ui';
+import { AmsDeleteComfiramtionModal, AmsPagination, Button, PageLoader } from '@/shared/ui';
 import { AddTeacherModal, type AddTeacherFormData } from '@/components/roles/admin/shared';
 import { AppShell } from '@/shared/layout';
-import { API_BASE_URL, createUser, deleteUser, getUsers, updateUser } from '@/lib/api';
+import { API_BASE_URL, createUser, deleteUser, getAcademicYears, getClassCourses, getSelectedAcademicYearId, getUsers, updateUser } from '@/lib/api';
 import { getTeacherAssignments, type TeacherSubjectAssignmentDto } from '@/lib/api/teacherAssignments';
 import { X } from 'lucide-react';
 
@@ -105,19 +105,79 @@ export function AdminTeachersPage() {
   const [isTeacherModalOpen, setIsTeacherModalOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<TeacherRow | null>(null);
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherRow | null>(null);
+  const [selectedAcademicYearId, setSelectedAcademicYearId] = useState('');
+  const [academicYears, setAcademicYears] = useState<{ id: string; name: string; isActive: boolean }[]>([]);
   const [teacherModalSubmitting, setTeacherModalSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [pageSize, setPageSize] = useState(10);
   const [pageIndex, setPageIndex] = useState(0);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 
+  // Compute whether we're viewing an archived year
+  const activeAcademicYear = academicYears.find((y) => y.isActive);
+  const isViewingArchivedYear = Boolean(selectedAcademicYearId && selectedAcademicYearId !== activeAcademicYear?.id);
+
+  // Load academic years and initialize to active year
+  useEffect(() => {
+    async function loadAcademicYears() {
+      try {
+        const years = await getAcademicYears();
+        setAcademicYears(years);
+
+        const activeYear = years.find(y => y.isActive);
+        const storedYearId = getSelectedAcademicYearId();
+        const preferredYearId = storedYearId && years.some((year) => year.id === storedYearId)
+          ? storedYearId
+          : activeYear?.id ?? years[0]?.id ?? '';
+
+        if (preferredYearId) {
+          setSelectedAcademicYearId(preferredYearId);
+        }
+      } catch (err) {
+        console.error('Failed to load academic years', err);
+      }
+    }
+    void loadAcademicYears();
+  }, []);
+
+  // Listen for academic year changes from AppShell
+  useEffect(() => {
+    const syncSelectedAcademicYear = () => {
+      setSelectedAcademicYearId(getSelectedAcademicYearId());
+    };
+
+    window.addEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
+    return () => {
+      window.removeEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
+    };
+  }, []);
+
   useEffect(() => {
     void loadTeachers();
-  }, []);
+  }, [selectedAcademicYearId]);
 
   async function loadTeachers() {
     try {
-      const [apiUsers, apiAssignments] = await Promise.all([getUsers(), getTeacherAssignments()]);
+      setIsLoading(true);
+      const academicYears = await getAcademicYears();
+      const activeYearId = academicYears.find((year) => year.isActive)?.id ?? '';
+      const isViewingArchivedYear = Boolean(selectedAcademicYearId && selectedAcademicYearId !== activeYearId);
+
+      const [apiUsers, apiAssignments, apiClasses] = await Promise.all([
+        getUsers(),
+        getTeacherAssignments(isViewingArchivedYear),
+        getClassCourses(isViewingArchivedYear),
+      ]);
+
+      const visibleClassIds = isViewingArchivedYear && selectedAcademicYearId
+        ? new Set(apiClasses.filter((classCourse) => classCourse.academicYearId === selectedAcademicYearId).map((classCourse) => classCourse.id))
+        : new Set(apiClasses.map((classCourse) => classCourse.id));
+
+      const visibleAssignments = isViewingArchivedYear
+        ? apiAssignments.filter((assignment) => visibleClassIds.has(assignment.classCourseId))
+        : apiAssignments;
+
       const teacherUsers = apiUsers
         .filter((user) => user.role === 'Teacher')
         .sort((a, b) => {
@@ -125,10 +185,10 @@ export function AdminTeachersPage() {
           const bTime = new Date((b.updatedAt ?? b.createdAt ?? b.joiningDate ?? '1970-01-01') as string).getTime();
           return bTime - aTime;
         });
-      setTeacherAssignments(apiAssignments);
+      setTeacherAssignments(visibleAssignments);
       const teacherRows = teacherUsers.map((user) => {
         const classesForTeacher = new Set(
-          apiAssignments
+          visibleAssignments
             .filter((assignment) => assignment.teacherId === user.id)
             .map((assignment) => assignment.classCourseId)
         );
@@ -137,7 +197,7 @@ export function AdminTeachersPage() {
           ...mapUserToTeacherRow(user),
           classesCount: classesForTeacher.size,
           subjects: Array.from(new Set(
-            apiAssignments
+            visibleAssignments
               .filter((assignment) => assignment.teacherId === user.id)
               .map((assignment) => assignment.subjectName)
           )),
@@ -148,6 +208,8 @@ export function AdminTeachersPage() {
     } catch (err) {
       console.error(err);
       setMode('error');
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -323,11 +385,19 @@ export function AdminTeachersPage() {
             <p className="text-xs font-bold text-brand-600">ADMINISTRATION</p>
             <h1 className="text-3xl font-extrabold text-slate-800 mt-0.5">Teachers</h1>
           </div>
-          <Button onClick={openNewTeacher} className="flex items-center gap-2">
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add teacher
-          </Button>
+          {!isViewingArchivedYear && (
+            <Button onClick={openNewTeacher} className="flex items-center gap-2">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add teacher
+            </Button>
+          )}
         </div>
+
+        {isViewingArchivedYear && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+            ℹ️ You are viewing archived data. Editing and adding is disabled in archive mode.
+          </div>
+        )}
 
         <div className={`hidden ${mode === 'error' ? 'flex' : ''} bg-rose-50 border border-rose-200 rounded-2xl px-5 py-4 items-center justify-between`} id="errorBanner">
           <div className="flex items-center gap-3">
@@ -385,7 +455,7 @@ export function AdminTeachersPage() {
           </div>
         </div>
 
-        {mode === 'data' && (
+        {mode === 'data' && teachers.length > 0 && (
           <>
             <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-2">
@@ -421,7 +491,7 @@ export function AdminTeachersPage() {
                   <tbody className="divide-y divide-slate-50">
                     {pagedRows.map((t) => (
                       <tr key={t.id} className="hover:bg-slate-50 transition-colors duration-150 cursor-pointer" onClick={() => setSelectedTeacher(t)}>
-                        <td className="px-2 py-3.5">
+                        <td className="px-2 py-3.5 align-middle">
                           <span className="font-semibold text-slate-700">{t.name}</span>
                         </td>
                         <td className="px-2 py-3.5 text-slate-500">{t.email}</td>
@@ -451,41 +521,43 @@ export function AdminTeachersPage() {
                             <span className="text-slate-500">Not assigned</span>
                           )}
                         </td>
-                        <td className="px-2 py-3.5 text-slate-500">
+                        <td className="px-2 py-3.5 text-slate-500 align-middle">
                           {t.classesCount > 0 ? `${t.classesCount} ${t.classesCount === 1 ? 'class' : 'classes'}` : 'Not assigned'}
                         </td>
-                        <td className="px-2 py-3.5">
+                        <td className="px-2 py-3.5 align-middle">
                           <span className={`badge ${t.tone === 'emerald' ? 'bg-emerald-50 text-emerald-600' : t.tone === 'slate' ? 'bg-slate-100 text-slate-700' : 'bg-amber-50 text-amber-600'}`}>
                             <span className={`badge-dot ${t.tone === 'emerald' ? 'bg-emerald-500' : t.tone === 'slate' ? 'bg-slate-500' : 'bg-amber-500'}`}></span>
                             {t.status}
                           </span>
                         </td>
-                        <td className="px-5 py-3.5 text-right">
-                          <div className="relative inline-flex">
-                            <button
-                              type="button" data-action-button={t.id}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openActionMenuForTeacher(t, e.currentTarget);
-                              }}
-                              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 cursor-pointer"
-                            >
-                              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-                            </button>
-                            {actionMenuFor === t.id && typeof document !== 'undefined' ? createPortal(
-                              <div
-                                data-action-menu={t.id}
-                                onClick={(ev) => ev.stopPropagation()}
-                                style={{ position: 'fixed', top: menuPosition.top, left: menuPosition.left, zIndex: 9999 }}
-                                className="w-44 overflow-hidden rounded border border-slate-200 bg-white shadow-xl"
+                        <td className="px-5 py-3.5 text-right align-middle">
+                          {!isViewingArchivedYear && (
+                            <div className="relative inline-flex">
+                              <button
+                                type="button" data-action-button={t.id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openActionMenuForTeacher(t, e.currentTarget);
+                                }}
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 cursor-pointer"
                               >
-                                <button type="button" onClick={() => { setSelectedTeacher(t); setActionMenuFor(null); }} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">View details</button>
-                                <button type="button" onClick={() => { handleEditTeacher(t); setActionMenuFor(null); }} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">Edit teacher</button>
-                                <button type="button" onClick={() => { openDeleteTeacher(t); }} className="w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50 cursor-pointer">Delete teacher</button>
-                              </div>,
-                              document.body
-                            ) : null}
-                          </div>
+                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                              </button>
+                              {actionMenuFor === t.id && typeof document !== 'undefined' ? createPortal(
+                                <div
+                                  data-action-menu={t.id}
+                                  onClick={(ev) => ev.stopPropagation()}
+                                  style={{ position: 'fixed', top: menuPosition.top, left: menuPosition.left, zIndex: 9999 }}
+                                  className="w-44 overflow-hidden rounded border border-slate-200 bg-white shadow-xl"
+                                >
+                                  <button type="button" onClick={() => { setSelectedTeacher(t); setActionMenuFor(null); }} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">View details</button>
+                                  <button type="button" onClick={() => { handleEditTeacher(t); setActionMenuFor(null); }} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">Edit teacher</button>
+                                  <button type="button" onClick={() => { openDeleteTeacher(t); }} className="w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50 cursor-pointer">Delete teacher</button>
+                                </div>,
+                                document.body
+                              ) : null}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))}

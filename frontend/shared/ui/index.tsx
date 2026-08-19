@@ -100,4 +100,21 @@ export function PageHeader({ eyebrow, title, action }: { eyebrow?: string; title
   );
 }
 
+export function PageLoader({ title, subtitle, className = '' }: { title: string; subtitle?: string; className?: string }) {
+  return (
+    <div className={`rounded-3xl border border-slate-200 bg-white p-8 sm:p-10 shadow-sm ${className}`}>
+      <div className="flex flex-col items-center justify-center gap-5 text-center">
+        <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 shadow-inner">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
+          <div className="absolute inset-2 rounded-xl border border-brand-100" />
+        </div>
+        <div className="space-y-2">
+          <p className="text-lg font-bold text-slate-800">{title}</p>
+          <p className="text-sm text-slate-500">{subtitle || 'Loading your data…'}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export { ToastContainer, emitToast } from './Toast';

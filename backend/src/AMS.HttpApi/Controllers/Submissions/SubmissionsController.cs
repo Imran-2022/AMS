@@ -22,11 +22,11 @@ public class SubmissionsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<SubmissionDto>>> GetAll()
+    public async Task<ActionResult<IReadOnlyList<SubmissionDto>>> GetAll([FromQuery] bool includeAllAcademicYears = false)
     {
         var currentUserId = _currentUser.UserId;
         var currentUserRole = _currentUser.Role;
-        var submissions = await _submissionAppService.GetAllAsync(currentUserId, currentUserRole);
+        var submissions = await _submissionAppService.GetAllAsync(currentUserId, currentUserRole, includeAllAcademicYears);
         return Ok(submissions);
     }
 

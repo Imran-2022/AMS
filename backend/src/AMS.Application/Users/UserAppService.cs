@@ -132,6 +132,13 @@ public class UserAppService : IUserAppService
             if (string.IsNullOrWhiteSpace(input.ParentMobile)) throw new ValidationException("Parent mobile is required for student.");
             if (!IsValidMobileNumber(input.ParentMobile)) throw new ValidationException("Parent mobile must be valid Bangladesh format: 11 digits starting with 01 (e.g., 01712345678) or +88 prefix (e.g., +8801712345678).");
             if (input.AdmissionDate == null) throw new ValidationException("Admission date is required for student.");
+
+            var existingUsers = await _userRepository.GetAllAsync(cancellationToken);
+            if (existingUsers.Any(u => u.Role == UserRole.Student && !string.IsNullOrWhiteSpace(u.StudentId) && string.Equals(u.StudentId.Trim(), input.StudentId.Trim(), StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new ValidationException($"Student ID '{input.StudentId}' already exists.");
+            }
+
             var admission = NormalizeDateTimeUtc(input.AdmissionDate) ?? DateTime.UtcNow;
             studentProfile = new StudentProfile(userId, input.StudentId, input.GuardianName, input.GuardianEmail ?? string.Empty, input.ParentMobile, admission);
         }
@@ -299,13 +306,21 @@ public class UserAppService : IUserAppService
             ?? throw new NotFoundException("Class/course not found.");
 
         // A ClassCourse already represents one specific class + section + group
-        // combination (see ClassCourse.GroupId), so every enrollment scoped to this
-        // classCourseId already belongs to exactly the class/group being asked about.
-        // No extra string-based filtering is needed (and the previous implementation's
-        // heuristic of matching student-id string shape was unreliable and ignored
-        // which group was actually selected).
+        // combination (see ClassCourse.GroupId), so serial numbers should start from
+        // the current class-year roster, not from the entire historical user table.
+        // We still keep a global duplicate guard because StudentId is unique in the DB.
         var enrollments = await _enrollmentRepository.GetByClassCourseAsync(classCourseId, cancellationToken);
-        var nextSerial = enrollments.Count + 1;
+        var baseSerial = enrollments.Count + 1;
+
+        var existingStudentIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var allUsers = await _userRepository.GetAllAsync(cancellationToken);
+        foreach (var user in allUsers)
+        {
+            if (user.Role == UserRole.Student && !string.IsNullOrWhiteSpace(user.StudentId))
+            {
+                existingStudentIds.Add(user.StudentId.Trim());
+            }
+        }
 
         var effectiveGroupId = groupId ?? classCourse.GroupId;
         if (effectiveGroupId.HasValue)
@@ -321,13 +336,22 @@ public class UserAppService : IUserAppService
                 ? char.ToUpperInvariant(trimmedGroupName[0]).ToString()
                 : "G";
 
-            // Format: "9-S-001" (class number - group initial - serial), serial is
-            // simply "how many students are already enrolled in this exact class-course + 1".
-            return $"{classNumber}-{groupInitial}-{nextSerial:D3}";
+            var groupedSerial = baseSerial;
+            while (true)
+            {
+                var candidate = $"{classNumber}-{groupInitial}-{groupedSerial:D3}";
+                if (!existingStudentIds.Contains(candidate)) return candidate;
+                groupedSerial++;
+            }
         }
 
-        // No group for this class (classes 1-8): "STU-0001" sequential format.
-        return $"STU-{nextSerial:D4}";
+        var sequentialSerial = baseSerial;
+        while (true)
+        {
+            var candidate = $"STU-{sequentialSerial:D4}";
+            if (!existingStudentIds.Contains(candidate)) return candidate;
+            sequentialSerial++;
+        }
     }
 
     private static string? ExtractClassNumber(string className)

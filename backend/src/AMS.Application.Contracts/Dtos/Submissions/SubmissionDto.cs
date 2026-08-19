@@ -20,6 +20,7 @@ public class SubmissionDto
     public string? AvatarUrl { get; set; }
     public string AssignmentTitle { get; set; } = string.Empty;
     public int MaxMarks { get; set; }
+    public Guid ClassCourseId { get; set; }
     public string ClassCourseName { get; set; } = string.Empty;
     public string ClassCourseSection { get; set; } = string.Empty;
     public string? GroupName { get; set; }

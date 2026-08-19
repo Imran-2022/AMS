@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AppShell } from '@/shared/layout';
-import { AmsDeleteComfiramtionModal, AmsPagination, Button, Card, Pill, Th, Td } from '@/shared/ui';
+import { AmsDeleteComfiramtionModal, AmsPagination, Button, Card, PageLoader, Pill, Th, Td } from '@/shared/ui';
 import { AddStudentModal, type AddStudentFormData } from '@/components/roles/admin/shared';
-import { API_BASE_URL } from '@/lib/api';
+import { API_BASE_URL, getAcademicYears, getEnrollments, getSelectedAcademicYearId } from '@/lib/api';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
-import { createUser, deleteUser, getClassCourses, getGroupsForClass, getUsers, updateUser } from '@/lib/api';
-import { createEnrollment, deleteEnrollment, getEnrollments } from '@/lib/api/enrollments';
+import { createUser, getClassCourses, getGroupsForClass, getUsers, updateUser } from '@/lib/api';
+import { createEnrollment, deleteEnrollment } from '@/lib/api/enrollments';
 import { MoreVertical, Plus, X } from 'lucide-react';
 import type { ClassCourseRecord, StudentFormData, StudentUserRecord } from './types';
 
@@ -64,12 +64,55 @@ export function AdminStudentsPage() {
   const [selectedStudent, setSelectedStudent] = useState<StudentUserRecord | null>(null);
   const [pendingDeleteStudent, setPendingDeleteStudent] = useState<StudentUserRecord | null>(null);
   const [studentModalSubmitting, setStudentModalSubmitting] = useState(false);
+  const [selectedAcademicYearId, setSelectedAcademicYearId] = useState('');
+  const [academicYears, setAcademicYears] = useState<{ id: string; name: string; isActive: boolean }[]>([]);
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(10);
   const [pageIndex, setPageIndex] = useState(0);
 
+  // Compute whether we're viewing an archived year
+  const activeAcademicYear = academicYears.find((y) => y.isActive);
+  const isViewingArchivedYear = Boolean(selectedAcademicYearId && selectedAcademicYearId !== activeAcademicYear?.id);
+
+  // Load academic years and initialize to active year
+  useEffect(() => {
+    async function loadAcademicYears() {
+      try {
+        const years = await getAcademicYears();
+        setAcademicYears(years);
+
+        const activeYear = years.find(y => y.isActive);
+        const storedYearId = getSelectedAcademicYearId();
+        const preferredYearId = storedYearId && years.some((year) => year.id === storedYearId)
+          ? storedYearId
+          : activeYear?.id ?? years[0]?.id ?? '';
+
+        if (preferredYearId) {
+          setSelectedAcademicYearId(preferredYearId);
+        }
+      } catch (err) {
+        console.error('Failed to load academic years', err);
+      }
+    }
+    void loadAcademicYears();
+  }, []);
+
+  // Listen for academic year changes from AppShell
+  useEffect(() => {
+    const syncSelectedAcademicYear = () => {
+      setSelectedAcademicYearId(getSelectedAcademicYearId());
+    };
+
+    window.addEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
+    return () => {
+      window.removeEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
+    };
+  }, []);
+
   useEffect(() => {
     void loadData();
-  }, []);
+  }, [selectedAcademicYearId]);
+
+
 
   useEffect(() => {
     if (classFilter === 'All classes') {
@@ -83,21 +126,112 @@ export function AdminStudentsPage() {
     }
   }, [search, statusFilter, classFilter, sectionFilter, pageSize]);
 
+  // Calculate all derived state before any early returns
+  const totalStudentsCount = students.length;
+  const activeStudentsCount = students.filter((student) => student.status === 'Active').length;
+  const inactiveStudentsCount = students.filter((student) => student.status === 'Inactive').length;
+
+  const classNames = useMemo(
+    () => Array.from(new Set(classCourses.map((cls) => cls.name))).sort(sortClassName),
+    [classCourses]
+  );
+  const sectionNames = useMemo(() => {
+    const sections = classFilter === 'All classes'
+      ? classCourses.map((cls) => cls.section)
+      : classCourses.filter((cls) => cls.name === classFilter).map((cls) => cls.section);
+
+    return Array.from(new Set(sections)).sort((a, b) => sortSectionValue(a) - sortSectionValue(b));
+  }, [classCourses, classFilter]);
+
+  const filteredStudents = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return students.filter((student) => {
+      const classCourseName = student.classCourseName ?? '';
+      const section = student.section ?? '';
+      const matchesStatus = statusFilter === 'All' || student.status === statusFilter;
+      const matchesSearch =
+        !query ||
+        student.fullName.toLowerCase().includes(query) ||
+        student.email.toLowerCase().includes(query) ||
+        student.parentMobile.toLowerCase().includes(query) ||
+        classCourseName.toLowerCase().includes(query) ||
+        section.toLowerCase().includes(query);
+      const matchesClass = classFilter === 'All classes' || classCourseName === classFilter;
+      const matchesSection = sectionFilter === 'All sections' || section === sectionFilter;
+      return matchesStatus && matchesSearch && matchesClass && matchesSection;
+    });
+  }, [students, search, statusFilter, classFilter, sectionFilter]);
+
+  const pageCount = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
+  const paginatedStudents = useMemo(() => {
+    const start = pageIndex * pageSize;
+    return filteredStudents.slice(start, start + pageSize);
+  }, [filteredStudents, pageIndex, pageSize]);
+
+  useEffect(() => {
+    if (pageIndex >= pageCount) {
+      setPageIndex(pageCount - 1);
+    }
+  }, [pageCount, pageIndex]);
+
+  useEffect(() => {
+    function handleDocumentClick(event: MouseEvent) {
+      if (!actionMenuFor) return;
+      const target = event.target as Node;
+      const menuEl = document.querySelector(`[data-action-menu="${actionMenuFor}"]`);
+      const btnEl = document.querySelector(`[data-action-button="${actionMenuFor}"]`);
+      if (menuEl && menuEl.contains(target)) return;
+      if (btnEl && btnEl.contains(target)) return;
+      setActionMenuFor(null);
+    }
+
+    document.addEventListener('click', handleDocumentClick);
+    return () => document.removeEventListener('click', handleDocumentClick);
+  }, [actionMenuFor]);
+
+  // Close menu on scroll/resize so it doesn't float away from its button
+  useEffect(() => {
+    if (!actionMenuFor) return;
+    function handleReposition() {
+      setActionMenuFor(null);
+    }
+    window.addEventListener('scroll', handleReposition, true);
+    window.addEventListener('resize', handleReposition);
+    return () => {
+      window.removeEventListener('scroll', handleReposition, true);
+      window.removeEventListener('resize', handleReposition);
+    };
+  }, [actionMenuFor]);
+
   async function loadData(newestStudentId?: string) {
     try {
       setIsLoading(true);
+      
+      // Get academic years first to determine which year we're loading
+      const academicYears = await getAcademicYears();
+      const activeYearId = academicYears.find((year) => year.isActive)?.id ?? '';
+      const desiredYearId = selectedAcademicYearId || activeYearId;
+      
+      // Fetch data conditionally: if viewing archived year, get all years; if viewing active, get only active
+      const isArchivedSelection = Boolean(selectedAcademicYearId && selectedAcademicYearId !== activeYearId);
+      
       const [users, classes, enrollments, dashboardStats] = await Promise.all([
         getUsers(),
-        getClassCourses(),
-        getEnrollments(),
-        getAdminDashboardStats(),
+        getClassCourses(isArchivedSelection),
+        getEnrollments(isArchivedSelection),
+        getAdminDashboardStats(desiredYearId),
       ]);
 
       const classMap = Object.fromEntries(classes.map((cls) => [cls.id, cls]));
-      const enrollmentMap = Object.fromEntries(enrollments.map((enrollment) => [enrollment.studentId, enrollment.classCourseId]));
+      const visibleClasses = classes.filter((cls) => cls.academicYearId === desiredYearId);
+      const visibleEnrollments = (enrollments || []).filter(
+        (enrollment) => classMap[enrollment.classCourseId]?.academicYearId === desiredYearId
+      );
+      const currentYearStudentIds = new Set(visibleEnrollments.map((enrollment) => enrollment.studentId));
+      const enrollmentMap = Object.fromEntries(visibleEnrollments.map((enrollment) => [enrollment.studentId, enrollment.classCourseId]));
 
       // Classes already have groupName from backend
-      setClassCourses(classes.map((cls) => ({
+      setClassCourses(visibleClasses.map((cls) => ({
         ...cls,
         groupId: cls.groupId ?? undefined,
         groupName: cls.groupName ?? undefined,
@@ -105,7 +239,7 @@ export function AdminStudentsPage() {
       setStats(dashboardStats);
 
       const studentRecords = users
-        .filter((user) => user.role === 'Student')
+        .filter((user) => user.role === 'Student' && currentYearStudentIds.has(user.id))
         .map((user) => {
           const classCourseId = enrollmentMap[user.id];
           const classCourse = classMap[classCourseId];
@@ -251,7 +385,7 @@ export function AdminStudentsPage() {
     }
 
     try {
-      await deleteUser(pendingDeleteStudent.id);
+      await deleteEnrollment(pendingDeleteStudent.id, pendingDeleteStudent.classCourseId!);
       await loadData();
       resetSelection();
     } catch (err) {
@@ -262,79 +396,6 @@ export function AdminStudentsPage() {
     }
   }
 
-
-  const classNames = useMemo(
-    () => Array.from(new Set(classCourses.map((cls) => cls.name))).sort(sortClassName),
-    [classCourses]
-  );
-  const sectionNames = useMemo(() => {
-    const sections = classFilter === 'All classes'
-      ? classCourses.map((cls) => cls.section)
-      : classCourses.filter((cls) => cls.name === classFilter).map((cls) => cls.section);
-
-    return Array.from(new Set(sections)).sort((a, b) => sortSectionValue(a) - sortSectionValue(b));
-  }, [classCourses, classFilter]);
-
-  const filteredStudents = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return students.filter((student) => {
-      const classCourseName = student.classCourseName ?? '';
-      const section = student.section ?? '';
-      const matchesStatus = statusFilter === 'All' || student.status === statusFilter;
-      const matchesSearch =
-        !query ||
-        student.fullName.toLowerCase().includes(query) ||
-        student.email.toLowerCase().includes(query) ||
-        student.parentMobile.toLowerCase().includes(query) ||
-        classCourseName.toLowerCase().includes(query) ||
-        section.toLowerCase().includes(query);
-      const matchesClass = classFilter === 'All classes' || classCourseName === classFilter;
-      const matchesSection = sectionFilter === 'All sections' || section === sectionFilter;
-      return matchesStatus && matchesSearch && matchesClass && matchesSection;
-    });
-  }, [students, search, statusFilter, classFilter, sectionFilter]);
-
-  const pageCount = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
-  const paginatedStudents = useMemo(() => {
-    const start = pageIndex * pageSize;
-    return filteredStudents.slice(start, start + pageSize);
-  }, [filteredStudents, pageIndex, pageSize]);
-
-  useEffect(() => {
-    if (pageIndex >= pageCount) {
-      setPageIndex(pageCount - 1);
-    }
-  }, [pageCount, pageIndex]);
-
-  useEffect(() => {
-    function handleDocumentClick(event: MouseEvent) {
-      if (!actionMenuFor) return;
-      const target = event.target as Node;
-      const menuEl = document.querySelector(`[data-action-menu="${actionMenuFor}"]`);
-      const btnEl = document.querySelector(`[data-action-button="${actionMenuFor}"]`);
-      if (menuEl && menuEl.contains(target)) return;
-      if (btnEl && btnEl.contains(target)) return;
-      setActionMenuFor(null);
-    }
-
-    document.addEventListener('click', handleDocumentClick);
-    return () => document.removeEventListener('click', handleDocumentClick);
-  }, [actionMenuFor]);
-
-  // Close menu on scroll/resize so it doesn't float away from its button
-  useEffect(() => {
-    if (!actionMenuFor) return;
-    function handleReposition() {
-      setActionMenuFor(null);
-    }
-    window.addEventListener('scroll', handleReposition, true);
-    window.addEventListener('resize', handleReposition);
-    return () => {
-      window.removeEventListener('scroll', handleReposition, true);
-      window.removeEventListener('resize', handleReposition);
-    };
-  }, [actionMenuFor]);
-
   return (
     <AppShell role="Admin" breadcrumb="Admin / Students">
       <div className="flex flex-col gap-5">
@@ -343,250 +404,286 @@ export function AdminStudentsPage() {
             <p className="text-xs font-bold uppercase text-indigo-600">Administration</p>
             <h1 className="text-3xl font-extrabold text-slate-900 mt-1">Students</h1>
           </div>
-          <Button onClick={openNewStudent} className="inline-flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Add student
-          </Button>
+          {!isViewingArchivedYear && (
+            <Button onClick={openNewStudent} className="inline-flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Add student
+            </Button>
+          )}
         </div>
 
-        {error && (
-          <div className="rounded border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-rose-100 text-rose-600">
-                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="8" x2="12" y2="12" />
-                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">Couldn't load student data</p>
-                  <p className="text-xs text-rose-500">Check your connection and try again. If this keeps happening, contact support.</p>
-                </div>
-              </div>
-            </div>
+        {isViewingArchivedYear && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+            ℹ️ You are viewing archived data. Editing and adding is disabled in archive mode.
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
-          <div className="bg-white rounded-2xl border border-slate-200 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-[11px] font-bold text-slate-400">TOTAL STUDENTS</p>
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-              </div>
-            </div>
-            <p className="text-2xl font-extrabold text-slate-900">{isLoading ? '—' : stats?.totalStudents ?? 0}</p>
-            <p className="text-xs text-slate-400 mt-1">Enrolled across all classes</p>
-          </div>
-          <div className="bg-white rounded-2xl border border-slate-200 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-[11px] font-bold text-slate-400">ACTIVE</p>
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-500">
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
-              </div>
-            </div>
-            <p className="text-2xl font-extrabold text-slate-900">{isLoading ? '—' : students.filter((student) => student.status === 'Active').length}</p>
-            <p className="text-xs text-slate-400 mt-1">Currently attending</p>
-          </div>
-          <div className="bg-white rounded-2xl border border-slate-200 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-[11px] font-bold text-slate-400">INACTIVE</p>
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-              </div>
-            </div>
-            <p className="text-2xl font-extrabold text-slate-900">{isLoading ? '—' : students.filter((student) => student.status === 'Inactive').length}</p>
-            <p className="text-xs text-slate-400 mt-1">Suspended or withdrawn</p>
-          </div>
-          <div className="bg-white rounded-2xl border border-slate-200 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-[11px] font-bold text-slate-400">NEW THIS MONTH</p>
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-500">
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              </div>
-            </div>
-            <p className="text-2xl font-extrabold text-slate-900">{isLoading ? '—' : students.filter((student) => student.status === 'Active').length}</p>
-            <p className="text-xs text-slate-400 mt-1">Enrolled since this month</p>
-          </div>
-        </div>
-
-        {(isLoading || students.length > 0) && (
+        {isLoading ? (
+          <PageLoader title="Loading students" subtitle="Loading current student records and enrollments…" />
+        ) : (
           <>
-            <div className="bg-white rounded-2xl border border-slate-200 p-4">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex flex-wrap gap-1">
-                  {STATUS_OPTIONS.map((status) => (
-                    <button
-                      key={status}
-                      type="button" onClick={() => setStatusFilter(status)}
-                      className={`rounded px-4 py-2 text-sm font-semibold cursor-pointer transition ${statusFilter === status ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>
-                      {status} <span className="opacity-70 font-normal">{status === 'All' ? students.length : students.filter((student) => student.status === status).length}</span>
-                    </button>
-                  ))}
-                </div>
-                <div className="flex flex-wrap gap-2 items-center justify-end min-w-[280px]">
-                  <select
-                    value={classFilter}
-                    onChange={(event) => setClassFilter(event.target.value)}
-                    className="rounded border cursor-pointer border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                  >
-                    <option>All classes</option>
-                    {classNames.map((name) => (
-                      <option key={name} value={name}>
-                        {name}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={sectionFilter}
-                    onChange={(event) => setSectionFilter(event.target.value)}
-                    className="rounded border cursor-pointer border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                  >
-                    <option>All sections</option>
-                    {sectionNames.map((section) => (
-                      <option key={section} value={section}>
-                        Section {section}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="relative flex-1 max-w-xs">
-                    <input
-                      value={search}
-                      onChange={(event) => setSearch(event.target.value)}
-                      placeholder="Search students…"
-                      className="w-full rounded border border-slate-200 px-8 py-2 text-sm text-slate-700 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                    />
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-                    </span>
+            {error && (
+              <div className="rounded border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-rose-100 text-rose-600">
+                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">Couldn't load student data</p>
+                      <p className="text-xs text-rose-500">Check your connection and try again. If this keeps happening, contact support.</p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
-
-            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-              <div className="p-4 overflow-x-auto">
-                <table className="w-full min-w-[960px] text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-100 text-left text-xs uppercase text-slate-400">
-                      <Th>Roll / Student ID</Th>
-                      <Th>Name</Th>
-                      <Th>Email</Th>
-                      <Th>Class</Th>
-                      <Th>Section</Th>
-                      <Th>Parent</Th>
-                      <Th>Status</Th>
-                      <Th className="text-right">Actions</Th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {paginatedStudents.map((student) => (
-                      <tr key={student.id} className="hover:bg-slate-50 transition-colors duration-150 cursor-pointer" onClick={() => setSelectedStudent(student)}>
-                        <Td className="px-2 py-3.5 font-semibold text-slate-700">{student.studentId || '—'}</Td>
-                        <Td className="px-2 py-3.5">
-                          <span className="font-semibold text-slate-700">{student.fullName}</span>
-                        </Td>
-                        <Td className="px-2 py-3.5 text-slate-500">{student.email}</Td>
-                        <Td className="px-2 py-3.5 text-slate-500">{student.classCourseName || 'Unassigned'}</Td>
-                        <Td className="px-2 py-3.5 text-slate-500">{student.section ? (student.groupName ? `${student.section} (${student.groupName})` : student.section) : '—'}</Td>
-                        <Td className="px-2 py-3.5 text-slate-500">{student.parentMobile || '—'}</Td>
-                        <Td className="px-2 py-3.5">
-                          <Pill className={student.status === 'Active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}>
-                            {student.status}
-                          </Pill>
-                        </Td>
-                        <Td className="px-5 py-3.5 text-right">
-                          <div className="relative inline-flex">
-                            <button
-                              type="button"
-                              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 cursor-pointer"
-                              data-action-button={student.id}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                if (actionMenuFor === student.id) {
-                                  setActionMenuFor(null);
-                                  return;
-                                }
-                                const rect = event.currentTarget.getBoundingClientRect();
-                                setMenuPosition({
-                                  top: rect.bottom + 8,
-                                  left: rect.right - 176, // 176px = menu width (w-44), right-aligned to button
-                                });
-                                setActionMenuFor(student.id);
-                              }}
-                            >
-                              <MoreVertical className="h-5 w-5" />
-                            </button>
-                            {actionMenuFor === student.id && typeof document !== 'undefined'
-                              ? createPortal(
-                                  <div
-                                    data-action-menu={student.id}
-                                    onClick={(event) => event.stopPropagation()}
-                                    style={{
-                                      position: 'fixed',
-                                      top: menuPosition.top,
-                                      left: menuPosition.left,
-                                      zIndex: 9999,
-                                    }}
-                                    className="w-44 overflow-hidden rounded border border-slate-200 bg-white shadow-xl"
-                                  >
-                                    <button type="button" onClick={() => { setSelectedStudent(student); setActionMenuFor(null); }} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">
-                                      View details
-                                    </button>
-                                    <button type="button" onClick={() => handleEditStudent(student)} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">
-                                      Edit student
-                                    </button>
-                                    <button type="button" onClick={() => openDeleteStudent(student)} className="w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50 cursor-pointer">
-                                      Delete student
-                                    </button>
-                                  </div>,
-                                  document.body
-                                )
-                              : null}
-                          </div>
-                        </Td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
+              <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-[11px] font-bold text-slate-400">TOTAL STUDENTS</p>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                  </div>
+                </div>
+                <p className="text-2xl font-extrabold text-slate-900">{isLoading ? '—' : totalStudentsCount}</p>
+                <p className="text-xs text-slate-400 mt-1">Enrolled across all classes</p>
               </div>
-
-              <AmsPagination
-                currentPage={pageIndex}
-                pageSize={pageSize}
-                totalItems={filteredStudents.length}
-                pageSizeOptions={PAGE_SIZE_OPTIONS}
-                onPageChange={setPageIndex}
-                onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
-                label="Showing"
-                itemLabel="students"
-              />
+              <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-[11px] font-bold text-slate-400">ACTIVE</p>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-500">
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+                  </div>
+                </div>
+                <p className="text-2xl font-extrabold text-slate-900">{isLoading ? '—' : activeStudentsCount}</p>
+                <p className="text-xs text-slate-400 mt-1">Currently attending</p>
+              </div>
+              <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-[11px] font-bold text-slate-400">INACTIVE</p>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                  </div>
+                </div>
+                <p className="text-2xl font-extrabold text-slate-900">{isLoading ? '—' : inactiveStudentsCount}</p>
+                <p className="text-xs text-slate-400 mt-1">Suspended or withdrawn</p>
+              </div>
+              <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-[11px] font-bold text-slate-400">NEW THIS MONTH</p>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-500">
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  </div>
+                </div>
+                <p className="text-2xl font-extrabold text-slate-900">{isLoading ? '—' : students.filter((student) => student.status === 'Active').length}</p>
+                <p className="text-xs text-slate-400 mt-1">Enrolled since this month</p>
+              </div>
             </div>
+
+            {students.length > 0 && (
+              <>
+                <div className="bg-white rounded-2xl border border-slate-200 p-4">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex flex-wrap gap-1">
+                      {STATUS_OPTIONS.map((status) => (
+                        <button
+                          key={status}
+                          type="button"
+                          onClick={() => setStatusFilter(status)}
+                          className={`rounded px-4 py-2 text-sm font-semibold cursor-pointer transition ${statusFilter === status ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-100'}`}
+                        >
+                          {status} <span className="opacity-70 font-normal">{status === 'All' ? students.length : students.filter((student) => student.status === status).length}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex flex-wrap gap-2 items-center justify-end min-w-[280px]">
+                      <select
+                        value={classFilter}
+                        onChange={(event) => setClassFilter(event.target.value)}
+                        className="rounded border cursor-pointer border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                      >
+                        <option>All classes</option>
+                        {classNames.map((name) => (
+                          <option key={name} value={name}>
+                            {name}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={sectionFilter}
+                        onChange={(event) => setSectionFilter(event.target.value)}
+                        className="rounded border cursor-pointer border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                      >
+                        <option>All sections</option>
+                        {sectionNames.map((section) => (
+                          <option key={section} value={section}>
+                            Section {section}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="relative flex-1 max-w-xs">
+                        <input
+                          value={search}
+                          onChange={(event) => setSearch(event.target.value)}
+                          placeholder="Search students…"
+                          className="w-full rounded border border-slate-200 px-8 py-2 text-sm text-slate-700 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                        />
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                  <div className="p-4 overflow-x-auto">
+                    <table className="w-full min-w-[960px] text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-100 text-left text-xs uppercase text-slate-400">
+                          <Th>Roll / Student ID</Th>
+                          <Th>Name</Th>
+                          <Th>Email</Th>
+                          <Th>Class</Th>
+                          <Th>Section</Th>
+                          <Th>Parent</Th>
+                          <Th>Status</Th>
+                          <Th className="text-right">Actions</Th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {paginatedStudents.map((student) => (
+                          <tr key={student.id} className="hover:bg-slate-50 transition-colors duration-150 cursor-pointer" onClick={() => setSelectedStudent(student)}>
+                            <Td className="px-2 py-3.5 font-semibold text-slate-700">{student.studentId || '—'}</Td>
+                            <Td className="px-2 py-3.5">
+                              <span className="font-semibold text-slate-700">{student.fullName}</span>
+                            </Td>
+                            <Td className="px-2 py-3.5 text-slate-500">{student.email}</Td>
+                            <Td className="px-2 py-3.5 text-slate-500">{student.classCourseName || 'Unassigned'}</Td>
+                            <Td className="px-2 py-3.5 text-slate-500">{student.section ? (student.groupName ? `${student.section} (${student.groupName})` : student.section) : '—'}</Td>
+                            <Td className="px-2 py-3.5 text-slate-500">{student.parentMobile || '—'}</Td>
+                            <Td className="px-2 py-3.5">
+                              <Pill className={student.status === 'Active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}>
+                                {student.status}
+                              </Pill>
+                            </Td>
+                            <Td className="px-5 py-3.5 text-right">
+                              {!isViewingArchivedYear && (
+                                <div className="relative inline-flex">
+                                  <button
+                                    type="button"
+                                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 cursor-pointer"
+                                    data-action-button={student.id}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      if (actionMenuFor === student.id) {
+                                        setActionMenuFor(null);
+                                        return;
+                                      }
+                                      const rect = event.currentTarget.getBoundingClientRect();
+                                      setMenuPosition({
+                                        top: rect.bottom + 8,
+                                        left: rect.right - 176,
+                                      });
+                                      setActionMenuFor(student.id);
+                                    }}
+                                  >
+                                    <MoreVertical className="h-5 w-5" />
+                                  </button>
+                                  {actionMenuFor === student.id && typeof document !== 'undefined'
+                                    ? createPortal(
+                                        <div
+                                          data-action-menu={student.id}
+                                          onClick={(event) => event.stopPropagation()}
+                                          style={{
+                                            position: 'fixed',
+                                            top: menuPosition.top,
+                                            left: menuPosition.left,
+                                            zIndex: 9999,
+                                          }}
+                                          className="w-44 overflow-hidden rounded border border-slate-200 bg-white shadow-xl"
+                                        >
+                                          <button type="button" onClick={() => { setSelectedStudent(student); setActionMenuFor(null); }} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">
+                                            View details
+                                          </button>
+                                          <button type="button" onClick={() => handleEditStudent(student)} className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">
+                                            Edit student
+                                          </button>
+                                          <button type="button" onClick={() => openDeleteStudent(student)} className="w-full px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50 cursor-pointer">
+                                            Delete student
+                                          </button>
+                                        </div>,
+                                        document.body
+                                      )
+                                    : null}
+                                </div>
+                              )}
+                            </Td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <AmsPagination
+                    currentPage={pageIndex}
+                    pageSize={pageSize}
+                    totalItems={filteredStudents.length}
+                    pageSizeOptions={PAGE_SIZE_OPTIONS}
+                    onPageChange={setPageIndex}
+                    onPageSizeChange={(size) => setPageSize(size as typeof PAGE_SIZE_OPTIONS[number])}
+                    label="Showing"
+                    itemLabel="students"
+                  />
+                </div>
+
+                {filteredStudents.length === 0 && (
+                  <div className="flex flex-col items-center justify-center rounded border border-slate-200 bg-white py-20 px-6 text-center">
+                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded bg-indigo-50 text-indigo-500">
+                      <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <line x1="19" y1="8" x2="19" y2="14" />
+                        <line x1="16" y1="11" x2="22" y2="11" />
+                      </svg>
+                    </div>
+                    <p className="text-base font-bold text-slate-800">No students match your filter</p>
+                    <p className="text-sm text-slate-500 mt-1 max-w-lg">
+                      Try adjusting your class, section, or search term.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+
+            {students.length === 0 && !isLoading && (
+              <div className="flex flex-col items-center justify-center rounded border border-slate-200 bg-white py-20 px-6 text-center">
+                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded bg-indigo-50 text-indigo-500">
+                  <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <line x1="19" y1="8" x2="19" y2="14" />
+                    <line x1="16" y1="11" x2="22" y2="11" />
+                  </svg>
+                </div>
+                <p className="text-base font-bold text-slate-800">No students in this academic year yet</p>
+                <p className="text-sm text-slate-500 mt-1 max-w-lg">
+                  This page stays empty until you promote students from the previous academic year into the current one.
+                  Use the promotion settings to move students into the active year.
+                </p>
+                <div className="mt-5">
+                  <Button onClick={openNewStudent}>Add student</Button>
+                </div>
+              </div>
+            )}
           </>
         )}
-
-        {!isLoading && !error && filteredStudents.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded border border-slate-200 bg-white py-20 px-6 text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded bg-indigo-50 text-indigo-500">
-              <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <line x1="19" y1="8" x2="19" y2="14" />
-                <line x1="16" y1="11" x2="22" y2="11" />
-              </svg>
-            </div>
-            <p className="text-base font-bold text-slate-800">No students yet</p>
-            <p className="text-sm text-slate-500 mt-1 max-w-md">Add your first student, or import a roster from a CSV file to get started quickly.</p>
-            <div className="mt-5">
-              <Button onClick={openNewStudent}>Add student</Button>
-            </div>
-          </div>
-        ) : null}
       </div>
-
       <AddStudentModal
         open={isStudentModalOpen}
         onClose={() => {

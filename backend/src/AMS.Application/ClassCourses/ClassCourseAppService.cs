@@ -12,29 +12,37 @@ public class ClassCourseAppService : IClassCourseAppService
     private readonly ITeacherSubjectAssignmentRepository _teacherSubjectAssignmentRepository;
     private readonly IClassDefinitionRepository _classDefinitionRepository;
     private readonly ISubjectRepository _subjectRepository;
+    private readonly IAcademicYearRepository _academicYearRepository;
 
     public ClassCourseAppService(
         IClassCourseRepository classCourseRepository,
         ITeacherSubjectAssignmentRepository teacherSubjectAssignmentRepository,
         IClassDefinitionRepository classDefinitionRepository,
-        ISubjectRepository subjectRepository)
+        ISubjectRepository subjectRepository,
+        IAcademicYearRepository academicYearRepository)
     {
         _classCourseRepository = classCourseRepository;
         _teacherSubjectAssignmentRepository = teacherSubjectAssignmentRepository;
         _classDefinitionRepository = classDefinitionRepository;
         _subjectRepository = subjectRepository;
+        _academicYearRepository = academicYearRepository;
     }
 
-    public async Task<IReadOnlyList<ClassCourseDto>> GetAllAsync(Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ClassCourseDto>> GetAllAsync(Guid currentUserId, string currentUserRole, bool includeAllAcademicYears = false, CancellationToken cancellationToken = default)
     {
         if (currentUserRole == nameof(UserRole.Admin))
         {
-            var classes = await _classCourseRepository.GetAllAsync(cancellationToken);
+            var classes = includeAllAcademicYears
+                ? await _classCourseRepository.GetAllAsync(cancellationToken)
+                : await GetActiveAcademicYearClassesAsync(cancellationToken);
             return classes.Select(ToDto).ToList();
         }
 
         if (currentUserRole == nameof(UserRole.Teacher))
         {
+            var activeYear = await _academicYearRepository.GetActiveAsync(cancellationToken);
+            if (activeYear == null) throw new NotFoundException("No active academic year found.");
+
             var assignments = await _teacherSubjectAssignmentRepository.GetByTeacherAsync(currentUserId, cancellationToken);
             var subjectIds = assignments.Select(x => x.SubjectId).Distinct().ToList();
             var classIds = new HashSet<Guid>();
@@ -44,11 +52,18 @@ public class ClassCourseAppService : IClassCourseAppService
                 if (subject is not null) classIds.Add(subject.ClassCourseId);
             }
 
-            var classes = await _classCourseRepository.GetAllAsync(cancellationToken);
+            var classes = await _classCourseRepository.GetByAcademicYearAsync(activeYear.Id, cancellationToken);
             return classes.Where(x => classIds.Contains(x.Id)).Select(ToDto).ToList();
         }
 
         throw new ForbiddenException("Only admins and teachers can view classes.");
+    }
+
+    private async Task<IReadOnlyList<ClassCourse>> GetActiveAcademicYearClassesAsync(CancellationToken cancellationToken)
+    {
+        var activeYear = await _academicYearRepository.GetActiveAsync(cancellationToken);
+        if (activeYear == null) throw new NotFoundException("No active academic year found.");
+        return await _classCourseRepository.GetByAcademicYearAsync(activeYear.Id, cancellationToken);
     }
 
     public async Task<ClassCourseDto?> GetByIdAsync(Guid id, Guid currentUserId, string currentUserRole, CancellationToken cancellationToken = default)

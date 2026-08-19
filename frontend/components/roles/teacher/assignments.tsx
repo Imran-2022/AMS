@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BookOpen, ClipboardList, Copy, FileText, Layers, Pencil, Plus, Search, Send, Trash2, Eye } from 'lucide-react';
 import { AppShell } from '@/shared/layout';
-import { AmsDeleteComfiramtionModal, AmsPagination, Button, FileUpload } from '../../ui';
+import { AmsDeleteComfiramtionModal, AmsPagination, Button, FileUpload, PageLoader } from '../../ui';
 import { getAssignments, getClassCourses, getSubjects, createAssignment, duplicateAssignment as duplicateAssignmentApi, updateAssignment, deleteAssignment, publishAssignment, unpublishAssignment, uploadAttachment, listAttachments, renameAttachment, deleteAttachment } from '@/lib/api';
 import type { AssignmentDto, ClassCourseDto, SubjectDto, CreateAssignmentDto, UpdateAssignmentDto } from '@/lib/api';
 
@@ -126,24 +126,36 @@ export function TeacherAssignmentsPage() {
     return () => window.removeEventListener('click', handleClick);
   }, []);
 
-  useEffect(() => {
-    async function loadData() {
-      setLoadError(null);
-      setLoading(true);
-      try {
-        const [apiAssignments, apiClasses, apiSubjects] = await Promise.all([getAssignments(), getClassCourses(), getSubjects()]);
-        setAssignments(apiAssignments);
-        setClasses(apiClasses);
-        setSubjects(apiSubjects);
-      } catch (error) {
-        console.error(error);
-        setLoadError('Unable to load assignments. Please refresh the page.');
-      } finally {
-        setLoading(false);
-      }
+  async function loadData() {
+    setLoadError(null);
+    setLoading(true);
+    try {
+      const [apiAssignments, apiClasses, apiSubjects] = await Promise.all([getAssignments(), getClassCourses(), getSubjects()]);
+      setAssignments(apiAssignments);
+      setClasses(apiClasses);
+      setSubjects(apiSubjects);
+    } catch (error) {
+      console.error(error);
+      setLoadError('Unable to load assignments. Please refresh the page.');
+    } finally {
+      setLoading(false);
     }
+  }
 
+  useEffect(() => {
     void loadData();
+  }, []);
+
+  // Listen for academic year changes and reload data
+  useEffect(() => {
+    const handleAcademicYearChanged = () => {
+      void loadData();
+    };
+
+    window.addEventListener('ams-academic-year-updated', handleAcademicYearChanged);
+    return () => {
+      window.removeEventListener('ams-academic-year-updated', handleAcademicYearChanged);
+    };
   }, []);
 
   useEffect(() => {
@@ -550,55 +562,61 @@ export function TeacherAssignmentsPage() {
           </Button>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Total" value={stats.total} sub="Created by you" icon={<ClipboardList className="h-4 w-4" />} />
-          <StatCard label="Published" value={stats.published} sub="Visible to students" icon={<BookOpen className="h-4 w-4" />} />
-          <StatCard label="Drafts" value={stats.drafts} sub="Still being prepared" icon={<FileText className="h-4 w-4" />} />
-          <StatCard label="Needs grading" value={stats.pendingReviews} sub="Submissions awaiting marks" icon={<Layers className="h-4 w-4" />} />
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex flex-wrap items-center gap-2">
-              <button type="button" onClick={() => setFilter('all')} className={`cursor-pointer rounded px-4 py-2 text-sm font-semibold transition ${filter === 'all' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                All <span className="ml-1 font-normal opacity-70">{stats.total}</span>
-              </button>
-              <button type="button" onClick={() => setFilter('published')} className={`cursor-pointer rounded px-4 py-2 text-sm font-semibold transition ${filter === 'published' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                Published <span className="ml-1 font-normal opacity-70">{stats.published}</span>
-              </button>
-              <button type="button" onClick={() => setFilter('drafts')} className={`cursor-pointer rounded px-4 py-2 text-sm font-semibold transition ${filter === 'drafts' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                Drafts <span className="ml-1 font-normal opacity-70">{stats.drafts}</span>
-              </button>
+        {loading ? (
+          <PageLoader title="Loading assignments" subtitle="Loading your assignment library…" />
+        ) : (
+          <>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <StatCard label="Total" value={stats.total} sub="Created by you" icon={<ClipboardList className="h-4 w-4" />} />
+              <StatCard label="Published" value={stats.published} sub="Visible to students" icon={<BookOpen className="h-4 w-4" />} />
+              <StatCard label="Drafts" value={stats.drafts} sub="Still being prepared" icon={<FileText className="h-4 w-4" />} />
+              <StatCard label="Needs grading" value={stats.pendingReviews} sub="Submissions awaiting marks" icon={<Layers className="h-4 w-4" />} />
             </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <select value={classFilter} onChange={(event) => setClassFilter(event.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500">
-                {availableClasses.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-              <select value={sectionFilter} onChange={(event) => setSectionFilter(event.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500">
-                {availableSections.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-              <select value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500">
-                {availableSubjects.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-              <div className="relative min-w-[240px]">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} type="text" placeholder="Search assignments…" className="w-full rounded border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-600 outline-none focus:border-brand-500" />
+
+        {assignments.length > 0 && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" onClick={() => setFilter('all')} className={`cursor-pointer rounded px-4 py-2 text-sm font-semibold transition ${filter === 'all' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                  All <span className="ml-1 font-normal opacity-70">{stats.total}</span>
+                </button>
+                <button type="button" onClick={() => setFilter('published')} className={`cursor-pointer rounded px-4 py-2 text-sm font-semibold transition ${filter === 'published' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                  Published <span className="ml-1 font-normal opacity-70">{stats.published}</span>
+                </button>
+                <button type="button" onClick={() => setFilter('drafts')} className={`cursor-pointer rounded px-4 py-2 text-sm font-semibold transition ${filter === 'drafts' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                  Drafts <span className="ml-1 font-normal opacity-70">{stats.drafts}</span>
+                </button>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <select value={classFilter} onChange={(event) => setClassFilter(event.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500">
+                  {availableClasses.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <select value={sectionFilter} onChange={(event) => setSectionFilter(event.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500">
+                  {availableSections.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <select value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500">
+                  {availableSubjects.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <div className="relative min-w-[240px]">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} type="text" placeholder="Search assignments…" className="w-full rounded border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-600 outline-none focus:border-brand-500" />
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {loadError && (
           <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-rose-700">{loadError}</div>
@@ -874,6 +892,8 @@ export function TeacherAssignmentsPage() {
           confirmVariant="danger"
         >
         </AmsDeleteComfiramtionModal>
+          </>
+        )}
       </div>
     </AppShell>
   );

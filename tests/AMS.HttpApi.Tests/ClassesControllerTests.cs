@@ -15,7 +15,7 @@ public class ClassesControllerTests
     {
         var expected = new List<ClassCourseDto> { new() { Id = Guid.NewGuid(), Name = "Class 1" } };
         var service = new Mock<IClassCourseAppService>(MockBehavior.Strict);
-        service.Setup(s => s.GetAllAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(expected);
+        service.Setup(s => s.GetAllAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(expected);
 
         var currentUser = new Mock<ICurrentUserService>(MockBehavior.Strict);
         currentUser.SetupGet(c => c.UserId).Returns(Guid.NewGuid());

@@ -22,7 +22,7 @@ import {
   Users,
 } from 'lucide-react';
 import { clearStoredAuth, getStoredAvatarUrl, getStoredUser, withAvatarCacheBust } from '@/lib/auth';
-import { API_BASE_URL } from '@/lib/api';
+import { API_BASE_URL, getAcademicYears, getSelectedAcademicYearId, setSelectedAcademicYearId as persistSelectedAcademicYearId } from '@/lib/api';
 import { getNotifications, getUnreadNotificationCount, markAllNotificationsRead, markNotificationRead } from '@/lib/api/notifications';
 import { ToastContainer } from '../ui';
 import { ROLE } from '@/shared/constants/roles';
@@ -95,7 +95,7 @@ const NAV: Record<RoleType, NavItem[]> = {
     { href: '/roles/admin/teacher-assignments', label: 'Teacher Allocation', Icon: Users },
     { href: '/roles/admin/assignments', label: 'Assignments', Icon: ClipboardList },
     { href: '/roles/admin/submissions', label: 'Submissions', Icon: Inbox },
-    // { href: '/roles/admin/ams-settings', label: 'AMS Settings', Icon: Settings },
+    { href: '/roles/admin/ams-settings', label: 'AMS Settings', Icon: Settings },
   ],
   Teacher: [
     { href: '/roles/teacher/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
@@ -116,11 +116,13 @@ function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, 
   const router = useRouter();
   const settingsHref = role === 'Admin' ? '/roles/admin/settings' : role === 'Teacher' ? '/roles/teacher/settings' : '/roles/student/settings';
   const settingsLabel = 'Account Settings';
+  const currentRole = getStoredUser()?.role ?? role;
+  const roleLabel = currentRole === 'Teacher' ? 'Teacher' : currentRole === 'Student' ? 'Student' : 'Admin';
 
   const widthClass = mobileOpen ? 'w-64' : collapsed ? 'w-[76px]' : 'w-64';
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-50 flex flex-col overflow-hidden border-[#ECECEF] bg-white text-[#1F2430] transition-all duration-300 ease-in-out ${widthClass} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
+      className={`fixed inset-y-0 left-0 z-50 flex h-screen flex-col overflow-hidden border-[#ECECEF] bg-white text-[#1F2430] transition-all duration-300 ease-in-out ${widthClass} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
       <div className="border-[#ECECEF]">
         <div className={`flex items-center gap-3 px-4 py-4 ${collapsed ? 'justify-center' : ''}`}>
           <button
@@ -169,9 +171,9 @@ function Sidebar({ role, collapsed, mobileOpen, onToggle, onNavigate, onLogout, 
             </div>
             {!collapsed ? (
               <div className="profile-text label min-w-0 transition-all duration-200 opacity-100">
-                <p className="text-[13px] font-semibold leading-tight truncate">{userName ?? `${role} User`}</p>
+                <p className="text-[13px] font-semibold leading-tight truncate">{userName ?? `${roleLabel} User`}</p>
                 <p className="text-[11px] text-[#8A8F98] leading-tight truncate">
-                  {role === 'Teacher' ? 'Teacher Account' : role === 'Student' ? 'Student Account' : 'Admin Account'}
+                  Current role: {roleLabel}
                 </p>
               </div>
             ) : null}
@@ -231,8 +233,68 @@ function Topbar({ breadcrumb, role, onMobileMenuToggle }: { breadcrumb: string; 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [academicYears, setAcademicYears] = useState<{ id: string; name: string; isActive: boolean }[]>([]);
+  const [selectedAcademicYearId, setSelectedAcademicYearIdState] = useState<string>('');
   const rootRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    async function loadAcademicYears() {
+      try {
+        const years = await getAcademicYears();
+        setAcademicYears(years);
+
+        const storedId = getSelectedAcademicYearId();
+        const preferred = storedId && years.some((year) => year.id === storedId)
+          ? storedId
+          : years.find((year) => year.isActive)?.id ?? years[0]?.id ?? '';
+
+        setSelectedAcademicYearIdState(preferred);
+        persistSelectedAcademicYearId(preferred);
+        if (preferred) {
+          window.localStorage.setItem('ams-active-academic-year', preferred);
+        }
+      } catch {
+        setAcademicYears([]);
+      }
+    }
+
+    void loadAcademicYears();
+  }, []);
+
+  useEffect(() => {
+    const handleYearReload = async () => {
+      try {
+        const years = await getAcademicYears();
+        setAcademicYears(years);
+
+        const storedSelected = getSelectedAcademicYearId();
+        const activeYear = years.find((year) => year.isActive);
+        const preferred = storedSelected && years.some((year) => year.id === storedSelected)
+          ? storedSelected
+          : activeYear?.id ?? years[0]?.id ?? '';
+
+        setSelectedAcademicYearIdState(preferred);
+        persistSelectedAcademicYearId(preferred);
+        if (preferred) {
+          window.localStorage.setItem('ams-active-academic-year', preferred);
+        }
+      } catch {
+        console.error('Failed to refetch academic years');
+      }
+    };
+
+    window.addEventListener('ams-academic-year-updated', handleYearReload);
+    return () => window.removeEventListener('ams-academic-year-updated', handleYearReload);
+  }, []);
+
+  function handleAcademicYearChange(event: React.ChangeEvent<HTMLSelectElement>) {
+    const nextValue = event.target.value;
+    persistSelectedAcademicYearId(nextValue);
+    setSelectedAcademicYearIdState(nextValue);
+
+    window.dispatchEvent(new CustomEvent('ams-academic-year-updated'));
+  }
 
   useEffect(() => {
     const loadNotifications = async () => {
@@ -327,58 +389,80 @@ function Topbar({ breadcrumb, role, onMobileMenuToggle }: { breadcrumb: string; 
           <p className="text-sm font-semibold leading-tight">{breadcrumb}</p>
           <p className="text-[12px] text-[#8A8F98] leading-tight">Manage assignments, users and classes.</p>
         </div>
-        <div ref={rootRef} className="relative">
-          <button
-            type="button"
-            onClick={() => setDropdownOpen((open) => !open)}
-            className="relative w-9 h-9 rounded-lg flex items-center justify-center hover:bg-[#F5F5F7] cursor-pointer"
-            aria-label="Notifications"
-            aria-expanded={dropdownOpen}>
-            <Bell className="h-5 w-5 text-[#1F2430]" />
-            {unreadCount > 0 ? (
-              <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-[#7C3AED] px-1.5 text-[9px] font-semibold text-white">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            ) : null}
-          </button>
-
-          {dropdownOpen ? (
-            <div className="absolute right-0 top-12 w-[360px] overflow-hidden rounded-xl border border-[#ECECEF] bg-white shadow-xl">
-              <div className="flex items-center justify-between border-b border-[#ECECEF] px-4 py-3">
-                <p className="text-sm font-semibold text-[#1F2430]">Notifications</p>
-                <button
-                  type="button"
-                  onClick={handleMarkAllAsRead}
-                  className="cursor-pointer text-[11px] font-medium text-[#7C3AED] hover:text-[#6D28D9]"
-                >
-                  Mark all as read
-                </button>
-              </div>
-
-              <div className="max-h-[360px] overflow-y-auto">
-                {notifications.length === 0 ? (
-                  <div className="px-4 py-6 text-center text-sm text-[#8A8F98]">No notifications yet.</div>
+        <div className="flex items-center gap-2">
+          {role === 'Admin' ? (
+            <div className="hidden md:block">
+              <select
+                value={selectedAcademicYearId}
+                onChange={handleAcademicYearChange}
+                className="min-w-[180px] rounded-lg border border-[#ECECEF] bg-white px-3 py-2 text-sm font-medium text-[#1F2430] outline-none transition focus:border-[#7C3AED] focus:ring-2 focus:ring-[#F3EEFF]"
+              >
+                {academicYears.length === 0 ? (
+                  <option value="">Loading years…</option>
                 ) : (
-                  notifications.map((notification) => (
-                    <button
-                      key={notification.id}
-                      type="button"
-                      onClick={() => void handleNotificationClick(notification)}
-                      className={`flex w-full cursor-pointer items-start gap-3 border-b border-[#F3F4F6] px-4 py-3 text-left transition-colors hover:bg-[#F7F7F9] ${notification.isRead ? 'bg-white' : 'bg-[#F5F3FF]'}`}>
-                      <span className={`mt-1 h-2.5 w-2.5 rounded-full ${notification.isRead ? 'bg-transparent' : 'bg-[#7C3AED]'}`} />
-                      <div className="min-w-0 flex-1">
-                        <p className={`text-sm font-semibold ${notification.isRead ? 'text-[#1F2430]' : 'text-[#1F2430]'}`}>
-                          {notification.title}
-                        </p>
-                        <p className="mt-1 text-xs text-[#8A8F98]">{notification.message}</p>
-                        <p className="mt-2 text-[11px] text-[#8A8F98]">{formatRelativeTime(notification.createdAt)}</p>
-                      </div>
-                    </button>
+                  academicYears.map((year) => (
+                    <option key={year.id} value={year.id}>
+                      {year.name} {year.isActive ? '(Active)' : '(Archived)'}
+                    </option>
                   ))
                 )}
-              </div>
+              </select>
             </div>
           ) : null}
+
+          <div ref={rootRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setDropdownOpen((open) => !open)}
+              className="relative w-9 h-9 rounded-lg flex items-center justify-center hover:bg-[#F5F5F7] cursor-pointer"
+              aria-label="Notifications"
+              aria-expanded={dropdownOpen}>
+              <Bell className="h-5 w-5 text-[#1F2430]" />
+              {unreadCount > 0 ? (
+                <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-[#7C3AED] px-1.5 text-[9px] font-semibold text-white">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              ) : null}
+            </button>
+
+            {dropdownOpen ? (
+              <div className="absolute right-0 top-12 w-[360px] overflow-hidden rounded-xl border border-[#ECECEF] bg-white shadow-xl">
+                <div className="flex items-center justify-between border-b border-[#ECECEF] px-4 py-3">
+                  <p className="text-sm font-semibold text-[#1F2430]">Notifications</p>
+                  <button
+                    type="button"
+                    onClick={handleMarkAllAsRead}
+                    className="cursor-pointer text-[11px] font-medium text-[#7C3AED] hover:text-[#6D28D9]"
+                  >
+                    Mark all as read
+                  </button>
+                </div>
+
+                <div className="max-h-[360px] overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="px-4 py-6 text-center text-sm text-[#8A8F98]">No notifications yet.</div>
+                  ) : (
+                    notifications.map((notification) => (
+                      <button
+                        key={notification.id}
+                        type="button"
+                        onClick={() => void handleNotificationClick(notification)}
+                        className={`flex w-full cursor-pointer items-start gap-3 border-b border-[#F3F4F6] px-4 py-3 text-left transition-colors hover:bg-[#F7F7F9] ${notification.isRead ? 'bg-white' : 'bg-[#F5F3FF]'}`}>
+                        <span className={`mt-1 h-2.5 w-2.5 rounded-full ${notification.isRead ? 'bg-transparent' : 'bg-[#7C3AED]'}`} />
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-sm font-semibold ${notification.isRead ? 'text-[#1F2430]' : 'text-[#1F2430]'}`}>
+                            {notification.title}
+                          </p>
+                          <p className="mt-1 text-xs text-[#8A8F98]">{notification.message}</p>
+                          <p className="mt-2 text-[11px] text-[#8A8F98]">{formatRelativeTime(notification.createdAt)}</p>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
     </header>
@@ -444,12 +528,24 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
       }
     };
 
+    const handleAcademicYearChange = () => {
+      try {
+        router.refresh();
+      } catch {
+        // ignore router refresh errors; fallback to a full page refresh below
+      }
+
+      window.location.reload();
+    };
+
     window.addEventListener('ams-avatar-updated', handleAvatarUpdate);
+    window.addEventListener('ams-academic-year-updated', handleAcademicYearChange);
 
     return () => {
       window.removeEventListener('ams-avatar-updated', handleAvatarUpdate);
+      window.removeEventListener('ams-academic-year-updated', handleAcademicYearChange);
     };
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     // Mirror legacy layout CSS which relies on `body.sidebar-collapsed`
@@ -473,7 +569,7 @@ export function AppShell({ role, breadcrumb, children }: { role: RoleType; bread
 
   return (
     <AppShellProvider value={true}>
-      <div className="flex h-screen overflow-hidden bg-[#F7F7F9] text-[#1F2430]">
+      <div className="flex h-screen min-h-screen overflow-hidden bg-[#F7F7F9] text-[#1F2430]">
         {mobileOpen && (
           <div className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden" onClick={() => setMobileOpen(false)} aria-hidden="true" />
         )}

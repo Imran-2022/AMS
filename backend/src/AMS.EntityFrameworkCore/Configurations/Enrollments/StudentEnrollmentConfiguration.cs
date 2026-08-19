@@ -12,6 +12,7 @@ public class StudentEnrollmentConfiguration : IEntityTypeConfiguration<StudentEn
         builder.HasKey(x => new { x.StudentId, x.ClassCourseId });
         builder.Property(x => x.StudentId).HasColumnName("student_id").IsRequired();
         builder.Property(x => x.ClassCourseId).HasColumnName("class_course_id").IsRequired();
+        builder.Property(x => x.AcademicYearId).HasColumnName("academic_year_id").IsRequired();
 
         builder.HasOne(x => x.Student)
             .WithMany()
@@ -21,6 +22,11 @@ public class StudentEnrollmentConfiguration : IEntityTypeConfiguration<StudentEn
         builder.HasOne(x => x.ClassCourse)
             .WithMany()
             .HasForeignKey(x => x.ClassCourseId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(x => x.AcademicYear)
+            .WithMany()
+            .HasForeignKey(x => x.AcademicYearId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

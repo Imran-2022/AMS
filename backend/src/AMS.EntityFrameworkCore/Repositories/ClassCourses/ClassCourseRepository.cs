@@ -83,6 +83,14 @@ public class ClassCourseRepository : IClassCourseRepository
         }
     }
 
+    public async Task<IReadOnlyList<ClassCourse>> GetByAcademicYearAsync(Guid academicYearId, CancellationToken cancellationToken = default)
+        => await _dbContext.ClassCourses
+            .Where(x => x.AcademicYearId == academicYearId)
+            .Include(x => x.AcademicYear)
+            .Include(x => x.Group)
+            .Include(x => x.ClassDefinition)
+            .ToListAsync(cancellationToken);
+
     public async Task AddAsync(ClassCourse classCourse, CancellationToken cancellationToken = default)
     {
         await _dbContext.ClassCourses.AddAsync(classCourse, cancellationToken);

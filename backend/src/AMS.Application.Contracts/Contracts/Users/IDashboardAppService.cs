@@ -4,6 +4,7 @@ namespace AMS.Application.Contracts;
 
 public class AdminDashboardStatsDto
 {
+    public string AcademicYear { get; set; } = string.Empty;
     public int TotalUsers { get; set; }
     public int TotalTeachers { get; set; }
     public int TotalStudents { get; set; }
@@ -15,6 +16,7 @@ public class AdminDashboardStatsDto
 
 public class TeacherDashboardStatsDto
 {
+    public string AcademicYear { get; set; } = string.Empty;
     public int ActiveAssignmentsCount { get; set; }
     public int DraftAssignmentsCount { get; set; }
     public int PendingGradingSubmissionsCount { get; set; }
@@ -40,7 +42,7 @@ public class StudentDashboardStatsDto
 
 public interface IDashboardAppService
 {
-    Task<AdminDashboardStatsDto> GetAdminStatsAsync();
+    Task<AdminDashboardStatsDto> GetAdminStatsAsync(Guid? academicYearId = null);
     Task<TeacherDashboardStatsDto> GetTeacherStatsAsync(Guid teacherId);
     Task<StudentDashboardStatsDto> GetStudentStatsAsync(Guid studentId);
 }

@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Button, PageHeader, AmsPagination, Modal, AmsDeleteComfiramtionModal } from '../../ui';
 import { TeacherAssignmentModal } from './shared/TeacherAssignmentModal';
 import {
+  getAcademicYears,
   getClassCourses,
+  getSelectedAcademicYearId,
   getSubjects,
   getUsers,
   createSubject,
@@ -22,6 +24,7 @@ export default function SubjectsAssignments() {
   const [assignments, setAssignments] = useState<TeacherSubjectAssignmentDto[]>([]);
   const [search, setSearch] = useState('');
   const [selectedClass, setSelectedClass] = useState('All classes');
+  const [selectedAcademicYearId, setSelectedAcademicYearId] = useState('');
   const [activeModal, setActiveModal] = useState<'subject' | 'assign' | 'view-subjects' | 'delete' | null>(null);
   const [viewSubjectsForClass, setViewSubjectsForClass] = useState<string | null>(null);
   const [actionMenuFor, setActionMenuFor] = useState<string | null>(null);
@@ -29,13 +32,55 @@ export default function SubjectsAssignments() {
   const [subjectForm, setSubjectForm] = useState({ name: '', code: '', gradeId: '', groupId: '' });
   const [editingSubject, setEditingSubject] = useState<SubjectDto | null>(null);
   const [assignForm, setAssignForm] = useState({ classDefinitionId: '', classCourseId: '', subjectId: '', teacherId: '' });
+  const [academicYears, setAcademicYears] = useState<{ id: string; name: string; isActive: boolean }[]>([]);
   const [pageSize, setPageSize] = useState(10);
   const [pageIndex, setPageIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+  // Compute whether we're viewing an archived year
+  const activeAcademicYear = academicYears.find((y) => y.isActive);
+  const isViewingArchivedYear = Boolean(selectedAcademicYearId && selectedAcademicYearId !== activeAcademicYear?.id);
+
+  // Load academic years and initialize to active year
+  useEffect(() => {
+    async function loadAcademicYears() {
+      try {
+        const years = await getAcademicYears();
+        setAcademicYears(years);
+
+        const activeYear = years.find(y => y.isActive);
+        const storedYearId = getSelectedAcademicYearId();
+        const preferredYearId = storedYearId && years.some((year) => year.id === storedYearId)
+          ? storedYearId
+          : activeYear?.id ?? years[0]?.id ?? '';
+
+        if (preferredYearId) {
+          setSelectedAcademicYearId(preferredYearId);
+        }
+      } catch (err) {
+        console.error('Failed to load academic years', err);
+      }
+    }
+    void loadAcademicYears();
+  }, []);
+
+  // Listen for academic year changes from AppShell
+  useEffect(() => {
+    const syncSelectedAcademicYear = () => {
+      setSelectedAcademicYearId(getSelectedAcademicYearId());
+    };
+
+    window.addEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
+    return () => {
+      window.removeEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
+    };
+  }, []);
+
   useEffect(() => {
     void loadData();
-  }, []);
+  }, [selectedAcademicYearId]);
+
+
 
   useEffect(() => {
     if (!actionMenuFor) return;
@@ -56,16 +101,28 @@ export default function SubjectsAssignments() {
   async function loadData() {
     try {
       setError(null);
+      const academicYears = await getAcademicYears();
+      const activeYearId = academicYears.find((year) => year.isActive)?.id ?? '';
+      const isViewingArchivedYear = Boolean(selectedAcademicYearId && selectedAcademicYearId !== activeYearId);
+      const includeAllYears = isViewingArchivedYear;
+
       const [apiClasses, apiSubjects, apiUsers, apiAssignments] = await Promise.all([
-        getClassCourses(),
-        getSubjects(),
+        getClassCourses(includeAllYears),
+        getSubjects(includeAllYears),
         getUsers(),
-        getTeacherAssignments(),
+        getTeacherAssignments(includeAllYears),
       ]);
-      setClasses(apiClasses);
-      setSubjects(apiSubjects);
+
+      const visibleClassIds = isViewingArchivedYear && selectedAcademicYearId
+        ? new Set(apiClasses.filter((classCourse) => classCourse.academicYearId === selectedAcademicYearId).map((classCourse) => classCourse.id))
+        : new Set(apiClasses.map((classCourse) => classCourse.id));
+
+      setClasses(isViewingArchivedYear && selectedAcademicYearId
+        ? apiClasses.filter((classCourse) => classCourse.academicYearId === selectedAcademicYearId)
+        : apiClasses);
+      setSubjects(isViewingArchivedYear ? apiSubjects.filter((subject) => visibleClassIds.has(subject.classCourseId)) : apiSubjects);
       setTeachers((apiUsers as UserDto[]).filter((u) => u.role === 'Teacher'));
-      setAssignments(apiAssignments);
+      setAssignments(isViewingArchivedYear ? apiAssignments.filter((assignment) => visibleClassIds.has(assignment.classCourseId)) : apiAssignments);
     } catch (err) {
       console.error(err);
       setError('Unable to load subjects data.');
@@ -253,11 +310,19 @@ export default function SubjectsAssignments() {
         eyebrow="Administration"
         title="Teacher Allocation"
         action={
-          <Button type="button" onClick={() => openModal('assign')} className="px-4 py-2.5">
-            Assign teacher
-          </Button>
+          !isViewingArchivedYear && (
+            <Button type="button" onClick={() => openModal('assign')} className="px-4 py-2.5">
+              Assign teacher
+            </Button>
+          )
         }
       />
+
+      {isViewingArchivedYear && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+          ℹ️ You are viewing archived data. Editing and adding is disabled in archive mode.
+        </div>
+      )}
 
 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-5">
@@ -345,9 +410,11 @@ export default function SubjectsAssignments() {
                 ? 'Try a different class filter or search term to find the allocation you need.'
                 : 'Assign a teacher to a subject to display allocation records here.'}
             </p>
-            <Button type="button" onClick={() => openModal('assign')} className="mt-6">
-              Assign teacher
-            </Button>
+            {!isViewingArchivedYear && (
+              <Button type="button" onClick={() => openModal('assign')} className="mt-6">
+                Assign teacher
+              </Button>
+            )}
           </div>
         ) : (
           <>
@@ -377,22 +444,24 @@ export default function SubjectsAssignments() {
                           <span className="text-slate-600">{teacherName}</span>
                         )}
                       </td>
-                      <td className="px-5 py-3.5 text-right">
-                        <div className="relative inline-flex">
-                          <button type="button" data-action-button={`subject-${subject.id}`} onClick={(ev) => { ev.stopPropagation(); setActionMenuFor(actionMenuFor === `subject-${subject.id}` ? null : `subject-${subject.id}`); }} className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md p-0 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
-                          {actionMenuFor === `subject-${subject.id}` ? (
-                            <div data-action-menu={`subject-${subject.id}`} onClick={(ev) => ev.stopPropagation()} className="absolute right-0 top-full z-20 mt-2 w-44 overflow-hidden rounded border border-slate-200 bg-white shadow-xl">
-                              {teacherName === 'Unassigned' ? (
-                                <Button type="button" variant="ghost" onClick={() => handleReassignTeacher(subject)} className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">Assign teacher</Button>
-                              ) : (
-                                <Button type="button" variant="ghost" onClick={() => handleReassignTeacher(subject)} className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">Reassign teacher</Button>
-                              )}
-                              <Button type="button" variant="ghost" onClick={() => openEditSubject(subject)} className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">Edit subject</Button>
-                              <Button type="button" variant="ghost" onClick={() => handleDelete('subject', subject.id, subject.name)} className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50">Delete subject</Button>
-                            </div>
-                          ) : null}
-                        </div>
-                      </td>
+                      {!isViewingArchivedYear && (
+                        <td className="px-5 py-3.5 text-right">
+                          <div className="relative inline-flex">
+                            <button type="button" data-action-button={`subject-${subject.id}`} onClick={(ev) => { ev.stopPropagation(); setActionMenuFor(actionMenuFor === `subject-${subject.id}` ? null : `subject-${subject.id}`); }} className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md p-0 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+                            {actionMenuFor === `subject-${subject.id}` ? (
+                              <div data-action-menu={`subject-${subject.id}`} onClick={(ev) => ev.stopPropagation()} className="absolute right-0 top-full z-20 mt-2 w-44 overflow-hidden rounded border border-slate-200 bg-white shadow-xl">
+                                {teacherName === 'Unassigned' ? (
+                                  <Button type="button" variant="ghost" onClick={() => handleReassignTeacher(subject)} className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">Assign teacher</Button>
+                                ) : (
+                                  <Button type="button" variant="ghost" onClick={() => handleReassignTeacher(subject)} className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">Reassign teacher</Button>
+                                )}
+                                <Button type="button" variant="ghost" onClick={() => openEditSubject(subject)} className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">Edit subject</Button>
+                                <Button type="button" variant="ghost" onClick={() => handleDelete('subject', subject.id, subject.name)} className="w-full justify-start rounded-none px-4 py-3 text-left text-sm text-rose-600 hover:bg-slate-50">Delete subject</Button>
+                              </div>
+                            ) : null}
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}

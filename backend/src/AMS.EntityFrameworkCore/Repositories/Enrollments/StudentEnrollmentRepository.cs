@@ -22,12 +22,30 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
     public async Task<IReadOnlyList<StudentEnrollment>> GetByStudentAsync(Guid studentId, CancellationToken cancellationToken = default)
         => await _dbContext.StudentEnrollments.Where(x => x.StudentId == studentId).ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<StudentEnrollment>> GetByStudentAndAcademicYearAsync(Guid studentId, Guid academicYearId, CancellationToken cancellationToken = default)
+        => await _dbContext.StudentEnrollments.Where(x => x.StudentId == studentId && x.AcademicYearId == academicYearId).ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<StudentEnrollment>> GetActiveByStudentAsync(Guid studentId, CancellationToken cancellationToken = default)
+        => await _dbContext.StudentEnrollments.Where(x => x.StudentId == studentId && x.IsActive).ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<StudentEnrollment>> GetActiveByStudentAndAcademicYearAsync(Guid studentId, Guid academicYearId, CancellationToken cancellationToken = default)
+        => await _dbContext.StudentEnrollments.Where(x => x.StudentId == studentId && x.AcademicYearId == academicYearId && x.IsActive).ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<StudentEnrollment>> GetByClassCourseAsync(Guid classCourseId, CancellationToken cancellationToken = default)
         => await _dbContext.StudentEnrollments.Where(x => x.ClassCourseId == classCourseId).ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<StudentEnrollment>> GetByAcademicYearAsync(Guid academicYearId, CancellationToken cancellationToken = default)
+        => await _dbContext.StudentEnrollments.Where(x => x.AcademicYearId == academicYearId).ToListAsync(cancellationToken);
 
     public async Task AddAsync(StudentEnrollment enrollment, CancellationToken cancellationToken = default)
     {
         await _dbContext.StudentEnrollments.AddAsync(enrollment, cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task UpdateAsync(StudentEnrollment enrollment, CancellationToken cancellationToken = default)
+    {
+        _dbContext.StudentEnrollments.Update(enrollment);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 

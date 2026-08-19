@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/shared/layout';
-import { Button } from '../../ui/Button';
+import { Button, PageLoader } from '../../ui';
 import { getAssignments, getClassCourses, getSubjects, createAssignment, publishAssignment, uploadAttachment, getCurrentUser, getSubmissions } from '@/lib/api';
 import { getTeacherDashboardStats, type TeacherDashboardStats } from '@/lib/api/dashboard';
 import type { AssignmentDto, ClassCourseDto, SubjectDto, CreateAssignmentDto, UserDto, SubmissionDto } from '@/lib/api';
@@ -65,6 +65,22 @@ export function TeacherDashboardPage() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    void loadDashboard();
+  }, []);
+
+  // Listen for academic year changes and reload data
+  useEffect(() => {
+    const handleAcademicYearChanged = () => {
+      void loadDashboard();
+    };
+
+    window.addEventListener('ams-academic-year-updated', handleAcademicYearChanged);
+    return () => {
+      window.removeEventListener('ams-academic-year-updated', handleAcademicYearChanged);
+    };
+  }, []);
 
   const handleSaveDraft = async (payload: {
     title: string;
@@ -173,6 +189,19 @@ export function TeacherDashboardPage() {
       .slice(0, 5);
   }, [submissions]);
 
+  if (loading) {
+    return (
+      <AppShell role="Teacher" breadcrumb="Teacher / Dashboard">
+        <div className="space-y-6">
+          <div>
+            <p className="text-lg font-bold text-brand-600 mb-1 uppercase">LOADING</p>
+          </div>
+          <PageLoader title="Loading dashboard" subtitle="Loading your student and assignment overview…" />
+        </div>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell role="Teacher" breadcrumb="Teacher / Dashboard">
       <div className="space-y-6">
@@ -180,6 +209,7 @@ export function TeacherDashboardPage() {
           <div>
             <p className="text-lg font-bold text-brand-600 mb-1 uppercase">{greeting}, {teacherName}</p>
             <p className="text-sm text-slate-700 mt-1">Review performance and keep your classes on track.</p>
+            <p className="text-sm text-slate-400 mt-2">Academic year: {stats?.academicYear || 'Not available'}</p>
           </div>
           <div className="flex gap-2">
             <Button type="button" variant="secondary" className="px-2  text-xs" onClick={goToSubmissions}>Review Submissions</Button>

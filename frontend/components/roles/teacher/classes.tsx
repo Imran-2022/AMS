@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { AppShell } from '@/shared/layout';
-import { AmsPagination } from '../../ui';
+import { AmsPagination, PageLoader } from '../../ui';
 import { getAssignments, getClassCourses, getEnrollments, getSubjects } from '@/lib/api';
 import type { AssignmentDto, ClassCourseDto, StudentEnrollmentDto, SubjectDto } from '@/lib/api';
 
@@ -21,30 +21,42 @@ export function TeacherClassesPage() {
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(4);
   const [pageIndex, setPageIndex] = useState(0);
 
-  useEffect(() => {
-    async function loadData() {
-      setError(null);
-      setLoading(true);
-      try {
-        const [apiClasses, apiSubjects, apiAssignments, apiEnrollments] = await Promise.all([
-          getClassCourses(),
-          getSubjects(),
-          getAssignments(),
-          getEnrollments()
-        ]);
-        setClasses(apiClasses);
-        setSubjects(apiSubjects);
-        setAssignments(apiAssignments);
-        setEnrollments(apiEnrollments);
-      } catch (err) {
-        console.error(err);
-        setError('Unable to load classes. Please refresh the page.');
-      } finally {
-        setLoading(false);
-      }
+  async function loadData() {
+    setError(null);
+    setLoading(true);
+    try {
+      const [apiClasses, apiSubjects, apiAssignments, apiEnrollments] = await Promise.all([
+        getClassCourses(),
+        getSubjects(),
+        getAssignments(),
+        getEnrollments()
+      ]);
+      setClasses(apiClasses);
+      setSubjects(apiSubjects);
+      setAssignments(apiAssignments);
+      setEnrollments(apiEnrollments);
+    } catch (err) {
+      console.error(err);
+      setError('Unable to load classes. Please refresh the page.');
+    } finally {
+      setLoading(false);
     }
+  }
 
+  useEffect(() => {
     void loadData();
+  }, []);
+
+  // Listen for academic year changes and reload data
+  useEffect(() => {
+    const handleAcademicYearChanged = () => {
+      void loadData();
+    };
+
+    window.addEventListener('ams-academic-year-updated', handleAcademicYearChanged);
+    return () => {
+      window.removeEventListener('ams-academic-year-updated', handleAcademicYearChanged);
+    };
   }, []);
 
   const classSubjectsMap = useMemo(() => {
@@ -128,34 +140,6 @@ export function TeacherClassesPage() {
     return visibleClasses.slice(start, start + pageSize);
   }, [pageIndex, pageSize, visibleClasses]);
 
-  if (loading) {
-    return (
-      <AppShell role="Teacher" breadcrumb="Teacher / My Classes">
-        <div className="space-y-6">
-          <div>
-            <p className="text-xs font-bold  text-brand-600">TEACHER PORTAL</p>
-            <h1 className="mt-0.5 text-3xl font-extrabold text-slate-800">My Classes</h1>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-500">Loading your classes…</div>
-        </div>
-      </AppShell>
-    );
-  }
-
-  if (error) {
-    return (
-      <AppShell role="Teacher" breadcrumb="Teacher / My Classes">
-        <div className="space-y-6">
-          <div>
-            <p className="text-xs font-bold  text-brand-600">TEACHER PORTAL</p>
-            <h1 className="mt-0.5 text-3xl font-extrabold text-slate-800">My Classes</h1>
-          </div>
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-rose-700">{error}</div>
-        </div>
-      </AppShell>
-    );
-  }
-
   return (
     <AppShell role="Teacher" breadcrumb="Teacher / My Classes">
       <div className="space-y-6">
@@ -164,7 +148,13 @@ export function TeacherClassesPage() {
           <h1 className="mt-0.5 text-3xl font-extrabold text-slate-800">My Classes</h1>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {loading ? (
+          <PageLoader title="Loading classes" subtitle="Loading your classes and class data…" />
+        ) : error ? (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-rose-700">{error}</div>
+        ) : (
+          <>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-5">
             <div className="mb-4 flex items-center justify-between">
               <p className="text-[11px] font-bold tracking-[0.12em] text-slate-400">CLASSES</p>
@@ -207,37 +197,39 @@ export function TeacherClassesPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex flex-wrap items-center gap-2">
-              <button type="button" className="rounded px-4 py-2 text-sm font-semibold bg-brand-600 text-white shadow-sm">
-                All classes <span className="ml-1 font-normal opacity-70">{classes.length}</span>
-              </button>
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <select value={classFilter} onChange={(event) => {
-                setClassFilter(event.target.value);
-                setSubjectFilter('All subjects');
-              }} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500  cursor-pointer">
-                {availableClasses.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-              <select value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500 cursor-pointer">
-                {availableSubjects.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-              <div className="relative min-w-[240px]">
-                <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="m21 21-4.3-4.3" />
-                </svg>
-                <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} type="text" placeholder="Search classes, subjects…" className="w-full rounded border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-600 outline-none focus:border-brand-500" />
+        {classes.length > 0 && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" className="rounded px-4 py-2 text-sm font-semibold bg-brand-600 text-white shadow-sm">
+                  All classes <span className="ml-1 font-normal opacity-70">{classes.length}</span>
+                </button>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <select value={classFilter} onChange={(event) => {
+                  setClassFilter(event.target.value);
+                  setSubjectFilter('All subjects');
+                }} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500  cursor-pointer">
+                  {availableClasses.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+                <select value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)} className="rounded border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 outline-none focus:border-brand-500 cursor-pointer">
+                  {availableSubjects.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+                <div className="relative min-w-[240px]">
+                  <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="m21 21-4.3-4.3" />
+                  </svg>
+                  <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} type="text" placeholder="Search classes, subjects…" className="w-full rounded border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-600 outline-none focus:border-brand-500" />
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {visibleClasses.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-8 py-20 text-center">
@@ -324,6 +316,8 @@ export function TeacherClassesPage() {
             }}
             itemLabel="classes"
           />
+        )}
+          </>
         )}
       </div>
     </AppShell>

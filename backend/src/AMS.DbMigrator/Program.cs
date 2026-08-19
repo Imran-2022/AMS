@@ -18,7 +18,7 @@ var builder = Host.CreateDefaultBuilder(args)
     .ConfigureServices((context, services) =>
     {
         var connectionString = context.Configuration.GetConnectionString("DefaultConnection")
-            ?? "Host=localhost;Port=5432;Database=amsdb;Username=postgres;Password=root";
+            ?? "Host=localhost;Port=5432;Database=amsdb1;Username=postgres;Password=root";
 
         services.AddDbContext<AmsDbContext>(options => options.UseNpgsql(connectionString));
         services.AddScoped<IAcademicYearRepository, AcademicYearRepository>();

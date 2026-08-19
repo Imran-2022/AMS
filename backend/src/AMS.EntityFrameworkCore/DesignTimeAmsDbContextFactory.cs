@@ -8,7 +8,7 @@ public class DesignTimeAmsDbContextFactory : IDesignTimeDbContextFactory<AmsDbCo
     public AmsDbContext CreateDbContext(string[] args)
     {
         var optionsBuilder = new DbContextOptionsBuilder<AmsDbContext>();
-        optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=amsdb;Username=postgres;Password=root");
+        optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=amsdb1;Username=postgres;Password=root");
         return new AmsDbContext(optionsBuilder.Options);
     }
 }

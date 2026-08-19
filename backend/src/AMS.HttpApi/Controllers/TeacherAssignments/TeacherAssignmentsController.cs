@@ -21,29 +21,47 @@ public class TeacherAssignmentsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<TeacherSubjectAssignmentDto>>> GetAll()
-        {
-            var currentUserId = _currentUser.UserId;
-            var currentUserRole = _currentUser.Role;
-            var items = await _appService.GetAllAsync(currentUserId, currentUserRole);
+    public async Task<ActionResult<IReadOnlyList<TeacherSubjectAssignmentDto>>> GetAll([FromQuery] bool includeAllAcademicYears = false)
+    {
+        var currentUserId = _currentUser.UserId;
+        var currentUserRole = _currentUser.Role;
+        var items = await _appService.GetAllAsync(currentUserId, currentUserRole, includeAllAcademicYears);
         return Ok(items);
     }
 
     [HttpPost]
     public async Task<ActionResult<TeacherSubjectAssignmentDto>> Create([FromBody] CreateTeacherSubjectAssignmentDto input)
-        {
-            var currentUserId = _currentUser.UserId;
-            var currentUserRole = _currentUser.Role;
-            var item = await _appService.CreateAsync(input, currentUserId, currentUserRole);
+    {
+        var currentUserId = _currentUser.UserId;
+        var currentUserRole = _currentUser.Role;
+        var item = await _appService.CreateAsync(input, currentUserId, currentUserRole);
         return CreatedAtAction(nameof(GetAll), item);
     }
 
     [HttpDelete]
     public async Task<ActionResult> Delete([FromQuery] Guid teacherId, [FromQuery] Guid subjectId)
-        {
-            var currentUserId = _currentUser.UserId;
-            var currentUserRole = _currentUser.Role;
-            await _appService.DeleteAsync(teacherId, subjectId, currentUserId, currentUserRole);
+    {
+        var currentUserId = _currentUser.UserId;
+        var currentUserRole = _currentUser.Role;
+        await _appService.DeleteAsync(teacherId, subjectId, currentUserId, currentUserRole);
         return NoContent();
+    }
+
+    [HttpPost("reassign")]
+    public async Task<ActionResult<TeacherSubjectAssignmentDto>> ReassignTeacher([FromBody] ReassignTeacherDto input)
+    {
+        var currentUserId = _currentUser.UserId;
+        var currentUserRole = _currentUser.Role;
+        var item = await _appService.ReassignTeacherAsync(input, currentUserId, currentUserRole);
+        return CreatedAtAction(nameof(GetAll), item);
+    }
+
+    [HttpPost("bulk-reassign")]
+    public async Task<ActionResult<IReadOnlyList<TeacherSubjectAssignmentDto>>> BulkReassignTeachers([FromBody] BulkReassignTeachersDto input)
+    {
+        var currentUserId = _currentUser.UserId;
+        var currentUserRole = _currentUser.Role;
+        var items = await _appService.BulkReassignTeachersAsync(input, currentUserId, currentUserRole);
+        return Ok(items);
     }
 }

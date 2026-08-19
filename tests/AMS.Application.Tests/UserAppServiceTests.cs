@@ -80,6 +80,7 @@ public class UserAppServiceTests
     public async Task CreateAsync_Should_Create_Student_When_Valid()
     {
         var repo = new Mock<IUserRepository>(MockBehavior.Strict);
+        repo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<User>());
         repo.Setup(r => r.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
         var service = new UserAppService(
@@ -146,6 +147,104 @@ public class UserAppServiceTests
 
         Assert.Equal("/new-avatar.jpg", result.AvatarUrl);
         repo.Verify(r => r.UpdateAsync(It.Is<User>(u => u.AvatarUrl == "/new-avatar.jpg"), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetNextStudentIdAsync_Should_Not_Include_Academic_Year()
+    {
+        var classCourseId = Guid.NewGuid();
+        var classCourse = new ClassCourse(classCourseId, "Six", "A", Guid.NewGuid(), Guid.NewGuid(), null);
+
+        var classCourseRepo = new Mock<IClassCourseRepository>(MockBehavior.Strict);
+        classCourseRepo.Setup(r => r.GetByIdAsync(classCourseId, It.IsAny<CancellationToken>())).ReturnsAsync(classCourse);
+
+        var enrollmentRepo = new Mock<IStudentEnrollmentRepository>(MockBehavior.Strict);
+        enrollmentRepo.Setup(r => r.GetByClassCourseAsync(classCourseId, It.IsAny<CancellationToken>())).ReturnsAsync(new List<StudentEnrollment>());
+
+        var userRepo = new Mock<IUserRepository>(MockBehavior.Strict);
+        userRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<User>());
+
+        var service = new UserAppService(
+            userRepo.Object,
+            Mock.Of<IFileAppService>(),
+            enrollmentRepo.Object,
+            classCourseRepo.Object,
+            Mock.Of<IGroupRepository>(),
+            Mock.Of<INotificationPreferenceRepository>());
+
+        var result = await service.GetNextStudentIdAsync(classCourseId, null, Guid.NewGuid(), nameof(UserRole.Admin));
+
+        Assert.Equal("STU-0001", result);
+    }
+
+    [Fact]
+    public async Task CreateAsync_Should_Throw_When_StudentId_Already_Exists()
+    {
+        var repo = new Mock<IUserRepository>(MockBehavior.Strict);
+        var existingUserId = Guid.NewGuid();
+        repo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<User>
+            {
+                new User(existingUserId, "Existing Student", "existing@example.com", "hash", UserRole.Student,
+                    studentProfile: new StudentProfile(existingUserId, "S123", "Existing Parent", "parent@example.com", "01712345678", DateTime.UtcNow.AddYears(-1)))
+            });
+
+        var service = new UserAppService(
+            repo.Object,
+            Mock.Of<IFileAppService>(),
+            Mock.Of<IStudentEnrollmentRepository>(),
+            Mock.Of<IClassCourseRepository>(),
+            Mock.Of<IGroupRepository>(),
+            Mock.Of<INotificationPreferenceRepository>());
+
+        var dto = new CreateUserDto
+        {
+            FullName = "Student Name",
+            Email = "student@example.com",
+            Password = "P@ssw0rd",
+            Role = nameof(UserRole.Student),
+            StudentId = "S123",
+            GuardianName = "Parent Name",
+            GuardianEmail = "parent@example.com",
+            ParentMobile = "01712345678",
+            AdmissionDate = DateTime.UtcNow
+        };
+
+        var ex = await Assert.ThrowsAsync<ValidationException>(() => service.CreateAsync(dto, Guid.NewGuid(), nameof(UserRole.Admin)));
+        Assert.Contains("already exists", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task GetNextStudentIdAsync_Should_Advance_If_Id_Is_Already_Used()
+    {
+        var classCourseId = Guid.NewGuid();
+        var classCourse = new ClassCourse(classCourseId, "Six", "A", Guid.NewGuid(), Guid.NewGuid(), null);
+
+        var classCourseRepo = new Mock<IClassCourseRepository>(MockBehavior.Strict);
+        classCourseRepo.Setup(r => r.GetByIdAsync(classCourseId, It.IsAny<CancellationToken>())).ReturnsAsync(classCourse);
+
+        var enrollmentRepo = new Mock<IStudentEnrollmentRepository>(MockBehavior.Strict);
+        enrollmentRepo.Setup(r => r.GetByClassCourseAsync(classCourseId, It.IsAny<CancellationToken>())).ReturnsAsync(new List<StudentEnrollment>());
+
+        var userRepo = new Mock<IUserRepository>(MockBehavior.Strict);
+        var existingUserId = Guid.NewGuid();
+        userRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<User>
+        {
+            new User(existingUserId, "Existing Student", "existing@example.com", "hash", UserRole.Student,
+                studentProfile: new StudentProfile(existingUserId, "STU-0001", "Parent Name", "parent@example.com", "01712345678", DateTime.UtcNow.AddYears(-1)))
+        });
+
+        var service = new UserAppService(
+            userRepo.Object,
+            Mock.Of<IFileAppService>(),
+            enrollmentRepo.Object,
+            classCourseRepo.Object,
+            Mock.Of<IGroupRepository>(),
+            Mock.Of<INotificationPreferenceRepository>());
+
+        var result = await service.GetNextStudentIdAsync(classCourseId, null, Guid.NewGuid(), nameof(UserRole.Admin));
+
+        Assert.Equal("STU-0002", result);
     }
 
     [Fact]

@@ -3,10 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/shared/layout';
-import { Button, Card, Metric, PageHeader, Pill, RoleBadge, Th, Td } from '@/shared/ui';
+import { Button, Card, Metric, PageHeader, PageLoader, Pill, RoleBadge, Th, Td } from '@/shared/ui';
 import { AddStudentModal, AddTeacherModal, TeacherAssignmentModal } from '@/components/roles/admin/shared';
 import { getAdminDashboardStats } from '@/lib/api/dashboard';
-import { getAssignments, getSubmissions, getUsers as apiGetUsers, getSubjects } from '@/lib/api';
+import { getAcademicYears, getAssignments, getSubmissions, getUsers as apiGetUsers, getSubjects, getSelectedAcademicYearId } from '@/lib/api';
 import { MoreVertical, UserPlus, UserCheck, BookOpen, ClipboardList } from 'lucide-react';
 import { createUser, deleteUser, getClassCourses, getUsers, updateUser } from '@/lib/api';
 import { createEnrollment, deleteEnrollment, getEnrollments } from '@/lib/api/enrollments';
@@ -29,11 +29,21 @@ export function AdminDashboardPage() {
   const [dashboardClassCourses, setDashboardClassCourses] = useState<ClassCourseRecord[]>([]);
   const [dashboardTeachers, setDashboardTeachers] = useState<{ id: string; fullName: string }[]>([]);
   const [dashboardSubjects, setDashboardSubjects] = useState<{ id: string; name: string; classCourseId: string }[]>([]);
+  const [isViewingArchivedYear, setIsViewingArchivedYear] = useState(false);
 
   const router = useRouter();
 
   useEffect(() => {
     void loadDashboard();
+  }, []);
+
+  useEffect(() => {
+    const handleAcademicYearChange = () => {
+      void loadDashboard();
+    };
+
+    window.addEventListener('ams-academic-year-updated', handleAcademicYearChange);
+    return () => window.removeEventListener('ams-academic-year-updated', handleAcademicYearChange);
   }, []);
 
   const goToAssignments = () => router.push('/roles/admin/assignments');
@@ -51,13 +61,19 @@ export function AdminDashboardPage() {
     try {
       setIsLoading(true);
       setLoadError(null);
+      const selectedYearId = getSelectedAcademicYearId();
+      const years = await getAcademicYears();
+      const activeYearId = years.find((year) => year.isActive)?.id ?? '';
+      const isViewingArchived = Boolean(selectedYearId && selectedYearId !== activeYearId);
+      setIsViewingArchivedYear(isViewingArchived);
+
       const [s, assignments, submissions, classes, users, subjects] = await Promise.all([
-        getAdminDashboardStats(),
-        getAssignments(),
-        getSubmissions(),
-        getClassCourses(),
+        getAdminDashboardStats(selectedYearId || undefined),
+        getAssignments(isViewingArchived),
+        getSubmissions(isViewingArchived),
+        getClassCourses(isViewingArchived),
         apiGetUsers(),
-        getSubjects(),
+        getSubjects(isViewingArchived),
       ]);
       setStats(s);
       setRecentAssignments(assignments.filter((assignment) => assignment.status === 'Published').slice(0, 8));
@@ -89,9 +105,26 @@ export function AdminDashboardPage() {
     }
   }
 
+  if (isLoading) {
+    return (
+      <AppShell role="Admin" breadcrumb="Admin / Dashboard">
+        <div className="space-y-6">
+          <p className="text-[12px] font-semibold uppercase text-[#7C3AED] mb-1">ADMINISTRATION</p>
+          <PageLoader title="Loading dashboard" subtitle="Loading upcoming assignments, submissions, and stats…" />
+        </div>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell role="Admin" breadcrumb="Admin / Dashboard">
       <div className="grid gap-6">
+        {isViewingArchivedYear && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 flex gap-3">
+            <span className="text-lg">ℹ️</span>
+            <p className="text-sm text-amber-800">You are viewing archived data. Editing and adding is disabled in archive mode.</p>
+          </div>
+        )}
         <section className="rounded-2xl border border-[#ECECEF] bg-white p-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
@@ -99,11 +132,13 @@ export function AdminDashboardPage() {
               <h2 className="text-2xl font-bold mb-1">Stay on top of teaching and student work.</h2>
               <p className="text-[13px] text-[#8A8F98]">A cleaner, responsive dashboard for student, teacher, and assignment operations.</p>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Button type="button" onClick={() => setStudentModalOpen(true)}>Add Student</Button>
-              <Button type="button" variant="secondary" onClick={() => setTeacherModalOpen(true)}>Add Teacher</Button>
-              <Button type="button" variant="secondary" onClick={() => setAssignTeacherOpen(true)}>Assign Teacher</Button>
-            </div>
+            {!isViewingArchivedYear && (
+              <div className="flex flex-wrap gap-3">
+                <Button type="button" onClick={() => setStudentModalOpen(true)}>Add Student</Button>
+                <Button type="button" variant="secondary" onClick={() => setTeacherModalOpen(true)}>Add Teacher</Button>
+                <Button type="button" variant="secondary" onClick={() => setAssignTeacherOpen(true)}>Assign Teacher</Button>
+              </div>
+            )}
           </div>
         </section>
 

@@ -15,8 +15,13 @@ export type CreateTeacherSubjectAssignmentDto = {
   subjectId: string;
 };
 
-export async function getTeacherAssignments() {
-  return request<TeacherSubjectAssignmentDto[]>(`/api/teacher-assignments`);
+export async function getTeacherAssignments(includeAllAcademicYears?: boolean) {
+  const params = new URLSearchParams();
+  if (includeAllAcademicYears) {
+    params.append('includeAllAcademicYears', 'true');
+  }
+  const query = params.toString();
+  return request<TeacherSubjectAssignmentDto[]>(`/api/teacher-assignments${query ? `?${query}` : ''}`);
 }
 
 export async function createTeacherAssignment(input: CreateTeacherSubjectAssignmentDto) {

@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/shared/layout';
-import { AmsPagination } from '../../ui';
-import { getAssignments, type AssignmentDto } from '@/lib/api';
+import { AmsPagination, PageLoader } from '../../ui';
+import { getAcademicYears, getAssignments, getClassCourses, getSelectedAcademicYearId, type AssignmentDto } from '@/lib/api';
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 
@@ -16,6 +16,8 @@ export function AdminAssignmentsPage() {
   const [search, setSearch] = useState('');
   const [assignments, setAssignments] = useState<AssignmentDto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedAcademicYearId, setSelectedAcademicYearId] = useState('');
+  const [academicYears, setAcademicYears] = useState<{ id: string; name: string; isActive: boolean }[]>([]);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   const ALL_CLASSES = useMemo(
@@ -78,21 +80,75 @@ export function AdminAssignmentsPage() {
     return { total, published, drafts, dueSoon };
   }, [assignments]);
 
+  // Load academic years and initialize to active year
   useEffect(() => {
-    async function loadAssignments() {
-      setIsLoading(true);
+    async function loadAcademicYears() {
       try {
-        const items = await getAssignments();
-        setAssignments(items.filter((assignment) => assignment.status === 'Published'));
-      } catch (error) {
-        console.error('Failed to load assignments', error);
-      } finally {
-        setIsLoading(false);
+        const years = await getAcademicYears();
+        setAcademicYears(years);
+
+        const activeYear = years.find(y => y.isActive);
+        const storedYearId = getSelectedAcademicYearId();
+        const preferredYearId = storedYearId && years.some((year) => year.id === storedYearId)
+          ? storedYearId
+          : activeYear?.id ?? years[0]?.id ?? '';
+
+        if (preferredYearId) {
+          setSelectedAcademicYearId(preferredYearId);
+        }
+      } catch (err) {
+        console.error('Failed to load academic years', err);
       }
     }
-
-    void loadAssignments();
+    void loadAcademicYears();
   }, []);
+
+  // Listen for academic year changes from AppShell
+  useEffect(() => {
+    const syncSelectedAcademicYear = () => {
+      const updatedYearId = getSelectedAcademicYearId();
+      if (updatedYearId) {
+        setSelectedAcademicYearId(updatedYearId);
+      }
+    };
+
+    window.addEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
+    return () => {
+      window.removeEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
+    };
+  }, []);
+
+  const loadAssignments = async () => {
+    setIsLoading(true);
+    try {
+      const yearId = selectedAcademicYearId || getSelectedAcademicYearId();
+      const academicYears = await getAcademicYears();
+      const activeYearId = academicYears.find((year) => year.isActive)?.id ?? '';
+      const isViewingArchivedYear = Boolean(yearId && yearId !== activeYearId);
+      const includeAllYears = isViewingArchivedYear;
+      const [items, classCourses] = await Promise.all([
+        getAssignments(includeAllYears),
+        getClassCourses(includeAllYears),
+      ]);
+      const visibleClassIds = yearId
+        ? new Set(classCourses.filter((classCourse) => classCourse.academicYearId === yearId).map((classCourse) => classCourse.id))
+        : new Set(classCourses.map((classCourse) => classCourse.id));
+
+      const visibleItems = yearId
+        ? items.filter((assignment) => visibleClassIds.has(assignment.classCourseId))
+        : items;
+
+      setAssignments(visibleItems.filter((assignment) => assignment.status === 'Published'));
+    } catch (error) {
+      console.error('Failed to load assignments', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadAssignments();
+  }, [selectedAcademicYearId]);
 
 
   const rowCount = filteredAssignments.length;
@@ -109,23 +165,27 @@ export function AdminAssignmentsPage() {
   return (
     <AppShell role="Admin" breadcrumb="Admin / Assignments">
       <div ref={rootRef} className="space-y-5">
-          <div>
+        <div>
           <p className="text-xs font-bold text-brand-600">ADMINISTRATION</p>
           <h1 className="text-3xl font-extrabold text-slate-800 mt-0.5">Assignments</h1>
         </div>
 
-        <div className="bg-brand-50 border border-brand-100 rounded-2xl px-5 py-3.5 flex items-center gap-3">
-          <svg className="w-5 h-5 text-brand-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="16" x2="12" y2="12" />
-            <line x1="12" y1="8" x2="12.01" y2="8" />
-          </svg>
-          <p className="text-xs text-brand-700">
-            Assignments are created by teachers for their own subjects. As admin, you can view everything here — but content is owned by the teacher.
-          </p>
-        </div>
+        {isLoading ? (
+          <PageLoader title="Loading assignments" subtitle="Loading assignment records for the selected academic year…" />
+        ) : (
+          <>
+            <div className="bg-brand-50 border border-brand-100 rounded-2xl px-5 py-3.5 flex items-center gap-3">
+              <svg className="w-5 h-5 text-brand-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="16" x2="12" y2="12" />
+                <line x1="12" y1="8" x2="12.01" y2="8" />
+              </svg>
+              <p className="text-xs text-brand-700">
+                Assignments are created by teachers for their own subjects. As admin, you can view everything here — but content is owned by the teacher.
+              </p>
+            </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="text-[11px] font-bold text-slate-400">TOTAL ASSIGNMENTS</p>
@@ -180,53 +240,53 @@ export function AdminAssignmentsPage() {
           </div>
         </div>
 
-        {assignments.length > 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2 flex-wrap">
-            {(['All', 'Published'] as const).map((tab) => (
-              <button
-                key={tab}
-                type="button" onClick={() => setActiveTab(tab)}
-                className={`tab cursor-pointer px-4 py-2 rounded px-3 py-2.5 text-sm font-semibold ${activeTab === tab ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
-                {tab} <span className="opacity-70 font-normal">{tab === 'All' ? totals.total : totals.published}</span>
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-2.5 flex-1 justify-end min-w-[320px] flex-wrap">
-            <select
-              value={selectedClass}
-              onChange={(event) => setSelectedClass(event.target.value)}
-              className="text-sm border border-slate-200 rounded px-3 py-2.5 text-slate-600 bg-white">
-              {ALL_CLASSES.map((option) => (
-                <option key={option}>{option}</option>
+        {assignments.length > 0 && (
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
+              {(['All', 'Published'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button" onClick={() => setActiveTab(tab)}
+                  className={`tab cursor-pointer px-4 py-2 rounded px-3 py-2.5 text-sm font-semibold ${activeTab === tab ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+                  {tab} <span className="opacity-70 font-normal">{tab === 'All' ? totals.total : totals.published}</span>
+                </button>
               ))}
-            </select>
-            <select
-              value={selectedTeacher}
-              onChange={(event) => setSelectedTeacher(event.target.value)}
-              className="text-sm border border-slate-200 rounded px-3 py-2.5 text-slate-600 bg-white">
-              {ALL_TEACHERS.map((option) => (
-                <option key={option}>{option}</option>
-              ))}
-            </select>
-            <div className="relative w-56">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="m21 21-4.3-4.3" />
-                </svg>
-              </span>
-              <input
-                type="text"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search assignments…"
-                className="w-full rounded border border-slate-200 px-8 py-2 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-              />
+            </div>
+            <div className="flex items-center gap-2.5 flex-1 justify-end min-w-[320px] flex-wrap">
+              <select
+                value={selectedClass}
+                onChange={(event) => setSelectedClass(event.target.value)}
+                className="text-sm border border-slate-200 rounded px-3 py-2.5 text-slate-600 bg-white">
+                {ALL_CLASSES.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
+              </select>
+              <select
+                value={selectedTeacher}
+                onChange={(event) => setSelectedTeacher(event.target.value)}
+                className="text-sm border border-slate-200 rounded px-3 py-2.5 text-slate-600 bg-white">
+                {ALL_TEACHERS.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
+              </select>
+              <div className="relative w-56">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="m21 21-4.3-4.3" />
+                  </svg>
+                </span>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search assignments…"
+                  className="w-full rounded border border-slate-200 px-8 py-2 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                />
+              </div>
             </div>
           </div>
-        </div>
-        ) : null}
+        )}
 
         {filteredAssignments.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-8 py-20 text-center">
@@ -315,6 +375,8 @@ export function AdminAssignmentsPage() {
               itemLabel="assignments"
             />
           </div>
+        )}
+          </>
         )}
       </div>
 

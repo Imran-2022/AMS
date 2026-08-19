@@ -1,6 +1,7 @@
 import { request } from '../api';
 
 export interface AdminDashboardStats {
+  academicYear: string;
   totalUsers: number;
   totalTeachers: number;
   totalStudents: number;
@@ -11,6 +12,7 @@ export interface AdminDashboardStats {
 }
 
 export interface TeacherDashboardStats {
+  academicYear: string;
   activeAssignmentsCount: number;
   draftAssignmentsCount: number;
   pendingGradingSubmissionsCount: number;
@@ -33,8 +35,9 @@ export interface StudentDashboardStats {
   upcomingDeadlinesCount: number;
 }
 
-export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
-  return request<AdminDashboardStats>('/api/dashboard/admin');
+export async function getAdminDashboardStats(academicYearId?: string): Promise<AdminDashboardStats> {
+  const params = academicYearId ? `?academicYearId=${encodeURIComponent(academicYearId)}` : '';
+  return request<AdminDashboardStats>(`/api/dashboard/admin${params}`);
 }
 
 export async function getTeacherDashboardStats(): Promise<TeacherDashboardStats> {

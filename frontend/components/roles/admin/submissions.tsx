@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AmsPagination } from '../../ui';
+import { AmsPagination, PageLoader } from '../../ui';
 import { AppShell } from '@/shared/layout';
-import { getSubmissions, type SubmissionDto } from '@/lib/api';
+import { getAcademicYears, getClassCourses, getSelectedAcademicYearId, getSubmissions, type SubmissionDto } from '@/lib/api';
 
 const statusClasses: Record<string, string> = {
   Graded: 'bg-emerald-50 text-emerald-600',
@@ -29,6 +29,8 @@ export function AdminSubmissionsPage() {
   const [selectedAssignment, setSelectedAssignment] = useState('All assignments');
   const [search, setSearch] = useState('');
   const [submissions, setSubmissions] = useState<SubmissionDto[]>([]);
+  const [selectedAcademicYearId, setSelectedAcademicYearId] = useState('');
+  const [academicYears, setAcademicYears] = useState<{ id: string; name: string; isActive: boolean }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const CLASS_OPTIONS = useMemo(
@@ -41,12 +43,65 @@ export function AdminSubmissionsPage() {
     [submissions]
   );
 
+  // Load academic years and initialize to active year
+  useEffect(() => {
+    async function loadAcademicYears() {
+      try {
+        const years = await getAcademicYears();
+        setAcademicYears(years);
+
+        const activeYear = years.find(y => y.isActive);
+        const storedYearId = getSelectedAcademicYearId();
+        const preferredYearId = storedYearId && years.some((year) => year.id === storedYearId)
+          ? storedYearId
+          : activeYear?.id ?? years[0]?.id ?? '';
+
+        if (preferredYearId) {
+          setSelectedAcademicYearId(preferredYearId);
+        }
+      } catch (err) {
+        console.error('Failed to load academic years', err);
+      }
+    }
+    void loadAcademicYears();
+  }, []);
+
+  // Listen for academic year changes from AppShell
+  useEffect(() => {
+    const syncSelectedAcademicYear = () => {
+      const updatedYearId = getSelectedAcademicYearId();
+      if (updatedYearId) {
+        setSelectedAcademicYearId(updatedYearId);
+      }
+    };
+
+    window.addEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
+    return () => {
+      window.removeEventListener('ams-academic-year-updated', syncSelectedAcademicYear);
+    };
+  }, []);
+
   useEffect(() => {
     async function loadSubmissions() {
       setIsLoading(true);
       try {
-        const items = await getSubmissions();
-        setSubmissions(items);
+        const yearId = selectedAcademicYearId || getSelectedAcademicYearId();
+        const academicYears = await getAcademicYears();
+        const activeYearId = academicYears.find((year) => year.isActive)?.id ?? '';
+        const isViewingArchivedYear = Boolean(yearId && yearId !== activeYearId);
+        const includeAllYears = isViewingArchivedYear;
+        const [items, classCourses] = await Promise.all([
+          getSubmissions(includeAllYears),
+          getClassCourses(includeAllYears),
+        ]);
+        const visibleClassIds = yearId
+          ? new Set(classCourses.filter((classCourse) => classCourse.academicYearId === yearId).map((classCourse) => classCourse.id))
+          : new Set(classCourses.map((classCourse) => classCourse.id));
+
+        const visibleItems = yearId
+          ? items.filter((submission) => visibleClassIds.has(submission.classCourseId))
+          : items;
+        setSubmissions(visibleItems);
       } catch (error) {
         console.error('Failed to load submissions', error);
       } finally {
@@ -55,7 +110,7 @@ export function AdminSubmissionsPage() {
     }
 
     void loadSubmissions();
-  }, []);
+  }, [selectedAcademicYearId]);
 
   const totals = useMemo(() => {
     const total = submissions.length;
@@ -97,8 +152,11 @@ export function AdminSubmissionsPage() {
           <h1 className="text-3xl font-extrabold text-slate-800 mt-0.5">Submissions</h1>
         </div>
 
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {isLoading ? (
+          <PageLoader title="Loading submissions" subtitle="Loading recent submissions and grading data…" />
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="text-[11px] font-bold text-slate-400">TOTAL SUBMISSIONS</p>
@@ -156,13 +214,23 @@ export function AdminSubmissionsPage() {
         </div>
       </div>
 
-        {submissions.length > 0 ? (
+        {submissions.length > 0 && (
           <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
+              {(['All', 'Graded', 'Pending'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button" onClick={() => setActiveTab(tab)}
+                  className={`tab cursor-pointer px-4 py-2 rounded text-sm font-semibold ${activeTab === tab ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+                  {tab} <span className="opacity-70 font-normal">{tab === 'All' ? totals.total : tab === 'Graded' ? totals.graded : totals.pending}</span>
+                </button>
+              ))}
+            </div>
             <div className="flex items-center gap-2.5 flex-1 justify-end min-w-[320px] flex-wrap">
               <select
                 value={selectedClass}
                 onChange={(event) => setSelectedClass(event.target.value)}
-                className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white">
+                className="text-sm border border-slate-200 rounded px-3 py-2.5 text-slate-600 bg-white">
                 {CLASS_OPTIONS.map((option) => (
                   <option key={option}>{option}</option>
                 ))}
@@ -170,27 +238,29 @@ export function AdminSubmissionsPage() {
               <select
                 value={selectedAssignment}
                 onChange={(event) => setSelectedAssignment(event.target.value)}
-                className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 text-slate-600 bg-white">
+                className="text-sm border border-slate-200 rounded px-3 py-2.5 text-slate-600 bg-white">
                 {ASSIGNMENT_OPTIONS.map((option) => (
                   <option key={option}>{option}</option>
                 ))}
               </select>
-              <div className="relative flex-1 max-w-xs">
+              <div className="relative w-56">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="m21 21-4.3-4.3" />
+                  </svg>
+                </span>
                 <input
                   type="text"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search by student…"
-                  className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-brand-500"
+                  className="w-full rounded border border-slate-200 px-8 py-2 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                 />
-                <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="m21 21-4.3-4.3" />
-                </svg>
               </div>
             </div>
           </div>
-        ) : null}
+        )}
 
         {visibleSubmissions.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-8 py-20 text-center">
@@ -277,6 +347,8 @@ export function AdminSubmissionsPage() {
               itemLabel="submissions"
             />
           </div>
+        )}
+          </>
         )}
       </div>
     </AppShell>

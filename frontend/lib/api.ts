@@ -263,6 +263,7 @@ export type SubmissionDto = {
   studentInitials: string;
   avatarUrl?: string;
   assignmentTitle: string;
+  classCourseId: string;
   classCourseName: string;
   classCourseSection: string;
   groupName?: string;
@@ -420,6 +421,16 @@ export type StudentEnrollmentDto = {
   studentName: string;
   classCourseId: string;
   classCourseName: string;
+  rollNumber?: string | null;
+};
+
+export type TeacherSubjectAssignmentDto = {
+  teacherId: string;
+  teacherName: string;
+  subjectId: string;
+  subjectName: string;
+  classCourseId: string;
+  classCourseName: string;
 };
 
 export type CreateSubjectDto = {
@@ -505,16 +516,26 @@ export async function changePassword(currentPassword: string, newPassword: strin
   });
 }
 
-export async function getAssignments() {
-  return request<AssignmentDto[]>(`/api/assignments`);
+export async function getAssignments(includeAllAcademicYears = false) {
+  const params = new URLSearchParams();
+  if (includeAllAcademicYears) {
+    params.append('includeAllAcademicYears', 'true');
+  }
+  const query = params.toString();
+  return request<AssignmentDto[]>(`/api/assignments${query ? `?${query}` : ''}`);
 }
 
 export async function getAssignment(id: string) {
   return request<AssignmentDto>(`/api/assignments/${id}`);
 }
 
-export async function getSubmissions() {
-  return request<SubmissionDto[]>(`/api/submissions`);
+export async function getSubmissions(includeAllAcademicYears = false) {
+  const params = new URLSearchParams();
+  if (includeAllAcademicYears) {
+    params.append('includeAllAcademicYears', 'true');
+  }
+  const query = params.toString();
+  return request<SubmissionDto[]>(`/api/submissions${query ? `?${query}` : ''}`);
 }
 
 export async function getSubmission(id: string) {
@@ -561,20 +582,45 @@ export async function getNextStudentId(classCourseId: string, groupId?: string) 
   return request<{ studentId: string }>(`/api/users/next-student-id?${params}`);
 }
 
-export async function getClassCourses() {
-  return request<ClassCourseDto[]>(`/api/classes`);
+export async function getClassCourses(includeAllYears = false) {
+  const params = includeAllYears ? '?includeAllYears=true' : '';
+  return request<ClassCourseDto[]>(`/api/classes${params}`);
 }
 
-export async function getEnrollments() {
-  return request<StudentEnrollmentDto[]>(`/api/enrollments`);
+export async function getEnrollments(includeAllYears = false) {
+  const params = includeAllYears ? '?includeAllYears=true' : '';
+  return request<StudentEnrollmentDto[]>(`/api/enrollments${params}`);
 }
 
 export async function getAcademicYears() {
   return request<{ id: string; name: string; startDate: string; endDate: string; isActive: boolean }[]>(`/api/academic-years`);
 }
 
+export function getSelectedAcademicYearId() {
+  if (typeof window === 'undefined') return '';
+  const stored = window.localStorage.getItem('ams-selected-academic-year');
+  if (stored) return stored;
+  const activeYear = window.localStorage.getItem('ams-active-academic-year');
+  return activeYear ?? '';
+}
+
+export function setSelectedAcademicYearId(yearId: string) {
+  if (typeof window === 'undefined') return;
+  if (yearId) {
+    window.localStorage.setItem('ams-selected-academic-year', yearId);
+    return;
+  }
+
+  window.localStorage.removeItem('ams-selected-academic-year');
+}
+
 export async function getActiveAcademicYear() {
   return request<{ id: string; name: string; startDate: string; endDate: string; isActive: boolean }>(`/api/academic-years/active`);
+}
+
+export function notifyAcademicYearChanged() {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('ams-academic-year-updated'));
 }
 
 export async function activateAcademicYear(yearId: string) {
@@ -598,8 +644,13 @@ export async function getGroupsForClass(classDefinitionId: string) {
   return request<{ id: string; name: string }[]>(`/api/class-definitions/${classDefinitionId}/groups`);
 }
 
-export async function getSubjects() {
-  return request<SubjectDto[]>(`/api/subjects`);
+export async function getSubjects(includeAllAcademicYears?: boolean) {
+  const params = new URLSearchParams();
+  if (includeAllAcademicYears) {
+    params.append('includeAllAcademicYears', 'true');
+  }
+  const query = params.toString();
+  return request<SubjectDto[]>(`/api/subjects${query ? `?${query}` : ''}`);
 }
 
 export async function createClassCourse(input: CreateClassCourseDto) {
@@ -759,6 +810,34 @@ export async function gradeSubmission(id: string, input: GradeSubmissionDto) {
 export async function updateSubmissionStatus(id: string, input: UpdateSubmissionStatusDto) {
   return request<SubmissionDto>(`/api/submissions/${id}/status`, {
     method: 'PATCH',
+    body: JSON.stringify(input)
+  });
+}
+
+export async function promoteStudent(input: { studentId: string; fromClassCourseId: string; toClassCourseId: string; newRollNumber?: string }) {
+  return request<StudentEnrollmentDto>(`/api/enrollments/promote`, {
+    method: 'POST',
+    body: JSON.stringify(input)
+  });
+}
+
+export async function bulkPromoteStudents(input: { fromClassCourseId: string; toClassCourseId: string; students: Array<{ studentId: string; newRollNumber?: string }> }) {
+  return request<StudentEnrollmentDto[]>(`/api/enrollments/bulk-promote`, {
+    method: 'POST',
+    body: JSON.stringify(input)
+  });
+}
+
+export async function reassignTeacher(input: { teacherId: string; fromSubjectId: string; toSubjectId: string }) {
+  return request<TeacherSubjectAssignmentDto>(`/api/teacher-assignments/reassign`, {
+    method: 'POST',
+    body: JSON.stringify(input)
+  });
+}
+
+export async function bulkReassignTeachers(input: { fromSubjectId: string; toSubjectId: string; teacherIds: string[] }) {
+  return request<TeacherSubjectAssignmentDto[]>(`/api/teacher-assignments/bulk-reassign`, {
+    method: 'POST',
     body: JSON.stringify(input)
   });
 }

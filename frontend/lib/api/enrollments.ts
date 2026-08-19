@@ -16,8 +16,9 @@ export type CreateStudentEnrollmentDto = {
   classCourseId: string;
 };
 
-export async function getEnrollments() {
-  return request<StudentEnrollmentDto[]>(`/api/enrollments`);
+export async function getEnrollments(includeAllYears = false) {
+  const params = includeAllYears ? '?includeAllYears=true' : '';
+  return request<StudentEnrollmentDto[]>(`/api/enrollments${params}`);
 }
 
 export async function createEnrollment(input: CreateStudentEnrollmentDto) {

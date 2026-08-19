@@ -15,6 +15,18 @@ public class AcademicYearRepository : IAcademicYearRepository
 
     public async Task AddAsync(AcademicYear academicYear, CancellationToken cancellationToken = default)
     {
+        if (academicYear.IsActive)
+        {
+            var otherActiveYears = await _context.AcademicYears
+                .Where(x => x.Id != academicYear.Id && x.IsActive)
+                .ToListAsync(cancellationToken);
+
+            foreach (var year in otherActiveYears)
+            {
+                year.Deactivate();
+            }
+        }
+
         await _context.AcademicYears.AddAsync(academicYear, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
     }
