@@ -57,6 +57,29 @@ public class AuthControllerTests
         Assert.False(string.IsNullOrWhiteSpace(refreshResponse.RefreshToken));
     }
 
+    [Fact]
+    public async Task Refresh_Should_Return_Unauthorized_For_Expired_Refresh_Token()
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Jwt:Key"] = "TestJwtKey1234567890TestJwtKey1234567890",
+            ["Jwt:Issuer"] = "test-issuer",
+            ["Jwt:Audience"] = "test-audience",
+            ["Jwt:AccessTokenExpiresMinutes"] = "15",
+            ["Jwt:RefreshTokenExpiresMinutes"] = "0"
+        }).Build();
+
+        var controller = new AuthController(new FakeAuthAppService(), configuration);
+
+        var loginResult = await controller.Login(new LoginRequest { Email = "admin@ams.local", Password = "password" });
+        var okResult = Assert.IsType<OkObjectResult>(loginResult.Result);
+        var loginResponse = Assert.IsType<AuthResponseDto>(okResult.Value);
+
+        var refreshResult = await controller.Refresh(new RefreshTokenRequest { RefreshToken = loginResponse.RefreshToken });
+
+        Assert.IsType<UnauthorizedResult>(refreshResult.Result);
+    }
+
     private class FakeAuthAppService : AMS.Application.Contracts.IAuthAppService
     {
         public Task<UserDto?> LoginAsync(string email, string password, CancellationToken cancellationToken = default)

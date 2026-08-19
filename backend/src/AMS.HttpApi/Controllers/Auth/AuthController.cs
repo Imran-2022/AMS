@@ -17,7 +17,13 @@ namespace AMS.HttpApi.Controllers;
 [Route("api/auth")]
 public class AuthController : ControllerBase
 {
-    private static readonly ConcurrentDictionary<string, UserDto> RefreshTokenStore = new();
+    private sealed class StoredRefreshToken
+    {
+        public UserDto User { get; set; } = new();
+        public DateTime ExpiresAtUtc { get; set; }
+    }
+
+    private static readonly ConcurrentDictionary<string, StoredRefreshToken> RefreshTokenStore = new();
 
     private readonly IAuthAppService _authAppService;
     private readonly IUserAppService _userAppService;
@@ -70,27 +76,31 @@ public class AuthController : ControllerBase
             signingCredentials: credentials);
 
         var refreshToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
-        RefreshTokenStore[refreshToken] = new UserDto
+        RefreshTokenStore[refreshToken] = new StoredRefreshToken
         {
-            Id = user.Id,
-            Email = user.Email,
-            FullName = user.FullName,
-            Role = user.Role,
-            IsActive = user.IsActive,
-            AvatarUrl = user.AvatarUrl,
-            PhoneNumber = user.PhoneNumber,
-            EmployeeId = user.EmployeeId,
-            SubjectSpecialization = user.SubjectSpecialization,
-            Qualification = user.Qualification,
-            GuardianName = user.GuardianName,
-            GuardianEmail = user.GuardianEmail,
-            Address = user.Address,
-            StudentId = user.StudentId,
-            Gender = user.Gender,
-            DateOfBirth = user.DateOfBirth,
-            AdmissionDate = user.AdmissionDate,
-            JoiningDate = user.JoiningDate,
-            ParentMobile = user.ParentMobile
+            User = new UserDto
+            {
+                Id = user.Id,
+                Email = user.Email,
+                FullName = user.FullName,
+                Role = user.Role,
+                IsActive = user.IsActive,
+                AvatarUrl = user.AvatarUrl,
+                PhoneNumber = user.PhoneNumber,
+                EmployeeId = user.EmployeeId,
+                SubjectSpecialization = user.SubjectSpecialization,
+                Qualification = user.Qualification,
+                GuardianName = user.GuardianName,
+                GuardianEmail = user.GuardianEmail,
+                Address = user.Address,
+                StudentId = user.StudentId,
+                Gender = user.Gender,
+                DateOfBirth = user.DateOfBirth,
+                AdmissionDate = user.AdmissionDate,
+                JoiningDate = user.JoiningDate,
+                ParentMobile = user.ParentMobile
+            },
+            ExpiresAtUtc = DateTime.UtcNow.AddMinutes(refreshTokenExpiresMinutes)
         };
 
         return Ok(new AuthResponseDto
@@ -108,21 +118,25 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.RefreshToken))
             return Unauthorized();
 
-        if (!RefreshTokenStore.TryGetValue(request.RefreshToken, out var storedUser))
+        if (!RefreshTokenStore.TryGetValue(request.RefreshToken, out var storedToken) || storedToken.ExpiresAtUtc <= DateTime.UtcNow)
+        {
+            RefreshTokenStore.TryRemove(request.RefreshToken, out _);
             return Unauthorized();
+        }
 
         var jwtKey = _configuration["Jwt:Key"];
         var jwtIssuer = _configuration["Jwt:Issuer"];
         var jwtAudience = _configuration["Jwt:Audience"];
         var accessTokenExpiresMinutes = int.TryParse(_configuration["Jwt:AccessTokenExpiresMinutes"], out var accessMinutes) ? accessMinutes : 15;
+        var refreshTokenExpiresMinutes = int.TryParse(_configuration["Jwt:RefreshTokenExpiresMinutes"], out var refreshMinutes) ? refreshMinutes : 21600;
 
         var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.Name, storedUser.Id.ToString()),
-            new Claim(ClaimTypes.NameIdentifier, storedUser.Id.ToString()),
-            new Claim(ClaimTypes.Email, storedUser.Email),
-            new Claim(ClaimTypes.Role, storedUser.Role),
-            new Claim("fullName", storedUser.FullName)
+            new Claim(ClaimTypes.Name, storedToken.User.Id.ToString()),
+            new Claim(ClaimTypes.NameIdentifier, storedToken.User.Id.ToString()),
+            new Claim(ClaimTypes.Email, storedToken.User.Email),
+            new Claim(ClaimTypes.Role, storedToken.User.Role),
+            new Claim("fullName", storedToken.User.FullName)
         };
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey ?? string.Empty));
@@ -135,11 +149,19 @@ public class AuthController : ControllerBase
             expires: DateTime.UtcNow.AddMinutes(accessTokenExpiresMinutes),
             signingCredentials: credentials);
 
+        var rotatedRefreshToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        RefreshTokenStore.TryRemove(request.RefreshToken, out _);
+        RefreshTokenStore[rotatedRefreshToken] = new StoredRefreshToken
+        {
+            User = storedToken.User,
+            ExpiresAtUtc = DateTime.UtcNow.AddMinutes(refreshTokenExpiresMinutes)
+        };
+
         return Ok(new AuthResponseDto
         {
             Token = new JwtSecurityTokenHandler().WriteToken(accessToken),
-            RefreshToken = request.RefreshToken,
-            User = storedUser
+            RefreshToken = rotatedRefreshToken,
+            User = storedToken.User
         });
     }
 

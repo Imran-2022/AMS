@@ -494,7 +494,7 @@ export function AdminTeachersPage() {
                         <td className="px-2 py-3.5 align-middle">
                           <span className="font-semibold text-slate-700">{t.name}</span>
                         </td>
-                        <td className="px-2 py-3.5 text-slate-500 align-middle">{t.email}</td>
+                        <td className="px-2 py-3.5 text-slate-500">{t.email}</td>
                         <td className="px-2 py-3.5 align-middle">
                           {t.subjectSpecialization ? (
                             <div className="flex max-w-[200px] flex-wrap gap-1">

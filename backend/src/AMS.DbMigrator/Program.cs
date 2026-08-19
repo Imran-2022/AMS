@@ -40,10 +40,15 @@ using var scope = host.Services.CreateScope();
 var dbContext = scope.ServiceProvider.GetRequiredService<AmsDbContext>();
 await dbContext.Database.MigrateAsync();
 
-var academicYearRepo = scope.ServiceProvider.GetRequiredService<IAcademicYearRepository>();
-var userRepo = scope.ServiceProvider.GetRequiredService<IUserRepository>();
-var classRepo = scope.ServiceProvider.GetRequiredService<IClassCourseRepository>();
-var classDefRepo = scope.ServiceProvider.GetRequiredService<IClassDefinitionRepository>();
+// await AMSSeeder.SeedAsync(scope.ServiceProvider);
 
-await AMSSeeder.SeedAsync(scope.ServiceProvider);
+// Seed class definitions
+await ClassDefinitionSeeder.SeedAsync(scope.ServiceProvider);
+await GroupSeeder.SeedAsync(scope.ServiceProvider);
+// Seed academic years
+await AcademicYearSeeder.SeedAsync(scope.ServiceProvider);
+// Seed only admin user
+await AdminUserSeeder.SeedAsync(scope.ServiceProvider);
+
 Console.WriteLine("Seeding completed.");
+
